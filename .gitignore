@@ -1,3 +1,21 @@
+# Actual data, but keep structure
+data/*.tsv
+data/*.json
+data/**/*.tsv
+data/**/*.json
+!**/.gitkeep
+# !data/*/.*
+# !data/*/*/.*
+
+# Internal docs
+.doc
+
+# Temporary files
+~*.*
+
+# DEv enviro
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
