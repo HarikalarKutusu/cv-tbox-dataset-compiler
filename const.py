@@ -62,6 +62,7 @@ BINS_SENTENCES: "list[int]" = [0, 1, 2, 3, 4, 5,
 # SEPARATORS
 SEP_ROW: str = '|'
 SEP_COL: str = '-'
+SEP_ALGO: str = '|'
 
 # COLUMNS FOR DATAFRAMES
 COLS_CLIP_DURATIONS: "list[str]" = [
