@@ -1,4 +1,16 @@
+###########################################################################
+# const.py
+#
+# Constants for scripts in this repository
+# The values should be parallel to JS data structures
+#
+# This script is part of Common Voice ToolBox Package
+#
+# [github]
+# [copyright]
+###########################################################################
 
+# These values are as of v11.0 and should be updated with each version
 CV_VERSIONS: "list[str]" = [
     '1', '2', '3', '4', '5.1',
     '6.1', '7.0', '8.0', '9.0', '10.0',
@@ -54,10 +66,9 @@ BINS_DURATION: "list[int]" = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 99]
 # ]
 BINS_VOICES: "list[int]" = [
     1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
-    2048, 4096, 8192, 16384, 32768, 32768, 999999
+    2048, 4096, 8192, 16384, 32768, 65536, 999999
 ]
-BINS_SENTENCES: "list[int]" = [0, 1, 2, 3, 4, 5,
-                               6, 7, 8, 9, 10, 20, 30, 40, 50, 100, 999999]
+BINS_SENTENCES: "list[int]" = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 100, 999999]
 
 # SEPARATORS
 SEP_ROW: str = '|'
@@ -82,3 +93,24 @@ COLS_SPLIT_STATS: "list[str]" = [
     'chars',
 ]
 
+COLS_TEXT_CORPUS: "list[str]" = [
+    "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
+]
+
+COLS_TOKENS: "list[str]" = [
+    "token", "count"
+]
+
+COL_TC_STATS: "list[str]" = [
+    "lc", "s_cnt", "uq_s", "uq_n", "has_val", "val",
+    "c_total", "c_mean", "c_median", "c_freq",
+    "w_total", "w_mean", "w_median", "w_freq",
+    "t_total", "t_mean", "t_median", "t_freq"
+]
+
+BINS_CHARS: "list[int]" = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 99999]
+BINS_WORDS: "list[int]" = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 99999]
+BINS_TOKENS: "list[int]" = [
+    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
+    2048, 4096, 8192, 16384, 32768, 65536, 999999
+]
