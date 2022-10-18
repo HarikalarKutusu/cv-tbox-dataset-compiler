@@ -243,8 +243,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         unique_voices: int = df['client_id'].unique().shape[0]
         unique_sentences: int = df['sentence'].unique().shape[0]
         unique_sentences_lower: int = df['sentence_lower'].unique().shape[0]
-        duplicate_sentence_cnt: int = clips_cnt - unique_sentences
-        duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
+        # duplicate_sentence_cnt: int = clips_cnt - unique_sentences
+        # duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
 
         # get a pt for all demographics
         _pt: pd.DataFrame = pd.pivot_table(
@@ -275,8 +275,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             'uq_v':         unique_voices,
             'uq_s':         unique_sentences,
             'uq_sl':        unique_sentences_lower,
-            'dup_s':        duplicate_sentence_cnt,
-            'dup_sl':       duplicate_sentence_cnt_lower,
+            # 'dup_s':        duplicate_sentence_cnt,
+            # 'dup_sl':       duplicate_sentence_cnt_lower,
             # 'dup_r':        duplicate_sentence_cnt / unique_sentences,
             # 'dup_rl':       duplicate_sentence_cnt_lower / unique_sentences_lower,
 
