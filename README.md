@@ -60,7 +60,7 @@ STRUCTURE AT SOURCE
 clip-durations
   <lc>
     $clip_durations.tsv           # Durations of all clips, calculated using external process during download (not provided yet)
-    text-corpus                   # Compiled by "text_corpus_compile.py" from fresh Common Voice repository clone
+text-corpus                       # Compiled by "text_corpus_compile.py" from fresh Common Voice repository clone
   <lc>
     $text_corpus.tsv              # Combined text corpus with additional info
     $tokens.tsv                   # Results of tokenisation (if supported) with frequencies
