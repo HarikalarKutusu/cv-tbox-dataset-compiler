@@ -2,14 +2,14 @@
 
 This repository contains python commmand line utilities for pre-calculating the data for [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer) (which is actually a viewer) in an offline process.
 To be able to use this, you have to download the datasets yourselves and provide the tsv files and other data (such as clip durations and text-corpora).
-It is a lengthy process using huge amounts of data (42GB uncompressed, without audio files) and you are not expected to use this utility.
+It is a lengthy process using huge amounts of data (in our case it was 42GB uncompressed, without audio files) and you are not expected to use this utility.
 We already use it, and you can view the results in the [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer).
 
 This code is provided as part of being open-source and as a reference for calculations.
 
 ## Scripts
 
-The following scripts should be run in the given order.
+The first two scripts should be run before the final one.
 
 **split_compile.py**
 
@@ -98,4 +98,4 @@ You can look at the results [Common Voice Dataset Analyzer](https://github.com/H
 
 ## Future Work
 
-This will evantually be part of the Common Voice Toolbox's Core...
+This will eventually be part of the Common Voice Toolbox's Core...
