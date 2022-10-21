@@ -6,8 +6,8 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # These values are as of v11.0 and should be updated with each version

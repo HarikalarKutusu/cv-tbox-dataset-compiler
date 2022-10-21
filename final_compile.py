@@ -13,8 +13,8 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 import sys
@@ -48,7 +48,7 @@ FAIL_ON_NOT_FOUND: bool = True
 PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 
 COMPILE_THESE: "list[str]" = const.CV_VERSIONS
-# COMPILE_THESE: "list[str]" = ['6.1']              # A samaller one for debugging purposes
+# COMPILE_THESE: "list[str]" = ['6.1']              # A smaller one for debugging purposes
 
 cnt_datasets: int = 0
 

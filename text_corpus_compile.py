@@ -1,73 +1,41 @@
 #!/usr/bin/env python3
 
 ###########################################################################
-# compile_text_corpus.py
+# text_corpus_compile.py
 #
-# From cloned Common Voice Repo, Downloads all text corpus files from github for all locales.
+# From cloned Common Voice Repo, get all text corpus files for all locales.
+# Combine them and add some pre calculations.
 #
 # Use:
-# python dl_text_corpora.py
-#
-#
+# python text_corpus_compile.py
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
-import re
-import sys
-import os
-import shutil
-import glob
-import csv
+import sys, os, glob, csv
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any
+from collections import Counter
 
 import numpy as np
 import pandas as pd
-
-import const
 
 # MultiProcessing
 import multiprocessing as mp
 import psutil
 
+# Common Voice Utilities
 import cvutils as cvu
-from collections import Counter
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
 
-
-#
-# Constants - TODO These should be arguments
-#
-
-CV_REPO: str = "C:\\GITREPO\\_AI_VOICE\\_CV\\common-voice\\server\\data"
-# DSTBASE: str = "C:\\GITREPO\\_HK_GITHUB\\_cv_tbox\\cv-tbox-dataset-compiler\\datasets"
-
-
-# FINAL STRUCTURE AT DESTINATION
-# clip-durations
-#   <lc>
-#       $clip_durations.tsv
-# text-corpus
-#   <lc>
-#       $clip_durations.tsv
-# voice-corpus
-#   <cvver>                                             # eg: "cv-corpus-11.0-2022-09-21"
-#       <lc>                                            # eg: "tr"
-#           validated.tsv
-#           invalidated.tsv
-#           other.tsv
-#           reported.tsv
-#           <splitdir>
-#               train.tsv
-#               dev.tsv
-#               test.tsv
+import const
+import config as conf
 
 
 def df_write(df: pd.DataFrame, fpath: str) -> bool:
@@ -88,7 +56,7 @@ def handle_locale(lc: str) -> None:
 
     tc_base_dir: str = os.path.join(HERE, 'data', 'text-corpus')
 
-    src_path: str = os.path.join(CV_REPO, lc)
+    src_path: str = os.path.join(conf.CV_REPO, lc)
     dst_file: str = os.path.join(tc_base_dir, lc, "$text_corpus.tsv")
     dst_tokens_file: str = os.path.join(tc_base_dir, lc, "$tokens.tsv")
 
@@ -169,7 +137,7 @@ def main() -> None:
 
     # Get a list of available language codes
     lc_paths: "list[str]" = glob.glob(
-        os.path.join(CV_REPO, '*'), recursive=False)
+        os.path.join(conf.CV_REPO, '*'), recursive=False)
     lc_list: "list[str]" = []
     for lc_path in lc_paths:
         if os.path.isdir(lc_path):  # ignore files

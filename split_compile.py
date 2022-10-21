@@ -11,8 +11,8 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 import sys
@@ -21,57 +21,13 @@ import shutil
 import glob
 from datetime import datetime, timedelta
 
-import const
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
 
-#
-# Constants - TODO These should be arguments
-#
-
-SRC_BASE_DIR: str = "C:\\GITREPO\\_HK_GITHUB\\common-voice-diversity-check\\experiments"
-
-# STRUCTURE AT SOURCE
-# experiments
-#   s1
-#       <cv-ver>
-#           <lc>
-#               *.tsv
-#               clips
-#                   $clip_durations.tsv
-#   s99
-#   v1
-#       
-
-
-# FINAL STRUCTURE AT DESTINATION
-# clip-durations
-#   <lc>
-#       $clip_durations.tsv
-# text-corpus
-#   <lc>
-#       $clip_durations.tsv
-# voice-corpus
-#   <cvver>                                             # eg: "cv-corpus-11.0-2022-09-21"
-#       <lc>                                            # eg: "tr"
-#           validated.tsv
-#           invalidated.tsv
-#           other.tsv
-#           reported.tsv
-#           <splitdir>
-#               train.tsv
-#               dev.tsv
-#               test.tsv
-
-
-# Copy mapping (SRCBASE => DSTBASE):
-# s1/<cv>/<lc>/*.tsv                        => voice-corpus/<cv>/<lc>/*.tsv           - train independent
-# s1/<cv>/<lc>/*.tsv                        => voice-corpus/<cv>/<lc>/s1/*.tsv        - train, dev, test
-# s99/<cv>/<lc>/*.tsv                       => voice-corpus/<cv>/<lc>/s99/*.tsv
-# v1/<cv>/<lc>/*.tsv                        => voice-corpus/<cv>/<lc>/v1/*.tsv
-# **/<cv>/<lc>/clips/$clip_durations.tsv    => clip-durations/<lc>/$clip_durations.tsv
+import const
+import config as conf
 
 # MAIN PROCESS
 def main() -> None:
@@ -89,7 +45,7 @@ def main() -> None:
         # Calc CV_DIR - TODO different for v1-4 !!!
         cv_dir_name: str = "cv-corpus-" + cv_ver + "-" + const.CV_DATES[cv_idx]
         # Check if it exists in source (check "s1", if not there, it is nowhere)
-        if not os.path.isdir(os.path.join(SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name)):
+        if not os.path.isdir(os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name)):
             continue # Does, not exist, so skip
 
         print(f'Processing locales in {cv_dir_name}\n')
@@ -99,7 +55,7 @@ def main() -> None:
         os.makedirs(dst_dir, exist_ok=True)
         # Get a  list of available language codes
         lc_paths: "list[str]" = glob.glob(
-            os.path.join(SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, '*'),
+            os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, '*'),
             recursive=False)
         lc_list: "list[str]" = []
         for lc_path in lc_paths:
@@ -115,7 +71,7 @@ def main() -> None:
             print(f'\033[FProcessing locale {cnt}/{len(lc_list)} : {lc}')
 
             # copy splitting algorithm independent files
-            src_dir: str = os.path.join(SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc)
+            src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc)
             dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc)
             os.makedirs(os.path.join(dst_dir, const.ALGORITHMS[0]), exist_ok=True)
             for fn in ["validated.tsv", "invalidated.tsv", "other.tsv", "reported.tsv"]:
@@ -129,7 +85,7 @@ def main() -> None:
                     shutil.copy2(os.path.join(src_dir, fn), dst_dir)
 
             # check if exists to copy to s99
-            src_dir: str = os.path.join(SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc)
+            src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc)
             if os.path.isdir(src_dir):
                 dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[1])
                 os.makedirs(dst_dir, exist_ok=True)
@@ -138,7 +94,7 @@ def main() -> None:
                         shutil.copy2(os.path.join(src_dir, fn), dst_dir)
 
             # check if exists to copy to v1
-            src_dir: str = os.path.join(SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc)
+            src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc)
             if os.path.isdir(src_dir):
                 dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[2])
                 os.makedirs(dst_dir, exist_ok=True)
@@ -151,9 +107,9 @@ def main() -> None:
             os.makedirs(dst_dir, exist_ok=True)
             cd_file: str = '$clip_durations.tsv'
             search_paths: list[str] = [
-                os.path.join(SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc, 'clips', cd_file),
-                os.path.join(SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc, 'clips', cd_file),
-                os.path.join(SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc, 'clips', cd_file)
+                os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc, 'clips', cd_file),
+                os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc, 'clips', cd_file),
+                os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc, 'clips', cd_file)
             ]
             for p in search_paths:
                 if os.path.isfile(p):
