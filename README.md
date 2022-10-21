@@ -11,7 +11,7 @@ This code is provided as part of being open-source and as a reference for calcul
 
 The first two scripts should be run before the final one.
 
-**split_compile.py**
+### split_compile.py
 
 Assumes:
 
@@ -25,7 +25,7 @@ This script reorganizes (compiles) them under this repo to be processed.
 This script currently runs on a single process to prevent disk overload, takes 5-6 mins on a 6 core (12 logical) development notebook, nVME SSD.
 Should be run with new versions/additions and/or new splitting algorithms.
 
-**text_corpus_compile.py**
+### text_corpus_compile.py
 
 Assumes:
 
@@ -38,7 +38,7 @@ Should be ran from time to time to update the data with new strings, e.g. monthl
 
 Known issue: String length calculation with unicode locales might be wrong, to be addressed shortly.
 
-**final_compile.py**
+### final_compile.py
 
 Assumes:
 
@@ -99,7 +99,7 @@ Developed and tested on Python 3.8.x but should work on later versions. It is pr
 2. Clone the repo and cd into it
 3. Install main dependencies using `pip install -r requirements.txt`
 4. For normalization and validation of text-corpora install [commonvoice-utils](https://github.com/ftyers/commonvoice-utils) as defined in the link.
-5. Prepare your data as described above
+5. Prepare your data as described above, edit config.py to point to correct directories in your system
 6. Run the script you want
 
 ## Other
