@@ -97,9 +97,10 @@ Developed and tested on Python 3.8.x but should work on later versions. It is pr
 
 1. Create venv and activate it
 2. Clone the repo and cd into it
-3. Install dependencies using `pip install -r requirements.txt`
-4. Prepare your data as descripbed above
-5. Run the script you want
+3. Install main dependencies using `pip install -r requirements.txt`
+4. For normalization and validation of text-corpora install [commonvoice-utils](https://github.com/ftyers/commonvoice-utils) as defined in the link.
+5. Prepare your data as described above
+6. Run the script you want
 
 ## Other
 
