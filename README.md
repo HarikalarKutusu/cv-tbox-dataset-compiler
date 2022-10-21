@@ -91,11 +91,26 @@ results
       <lc>_<ver>_splits.json      # eg: "tr_v11.0_splits.json", keeps all split statistics of this version of locale dataset.
 ```
 
-## TO-DO
+## Setup and Run
+
+Developed and tested on Python 3.8.x but should work on later versions. It is preferred to use a virtual environment.
+
+1. Create venv and activate it
+2. Clone the repo and cd into it
+3. Install dependencies using `pip install -r requirements.txt`
+4. Prepare your data as descripbed above
+5. Run the script you want
+
+## Other
+
+### License
+
+AGPL v3.0
+
+### TO-DO/Project plan, issues and feature requests
 
 We did not list the statistics we compiled yet, as this is actively developed.
 You can look at the results [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer).
+This will eventually be part of the Common Voice Toolbox's Core, but it will be developed here...
 
-## Future Work
-
-This will eventually be part of the Common Voice Toolbox's Core...
+The project status can be found on the [project page](https://github.com/users/HarikalarKutusu/projects/10). Please post [issues and feature requests](https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler/issues), or [Pull Requests](https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler/pulls) to enhance.
