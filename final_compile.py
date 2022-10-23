@@ -47,10 +47,13 @@ VERBOSE: bool = False
 FAIL_ON_NOT_FOUND: bool = True
 PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 
-COMPILE_THESE: "list[str]" = const.CV_VERSIONS
-# COMPILE_THESE: "list[str]" = ['6.1']              # A smaller one for debugging purposes
-
 cnt_datasets: int = 0
+
+# Debug & Limiters
+DEBUG: bool = False
+DEBUG_PROC_COUNT: int = 1
+DEBUG_CV_VER: "list[str]" = ['11.0']
+DEBUG_CV_LC: "list[str]" = ['tr']
 
 
 ########################################################
@@ -118,6 +121,7 @@ def arr2str(arr: "list[list[Any]]") -> str:
 
 def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
     global cnt_datasets
+
     #
     # Handle one split, this is where calculations happen
     #
@@ -127,39 +131,98 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
     # we have as input:
     # 'version', 'locale', 'algorithm', 'split'
 
-    # now, do calculate some statistics. We need:
-    # 'clips', 'unique_voices', 'unique_sentences', 'duplicate_sentences',
-    # 'genders_nodata', 'genders_male', 'genders_female', 'genders_other',
-    # 'ages_nodata', 'ages_teens', 'ages_twenties', 'ages_thirties', 'ages_fourties', 'ages_fifties', 'ages_sixties', 'ages_seventies', 'ages_eighties', 'ages_nineties'
-
+    # now, do calculate some statistics...
     def handle_split(ver: str, lc: str, algorithm: str, split: str, fpath: str) -> "dict[str, Any]":
         """Processes a single split and return calculated values"""
+        nonlocal df_clip_durations
 
-        nonlocal df_clip_durations, df_text_corpus
+        #
+        # find_fixes
+        #
+        def find_fixes(df_split: pd.DataFrame) -> "list[str]":
+            """Finds fixable demographic info from the split and returns a string"""
 
-        # def _get_row_total(pt: pd.DataFrame, lbl: str) -> int:
-        #     # return int(pd.to_numeric(pt.loc[lbl, 'TOTAL'])) if lbl in list(pt.index.values) else int(0)
-        #     return int(pd.to_numeric(pt.loc[lbl, 'TOTAL']))
+            # df is local dataframe which will keep records only necessay columns with some additional columns
+            df: pd.DataFrame = df_split.copy().reset_index(drop=True)
+            df['v_enum'], v_unique = pd.factorize(df['client_id'])    # add an enumaration column for client_id's, more memory efficient
+            df['p_enum'], p_unique = pd.factorize(df['path'])         # add an enumaration column for recordings, more memory efficient
+            df = df[["v_enum", "age", "gender", "p_enum"]].fillna(const.NODATA).reset_index(drop=True)
 
-        # def _get_col_total(pt: pd.DataFrame, lbl: str) -> int:
-        #     # return int(pd.to_numeric(pt.loc['TOTAL', lbl])) if lbl in list(pt.columns.values) else int(0)
-        #     return pt.at['TOTAL', lbl]
+            # prepare empty results
+            fixes: pd.DataFrame = pd.DataFrame(columns=df.columns).reset_index(drop=True)
+            dem_fixes_recs: str = ""
+            dem_fixes_voices: str = ""
 
+            # get unique voices with multiple demographic values
+            df_counts: pd.DataFrame = df[["v_enum", "age", "gender"]].drop_duplicates().copy().groupby('v_enum').agg( { "age": "count", "gender": "count"} )
+            df_counts.reset_index(inplace=True)
+            df_counts = df_counts[
+                (df_counts['age'].astype(int) == 2) | 
+                (df_counts['gender'].astype(int) == 2)
+            ]      # reduce that to only processible ones
+            v_processable: "list[int]" = df_counts['v_enum'].unique().tolist()
+
+            # now, work only on problem voices & records. For each voice, get related records and decide
+            for v in v_processable:
+                recs: pd.DataFrame = df[ df["v_enum"] == v ].copy()
+                recs_blanks: pd.DataFrame = recs[ (recs["gender"] == const.NODATA) | (recs["age"] == const.NODATA) ].copy()          # get full blanks
+                # gender
+                recs_w_gender: pd.DataFrame = recs[ ~(recs["gender"] == const.NODATA) ].copy()
+                if recs_w_gender.shape[0] > 0:
+                    val: str = recs_w_gender["gender"].tolist()[0]
+                    recs_blanks.loc[:, "gender"] = val
+                # age
+                recs_w_age: pd.DataFrame = recs[ ~(recs["age"] == const.NODATA) ].copy()
+                if recs_w_age.shape[0] > 0:
+                    val: str = recs_w_age["age"].tolist()[0]
+                    recs_blanks.loc[:, "age"] = val
+                # now we can add them to the result fixed list
+                fixes = pd.concat( [ fixes.loc[:] , recs_blanks] ).reset_index(drop=True)
+
+            # Here, we have a df maybe with records of possible changes
+            if fixes.shape[0] > 0:
+                # records
+                pt: pd.DataFrame = pd.pivot_table(
+                    fixes, values='p_enum', index=['age'], columns=['gender'], aggfunc='count',
+                    fill_value=0, dropna=False, margins=False
+                    )
+                # get only value parts : nodata is just negative sum of these, and TOTAL will be 0,
+                # so we drop them for file size and leave computation to the client
+                pt = pt.reindex(const.CV_AGES, axis=0).reindex(const.CV_GENDERS, axis=1).fillna(
+                    value=0).astype(int).drop(const.NODATA, axis=0).drop(const.NODATA, axis=1)
+                dem_fixes_recs = arr2str(pt.to_numpy(int).tolist())
+
+                # voices
+                fixes = fixes.drop("p_enum", axis=1).drop_duplicates()
+                pt: pd.DataFrame = pd.pivot_table(
+                    fixes, values='v_enum', index=['age'], columns=['gender'], aggfunc='count',
+                    fill_value=0, dropna=False, margins=False)
+                # get only value parts : nodata is just -sum of these, sum will be 0
+                pt = pt.reindex(const.CV_AGES, axis=0).reindex(const.CV_GENDERS, axis=1).fillna(
+                    value=0).astype(int).drop(const.NODATA, axis=0).drop(const.NODATA, axis=1)
+                dem_fixes_voices = arr2str(pt.to_numpy(int).tolist())
+
+            return [dem_fixes_recs, dem_fixes_voices]
+
+        # END - find_fixes
+
+        #
         # === START ===
+        #
         # print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
 
         # Read in DataFrames
         if split != 'clips':
-            df: pd.DataFrame = df_read(fpath)
+            df_orig: pd.DataFrame = df_read(fpath)
         else: # build "clips" from val+inval+other
-            df: pd.DataFrame = df_read(fpath) # we passed validated here, first read it.
+            df_orig: pd.DataFrame = df_read(fpath) # we passed validated here, first read it.
             df2: pd.DataFrame = df_read(fpath.replace('validated', 'invalidated'))  # add invalidated
-            df = pd.concat( [df.loc[:], df2] )
+            df_orig = pd.concat( [df_orig.loc[:], df2] )
             df2: pd.DataFrame = df_read(fpath.replace('validated', 'other'))  # add other
-            df = pd.concat( [df.loc[:], df2] )
+            df_orig = pd.concat([df_orig.loc[:], df2])
 
         # Do nothing, if there is no data
-        if df.shape[0] == 0:
+        if df_orig.shape[0] == 0:
             results = {
                 'ver':  ver,
                 'lc':   lc,
@@ -169,7 +232,7 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             return results
 
         # Replace NA with NODATA
-        df.fillna(value=const.NODATA, inplace=True)
+        df: pd.DataFrame = df_orig.fillna(value=const.NODATA)
         # add lowercase sentence column
         df['sentence_lower'] = df['sentence'].str.lower()
 
@@ -177,11 +240,11 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # DURATIONS
         #
 
-        # Connect with duration table
-        df["duration"] = df["path"].map(df_clip_durations["duration"])
         # Calc duration agregate values
-        ser: pd.Series = df["duration"]
         if df_clip_durations.shape[0] > 0:
+            # Connect with duration table
+            df["duration"] = df["path"].map(df_clip_durations["duration"])
+            ser: pd.Series = df["duration"]
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
             duration_median: float = ser.median()
@@ -219,9 +282,6 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         #
         sentence_counts: pd.DataFrame = df["sentence"].value_counts(
         ).to_frame().reset_index()
-        # print(sentence_counts)
-        # sys.exit()
-
         sentence_counts.rename(
             columns={"index": "sentence", "sentence": "recordings"}, inplace=True)
         sentence_mean: float = sentence_counts["recordings"].mean()
@@ -231,39 +291,65 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             int).reset_index(drop=True).to_list(), int)
         hist: list[list[int]] = np.histogram(arr, bins=const.BINS_SENTENCES)
         sentence_freq: "list[int]" = hist[0]
-        sentence_bins: "list[int]" = hist[1]
+        # sentence_bins: "list[int]" = hist[1]
 
-        # print(duration_freq)
-        # print(voice_freq)
-        # print(sentence_freq)
-        # sys.exit()
-
-        # basic measures
+        #
+        # BASIC MEASURES
+        #
         clips_cnt: int = df.shape[0]
         unique_voices: int = df['client_id'].unique().shape[0]
         unique_sentences: int = df['sentence'].unique().shape[0]
         unique_sentences_lower: int = df['sentence_lower'].unique().shape[0]
+        # Implement the following in the client:
         # duplicate_sentence_cnt: int = clips_cnt - unique_sentences
         # duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
 
-        # get a pt for all demographics
-        _pt: pd.DataFrame = pd.pivot_table(
-            df, values='path', index=['age'], columns=['gender'], aggfunc='count',
+        #
+        # VOTES
+        #
+        max_up: int = df['up_votes'].max()
+        max_down: int = df['down_votes'].max()
+        _pt_votes: pd.DataFrame = pd.pivot_table(
+            df, values='path', index=['up_votes'], columns=['down_votes'], aggfunc='count',
             fill_value=0, dropna=False, margins=True, margins_name='TOTAL'
         )
-        # print(_pt)
+        _pt_votes = _pt_votes.reindex(range(0,max_up), axis=0).reindex(range(0,max_down), axis=1).fillna(value=0).astype(int)
+
+        #
+        # DEMOGRAPHICS
+        #
+
+        # Add TOTAL to lists
         pt_ages: list[str] = const.CV_AGES.copy()
         pt_ages.append("TOTAL")
         pt_genders: list[str] = const.CV_GENDERS.copy()
         pt_genders.append("TOTAL")
-        _pt = _pt.reindex(pt_ages, axis=0)
-        _pt = _pt.reindex(pt_genders, axis=1)
-        _pt = _pt.fillna(value=0).astype(int)
-        # print(_pt)
 
-        # _get_col_total(_pt, 'male')
-        _males: int = _pt.at['TOTAL', 'male'].item()
-        _females: int = _pt.at['TOTAL', 'female'].item()
+        #
+        # get a pt for all demographics (based on recordings)
+        #
+        _pt_dem: pd.DataFrame = pd.pivot_table(
+            df, values='path', index=['age'], columns=['gender'], aggfunc='count',
+            fill_value=0, dropna=False, margins=True, margins_name='TOTAL'
+        )
+        _pt_dem = _pt_dem.reindex(pt_ages, axis=0).reindex(pt_genders, axis=1).fillna(value=0).astype(int)
+
+        #
+        # get a pt for all demographics (based on unique voices)
+        #
+        _df_uqdem: pd.DataFrame = df[["client_id", "age", "gender"]]
+        _df_uqdem = _df_uqdem.drop_duplicates().reset_index(drop=True)
+        _pt_uqdem: pd.DataFrame = pd.pivot_table(
+            _df_uqdem, values='client_id', index=['age'], columns=['gender'], aggfunc='count',
+            fill_value=0, dropna=False, margins=True, margins_name='TOTAL'
+        )
+        _pt_uqdem = _pt_uqdem.reindex(pt_ages, axis=0).reindex(pt_genders, axis=1).fillna(value=0).astype(int)
+
+        #
+        # Create a table for all demographic info corrections (based on recordings)
+        # Correctable ones are: clients with both blank and a single gender (or age) specified
+        #
+        dem_fixes_list: "list[str]" = find_fixes(df_orig)
 
         results: dict[str, Any] = {
             'ver':          ver,
@@ -275,30 +361,6 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             'uq_v':         unique_voices,
             'uq_s':         unique_sentences,
             'uq_sl':        unique_sentences_lower,
-            # 'dup_s':        duplicate_sentence_cnt,
-            # 'dup_sl':       duplicate_sentence_cnt_lower,
-            # 'dup_r':        duplicate_sentence_cnt / unique_sentences,
-            # 'dup_rl':       duplicate_sentence_cnt_lower / unique_sentences_lower,
-
-            # 'g_m':          _males,
-            # 'g_f':          _females,
-            # 'g_o':          _pt.at['TOTAL', 'other'].item(),
-            # 'g_nd':         _pt.at['TOTAL', const.NODATA].item(),
-
-            # 'a_t':          _pt.at['teens', 'TOTAL'].item(),
-            # 'a_20':         _pt.at['twenties', 'TOTAL'].item(),
-            # 'a_30':         _pt.at['thirties', 'TOTAL'].item(),
-            # 'a_40':         _pt.at['fourties', 'TOTAL'].item(),
-            # 'a_50':         _pt.at['fifties', 'TOTAL'].item(),
-            # 'a_60':         _pt.at['sixties', 'TOTAL'].item(),
-            # 'a_70':         _pt.at['seventies', 'TOTAL'].item(),
-            # 'a_80':         _pt.at['eighties', 'TOTAL'].item(),
-            # 'a_90':         _pt.at['nineties', 'TOTAL'].item(),
-            # 'a_nd':         _pt.at[const.NODATA, 'TOTAL'].item(),
-
-            # 'g_f_m_ratio':        _females / _males if _males > 0 else -1,
-
-            # TODO Add More columns
 
             # Duration
             'dur_total':    duration_total,
@@ -316,14 +378,14 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             's_median':     sentence_median,
             's_freq':       list2str(sentence_freq),
 
-            # Demographics distribution
-            'dem_table':    arr2str(_pt.to_numpy(int).tolist()),
+            # Votes
+            'votes':        arr2str(_pt_votes.to_numpy(int).tolist()),
 
-            # Tables & lists
-            # 'dur_bins':     list2str(duration_bins),
-            # 'v_bins':       list2str(voice_bins),
-            # 's_bins':       list2str(sentence_bins),
-
+            # Demographics distribution for recordings
+            'dem_table':    arr2str(_pt_dem.to_numpy(int).tolist()),
+            'dem_uq':       arr2str(_pt_uqdem.to_numpy(int).tolist()),
+            'dem_fix_r':    dem_fixes_list[0],
+            'dem_fix_v':    dem_fixes_list[1],
         }
 
         # print(results)
@@ -351,17 +413,17 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         if os.path.isdir(lc_path): # ignore files
             lc_list.append(os.path.split(lc_path)[1])
 
+    lc_to_process: "list[str]" = DEBUG_CV_LC if DEBUG else lc_list
+
     cnt_datasets += len(lc_list)
 
     # Loop all locales
     cnt: int = 0
     res_all: "list[dict[str,Any]]" = []
-    for lc in lc_list:
+    for lc in lc_to_process:
         cnt += 1
         res: "list[dict[str,Any]]" = []
-        # print('\033[F' + ' ' * 80)
-        # print(f'\033[FProcessing locale {cnt}/{len(lc_list)} : {lc}')
-        print(f'Processing {ver} locale {cnt}/{len(lc_list)} : {lc}')
+        print(f'Processing {ver} locale {cnt}/{len(lc_to_process)} : {lc}')
 
         # Source directories
         vc_dir: str = os.path.join(cv_dir, lc)
@@ -389,16 +451,6 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             print(f'WARNING: No duration data for {lc}\n')
             df_clip_durations: pd.DataFrame = pd.DataFrame(
                 columns=const.COLS_CLIP_DURATIONS).set_index("clip")
-
-        # Text Corpus
-        tc_file: str = os.path.join(tc_dir, '$text_corpus.tsv')
-        if os.path.isfile(tc_file):
-            df_text_corpus: pd.DataFrame = df_read(
-                tc_file)  # .set_index("sentence")
-        else:
-            print(f'WARNING: No text-corpus for {lc}\n')
-            df_text_corpus: pd.DataFrame = pd.DataFrame(
-                columns=const.COLS_TEXT_CORPUS)  # .set_index("sentence")
 
         # MAIN SPLITS
 
@@ -571,8 +623,10 @@ def main() -> None:
         return 'v' + ver.replace('.', '_')
 
 
-    print(f'=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({PROC_COUNT} processes)===')
+    used_proc_count: int = DEBUG_PROC_COUNT if DEBUG else PROC_COUNT
+    print(f'=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({used_proc_count} processes)===')
     start_time: datetime = datetime.now()
+
 
     #
     # MultiProcessing on text-corpora: Loop all locales, each locale in one process
@@ -588,15 +642,12 @@ def main() -> None:
         if os.path.isdir(lc_path): # ignore files
             lc_list.append(os.path.split(lc_path)[1])
 
-    # Now multi-process each lc
-    with mp.Pool(PROC_COUNT) as pool:
-        tc_stats: list[dict[str, Any]] = pool.map(
-            handle_text_corpus, lc_list)
+    lc_to_process: "list[str]" = DEBUG_CV_LC if DEBUG else lc_list
 
-    # done, first flatten it
-    # all_tc: list[dict[str, Any]] = []
-    # for res in res_tc:
-    #     all_tc.append(res)
+    # Now multi-process each lc
+    with mp.Pool(used_proc_count) as pool:
+        tc_stats: list[dict[str, Any]] = pool.map(
+            handle_text_corpus, lc_to_process)
 
     # Create result DF
     # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=const.COLS_TEXT_CORPUS)
@@ -612,8 +663,10 @@ def main() -> None:
     #
     print('\n=== Start Dataset/Split Analysis ===\n')
 
-    with mp.Pool(PROC_COUNT) as pool:
-        results: list[list[dict[str, Any]]] = pool.map(handle_version, COMPILE_THESE)
+    vers_to_process: "list[str]" = DEBUG_CV_VER if DEBUG else const.CV_VERSIONS
+
+    with mp.Pool(used_proc_count) as pool:
+        results: list[list[dict[str, Any]]] = pool.map(handle_version, vers_to_process)
 
     # done, first flatten it
 
@@ -621,17 +674,12 @@ def main() -> None:
     for res in results:
         all_splits.extend(res)
 
-    # print(all_splits)
-    # print(len(all_splits))
-
     # next form the support matrix
     df: pd.DataFrame = pd.DataFrame(all_splits).reset_index(drop=True)
     df = df[['ver', 'lc', 'alg']]
     df.drop_duplicates(['ver', 'lc', 'alg'], inplace=True)
     df.sort_values(['lc', 'ver', 'alg'], inplace=True)
     df = df[ df['alg'] != ""].reset_index(drop=True)
-    # print(df)
-    # sys.exit()
 
     # Prepare Support Matrix DataFrame
     rev_versions: "list[str]" = const.CV_VERSIONS.copy()
