@@ -50,7 +50,7 @@ PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 cnt_datasets: int = 0
 
 # Debug & Limiters
-DEBUG: bool = False
+DEBUG: bool = True
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: "list[str]" = ['11.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
@@ -709,6 +709,44 @@ def main() -> None:
         HERE, 'data', 'results', 'json', '$support_matrix.json'),
         orient='table', index=False)
 
+    # MORE TODO
+    # Save config
+    # Votes are problematic !!!
+    # Fix DEM correction problem !!!
+    # Get CV-Wide Datasets => Measures / Totals
+    # Get var, std, mad values for some measures
+    # Get global min/max/mean/median values for health measures
+    # Get some statistical plots as images (e.g. corrolation: age-char speed graph)
+    # 
+
+    #
+    # Save config
+    #
+    config_data: "dict[str, Any]" = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "cv_versions": const.CV_VERSIONS,
+        "cv_dates": const.CV_DATES,
+        "cv_locales": const.ALL_LOCALES,
+        "algorithms": const.ALGORITHMS,
+        "bins_duration": const.BINS_DURATION[:-1],          # Drop the last huge values from these lists
+        "bins_voices": const.BINS_VOICES[:-1],
+        "bins_sentences": const.BINS_SENTENCES[:-1],
+        "bins_chars": const.BINS_CHARS[:-1],
+        "bins_words": const.BINS_WORDS[:-1],
+        "bins_tokens": const.BINS_TOKENS[:-1],
+    }
+    df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
+    # Write out
+    df_write(df, os.path.join(
+        HERE, 'data', 'results', 'tsv', '$config.tsv'))
+    df.to_json(os.path.join(
+        HERE, 'data', 'results', 'json', '$config.json'),
+        orient='table', index=False)
+
+
+    #
+    # FINALIZE
+    #
     finish_time: datetime = datetime.now()
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()
