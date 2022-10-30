@@ -50,7 +50,7 @@ PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 cnt_datasets: int = 0
 
 # Debug & Limiters
-DEBUG: bool = True
+DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: "list[str]" = ['11.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
@@ -248,6 +248,7 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
             duration_median: float = ser.median()
+            duration_std: float = ser.std()
             # Calc duration distribution
             arr: np.ndarray = np.fromiter(df["duration"].dropna().apply(
                 int).reset_index(drop=True).to_list(), int)
@@ -258,6 +259,7 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             duration_total: float = -1
             duration_mean: float = -1
             duration_median: float = -1
+            duration_std: float = -1
             duration_freq: "list[int]" = []
             # duration_bins: "list[int]" = []
 
@@ -268,8 +270,10 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         ).to_frame().reset_index()
         voice_counts.rename(
             columns={"index": "voice", "client_id": "recordings"}, inplace=True)
-        voice_mean: float = voice_counts["recordings"].mean()
-        voice_median: float = voice_counts["recordings"].median()
+        ser = voice_counts["recordings"]
+        voice_mean: float = ser.mean()
+        voice_median: float = ser.median()
+        voice_std: float = ser.std()
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(voice_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
@@ -284,8 +288,10 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         ).to_frame().reset_index()
         sentence_counts.rename(
             columns={"index": "sentence", "sentence": "recordings"}, inplace=True)
-        sentence_mean: float = sentence_counts["recordings"].mean()
-        sentence_median: float = sentence_counts["recordings"].median()
+        ser = sentence_counts["recordings"]
+        sentence_mean: float = ser.mean()
+        sentence_median: float = ser.median()
+        sentence_std: float = ser.std()
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(sentence_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
@@ -294,26 +300,57 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # sentence_bins: "list[int]" = hist[1]
 
         #
+        # VOTES
+        #
+        votes_counts: pd.DataFrame = df["up_votes"].value_counts(
+        ).to_frame().reset_index()
+        votes_counts.rename(
+            columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
+        votes_counts = votes_counts.astype(int).reset_index(drop=True)
+        ser = votes_counts["votes"]
+        up_votes_mean: float = ser.mean()
+        up_votes_median: float = ser.median()
+        up_votes_std: float = ser.std()
+        # FIXME This is bad coding
+        up_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_UP) -1)
+        for i in range(0, len(const.BINS_VOTES_UP)-1):
+            bin_val: int = const.BINS_VOTES_UP[i]
+            bin_next: int = const.BINS_VOTES_UP[i+1]
+            for inx, rec in votes_counts.iterrows():
+                votes: int = rec["votes"]
+                if ((votes >= bin_val) and (votes < bin_next)):
+                    up_votes_freq[i] += rec["recordings"]
+
+
+        votes_counts: pd.DataFrame = df["down_votes"].value_counts(
+        ).to_frame().reset_index()
+        votes_counts.rename(
+            columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
+        ser = votes_counts["votes"]
+        down_votes_mean: float = ser.mean()
+        down_votes_median: float = ser.median()
+        down_votes_std: float = ser.median()
+        # FIXME This is bad coding
+        down_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_DOWN) -1)
+        for i in range(0, len(const.BINS_VOTES_DOWN)-1):
+            bin_val: int = const.BINS_VOTES_DOWN[i]
+            bin_next: int = const.BINS_VOTES_DOWN[i+1]
+            for inx, rec in votes_counts.iterrows():
+                votes: int = rec["votes"]
+                if ((votes >= bin_val) and (votes < bin_next)):
+                    down_votes_freq[i] += rec["recordings"]
+
+        #
         # BASIC MEASURES
         #
         clips_cnt: int = df.shape[0]
         unique_voices: int = df['client_id'].unique().shape[0]
         unique_sentences: int = df['sentence'].unique().shape[0]
         unique_sentences_lower: int = df['sentence_lower'].unique().shape[0]
-        # Implement the following in the client:
+        # Implement the following in the client: 
         # duplicate_sentence_cnt: int = clips_cnt - unique_sentences
         # duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
 
-        #
-        # VOTES
-        #
-        max_up: int = df['up_votes'].max()
-        max_down: int = df['down_votes'].max()
-        _pt_votes: pd.DataFrame = pd.pivot_table(
-            df, values='path', index=['up_votes'], columns=['down_votes'], aggfunc='count',
-            fill_value=0, dropna=False, margins=True, margins_name='TOTAL'
-        )
-        _pt_votes = _pt_votes.reindex(range(0,max_up), axis=0).reindex(range(0,max_down), axis=1).fillna(value=0).astype(int)
 
         #
         # DEMOGRAPHICS
@@ -363,23 +400,34 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             'uq_sl':        unique_sentences_lower,
 
             # Duration
-            'dur_total':    duration_total,
-            'dur_mean':     duration_mean,
-            'dur_median':   duration_median,
+            'dur_total':    round(1000 * duration_total) / 1000,
+            'dur_avg':      round(1000 * duration_mean) / 1000,
+            'dur_med':      round(1000 * duration_median) / 1000,
+            'dur_std':      round(1000 * duration_std) / 1000,
             'dur_freq':     list2str(duration_freq),
 
             # Recordings per Voice
-            'v_mean':       voice_mean,
-            'v_median':     voice_median,
+            'v_avg':        round(1000 * voice_mean) / 1000,
+            'v_med':        round(1000 * voice_median) / 1000,
+            'v_std':        round(1000 * voice_std) / 1000,
             'v_freq':       list2str(voice_freq),
 
             # Recordings per Sentence
-            's_mean':       sentence_mean,
-            's_median':     sentence_median,
+            's_avg':        round(1000 * sentence_mean) / 1000,
+            's_med':        round(1000 * sentence_median) / 1000,
+            's_std':        round(1000 * sentence_std) / 1000,
             's_freq':       list2str(sentence_freq),
 
             # Votes
-            'votes':        arr2str(_pt_votes.to_numpy(int).tolist()),
+            'uv_avg':       round(1000 * up_votes_mean) / 1000,
+            'uv_med':       round(1000 * up_votes_median) / 1000,
+            'uv_std':       round(1000 * up_votes_std) / 1000,
+            'uv_freq':      list2str(up_votes_freq),
+
+            'dv_avg':       round(1000 * down_votes_mean) / 1000,
+            'dv_med':       round(1000 * down_votes_median) / 1000,
+            'dv_std':       round(1000 * down_votes_std) / 1000,
+            'dv_freq':      list2str(down_votes_freq),
 
             # Demographics distribution for recordings
             'dem_table':    arr2str(_pt_dem.to_numpy(int).tolist()),
@@ -730,6 +778,8 @@ def main() -> None:
         "algorithms": const.ALGORITHMS,
         "bins_duration": const.BINS_DURATION[:-1],          # Drop the last huge values from these lists
         "bins_voices": const.BINS_VOICES[:-1],
+        "bins_votes_up": const.BINS_VOTES_UP[:-1],
+        "bins_votes_down": const.BINS_VOTES_DOWN[:-1],
         "bins_sentences": const.BINS_SENTENCES[:-1],
         "bins_chars": const.BINS_CHARS[:-1],
         "bins_words": const.BINS_WORDS[:-1],
