@@ -53,7 +53,7 @@ cnt_datasets: int = 0
 DEBUG: bool = True
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: "list[str]" = ['11.0']
-DEBUG_CV_LC: "list[str]" = ['tr']
+DEBUG_CV_LC: "list[str]" = ['en']
 
 
 ########################################################
@@ -294,26 +294,58 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # sentence_bins: "list[int]" = hist[1]
 
         #
+        # VOTES
+        #
+        votes_counts: pd.DataFrame = df["up_votes"].value_counts(
+        ).to_frame().reset_index()
+        votes_counts.rename(
+            columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
+        votes_counts = votes_counts.astype(int).reset_index(drop=True)
+        up_votes_mean: float = votes_counts["votes"].mean()
+        up_votes_median: float = votes_counts["votes"].median()
+        # FIXME This is bad coding
+        up_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_UP) -1)
+        for i in range(0, len(const.BINS_VOTES_UP)-1):
+            bin_val: int = const.BINS_VOTES_UP[i]
+            bin_next: int = const.BINS_VOTES_UP[i+1]
+            for inx, rec in votes_counts.iterrows():
+                votes: int = rec["votes"]
+                if ((votes >= bin_val) and (votes < bin_next)):
+                    up_votes_freq[i] += rec["recordings"]
+
+
+        votes_counts: pd.DataFrame = df["down_votes"].value_counts(
+        ).to_frame().reset_index()
+        votes_counts.rename(
+            columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
+        down_votes_mean: float = votes_counts["votes"].mean()
+        down_votes_median: float = votes_counts["votes"].median()
+        # FIXME This is bad coding
+        down_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_DOWN) -1)
+        for i in range(0, len(const.BINS_VOTES_DOWN)-1):
+            bin_val: int = const.BINS_VOTES_DOWN[i]
+            bin_next: int = const.BINS_VOTES_DOWN[i+1]
+            for inx, rec in votes_counts.iterrows():
+                votes: int = rec["votes"]
+                if ((votes >= bin_val) and (votes < bin_next)):
+                    down_votes_freq[i] += rec["recordings"]
+
+        print(votes_counts)
+        print(down_votes_mean, down_votes_median)
+        print(down_votes_freq)
+        x= 1/0
+
+        #
         # BASIC MEASURES
         #
         clips_cnt: int = df.shape[0]
         unique_voices: int = df['client_id'].unique().shape[0]
         unique_sentences: int = df['sentence'].unique().shape[0]
         unique_sentences_lower: int = df['sentence_lower'].unique().shape[0]
-        # Implement the following in the client:
+        # Implement the following in the client: 
         # duplicate_sentence_cnt: int = clips_cnt - unique_sentences
         # duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
 
-        #
-        # VOTES
-        #
-        max_up: int = df['up_votes'].max()
-        max_down: int = df['down_votes'].max()
-        _pt_votes: pd.DataFrame = pd.pivot_table(
-            df, values='path', index=['up_votes'], columns=['down_votes'], aggfunc='count',
-            fill_value=0, dropna=False, margins=True, margins_name='TOTAL'
-        )
-        _pt_votes = _pt_votes.reindex(range(0,max_up), axis=0).reindex(range(0,max_down), axis=1).fillna(value=0).astype(int)
 
         #
         # DEMOGRAPHICS
@@ -379,7 +411,13 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             's_freq':       list2str(sentence_freq),
 
             # Votes
-            'votes':        arr2str(_pt_votes.to_numpy(int).tolist()),
+            'uv_mean':      up_votes_mean,
+            'uv_median':    up_votes_median,
+            'uv_freq':      list2str(up_votes_freq),
+
+            'dv_mean':      down_votes_mean,
+            'dv_median':    down_votes_median,
+            'dv_freq':      list2str(down_votes_freq),
 
             # Demographics distribution for recordings
             'dem_table':    arr2str(_pt_dem.to_numpy(int).tolist()),
@@ -730,6 +768,8 @@ def main() -> None:
         "algorithms": const.ALGORITHMS,
         "bins_duration": const.BINS_DURATION[:-1],          # Drop the last huge values from these lists
         "bins_voices": const.BINS_VOICES[:-1],
+        "bins_votes_up": const.BINS_VOTES_UP[:-1],
+        "bins_votes_down": const.BINS_VOTES_DOWN[:-1],
         "bins_sentences": const.BINS_SENTENCES[:-1],
         "bins_chars": const.BINS_CHARS[:-1],
         "bins_words": const.BINS_WORDS[:-1],
