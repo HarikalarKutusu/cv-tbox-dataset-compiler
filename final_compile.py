@@ -50,7 +50,7 @@ PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 cnt_datasets: int = 0
 
 # Debug & Limiters
-DEBUG: bool = True
+DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: "list[str]" = ['11.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
