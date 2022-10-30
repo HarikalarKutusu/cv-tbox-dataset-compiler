@@ -209,7 +209,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         #
         # === START ===
         #
-        # print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
+        if DEBUG:
+            print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
 
         # Read in DataFrames
         if split != 'clips':
@@ -244,11 +245,11 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         if df_clip_durations.shape[0] > 0:
             # Connect with duration table
             df["duration"] = df["path"].map(df_clip_durations["duration"])
-            ser: pd.Series = df["duration"]
+            ser: pd.Series = df["duration"].dropna()
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
             duration_median: float = ser.median()
-            duration_std: float = ser.std()
+            duration_std: float = ser.std(ddof=0)
             # Calc duration distribution
             arr: np.ndarray = np.fromiter(df["duration"].dropna().apply(
                 int).reset_index(drop=True).to_list(), int)
@@ -267,13 +268,13 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # VOICES
         #
         voice_counts: pd.DataFrame = df["client_id"].value_counts(
-        ).to_frame().reset_index()
+        ).dropna().to_frame().reset_index()
         voice_counts.rename(
             columns={"index": "voice", "client_id": "recordings"}, inplace=True)
         ser = voice_counts["recordings"]
         voice_mean: float = ser.mean()
         voice_median: float = ser.median()
-        voice_std: float = ser.std()
+        voice_std: float = ser.std(ddof=0)
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(voice_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
@@ -285,13 +286,13 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # SENTENCES
         #
         sentence_counts: pd.DataFrame = df["sentence"].value_counts(
-        ).to_frame().reset_index()
+        ).dropna().to_frame().reset_index()
         sentence_counts.rename(
             columns={"index": "sentence", "sentence": "recordings"}, inplace=True)
         ser = sentence_counts["recordings"]
         sentence_mean: float = ser.mean()
         sentence_median: float = ser.median()
-        sentence_std: float = ser.std()
+        sentence_std: float = ser.std(ddof=0)
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(sentence_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
@@ -303,14 +304,14 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # VOTES
         #
         votes_counts: pd.DataFrame = df["up_votes"].value_counts(
-        ).to_frame().reset_index()
+        ).dropna().to_frame().reset_index()
         votes_counts.rename(
             columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
         votes_counts = votes_counts.astype(int).reset_index(drop=True)
         ser = votes_counts["votes"]
         up_votes_mean: float = ser.mean()
         up_votes_median: float = ser.median()
-        up_votes_std: float = ser.std()
+        up_votes_std: float = ser.std(ddof=0)
         # FIXME This is bad coding
         up_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_UP) -1)
         for i in range(0, len(const.BINS_VOTES_UP)-1):
@@ -323,13 +324,13 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
 
 
         votes_counts: pd.DataFrame = df["down_votes"].value_counts(
-        ).to_frame().reset_index()
+        ).dropna().to_frame().reset_index()
         votes_counts.rename(
             columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
         ser = votes_counts["votes"]
         down_votes_mean: float = ser.mean()
         down_votes_median: float = ser.median()
-        down_votes_std: float = ser.median()
+        down_votes_std: float = ser.std(ddof=0)
         # FIXME This is bad coding
         down_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_DOWN) -1)
         for i in range(0, len(const.BINS_VOTES_DOWN)-1):
