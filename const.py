@@ -97,6 +97,20 @@ COLS_TOKENS: "list[str]" = [
 #     "t_total", "t_mean", "t_median", "t_freq"
 # ]
 
+
+#
+# REPORTED SENTENCES
+#
+REPORTING_BASE: "list[str]" = [
+    "offensive-language",
+    "grammar-or-spelling",
+    "different-language",
+    "difficult-pronounce",
+    # "other",                  # everything else will be other
+]
+REPORTING_ALL: "list[str]" = REPORTING_BASE.copy()
+REPORTING_ALL.append("other")
+
 #
 # BINS
 #
@@ -116,3 +130,5 @@ BINS_TOKENS: "list[int]" = [
 
 BINS_VOTES_UP: "list[int]" = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50, 100, 500, 1000, 999999]
 BINS_VOTES_DOWN: "list[int]" = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50, 100, 500, 1000, 999999]
+
+BINS_REPORTED: "list[int]" = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50, 100, 500, 1000, 999999]

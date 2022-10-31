@@ -17,6 +17,7 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+from genericpath import isfile
 import sys
 import os
 import glob
@@ -553,9 +554,91 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
 # Reported Stats
 ########################################################
 
+def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
+    # Fins idx
+    cv_idx: int = const.CV_VERSIONS.index(cv_ver)
+    # Calc CV_DIR
+    ver: str = const.CV_VERSIONS[cv_idx]
+    cv_dir_name: str = "cv-corpus-" + ver + "-" + \
+        const.CV_DATES[cv_idx]  # TODO Handle older version naming
+    # Calc voice-corpus directory
+    cv_dir: str = os.path.join(HERE, "data", "voice-corpus", cv_dir_name)
 
-# def reported_stats(lc_list: "list[str]") -> None:
-#     pass
+    # Get a list of available language codes
+    lc_paths: "list[str]" = glob.glob(
+        os.path.join(cv_dir, '*'), recursive=False)
+    lc_list: "list[str]" = []
+    for lc_path in lc_paths:
+        if os.path.isdir(lc_path): # ignore files
+            lc_list.append(os.path.split(lc_path)[1])
+
+    lc_to_process: "list[str]" = DEBUG_CV_LC if DEBUG else lc_list
+    res_all: "list[dict[str,Any]]" = []
+    for lc in lc_to_process:
+
+        # Source 
+        vc_dir: str = os.path.join(cv_dir, lc)
+        rep_file: str = os.path.join(vc_dir, 'reported.tsv')
+        print(f"Handling in {ver}-{lc}: {rep_file} ")
+        if not os.path.isfile(rep_file): # skip process if no such file
+            continue
+        if os.path.getsize(rep_file) == 0:  # there can be empty files :/
+            continue
+        # read file in - Columns: sentence sentence_id locale reason
+        df: pd.DataFrame = df_read(rep_file)
+        if df.shape[0] == 0: # skip those without records
+            continue
+
+        # Now we have a file with some records in it...
+        
+        df = df.drop(['sentence', 'locale'], axis=1).reset_index(drop=True)
+
+        reported_total: int = df.shape[0]
+        reported_sentences: int = len(df['sentence_id'].unique().tolist())
+        # get a distribution of resons/sentence & stats
+        rep_counts: pd.DataFrame = df["sentence_id"].value_counts().dropna().to_frame().reset_index()
+        rep_counts.rename(
+            columns={"index": "sentence_id", "sentence_id": "reports"}, inplace=True)
+        # make others 'other'
+        df.loc[ ~df['reason'].isin(const.REPORTING_BASE) ] = 'other'
+
+        # Get statistics
+        ser: pd.Series = rep_counts["reports"]
+        rep_mean: float = ser.mean()
+        rep_median: float = ser.median()
+        rep_std: float = ser.std(ddof=0)
+        # Calc report-per-sentence distribution
+        arr: np.ndarray = np.fromiter(rep_counts["reports"].dropna().apply(
+            int).reset_index(drop=True).to_list(), int)
+        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_REPORTED)
+        rep_freq: "list[int]" = hist[0]
+
+        # Get reason counts
+        reason_counts: pd.DataFrame = df["reason"].value_counts().dropna().to_frame().reset_index()
+        reason_counts.rename(
+            columns={"reason": "reports"}, inplace=True)
+        reason_counts.set_index(keys='index', inplace=True)
+        reason_counts = reason_counts.reindex(index=const.REPORTING_ALL, fill_value=0)
+        reason_freq: "list[int]" = reason_counts['reports'].to_numpy(int).tolist()
+
+        res: dict[str, Any] = {
+            'ver':          ver,
+            'lc':           lc,
+            'rep_sum':      reported_total,
+            'rep_sen':      reported_sentences,
+            'rep_avg':      round(1000 * rep_mean) / 1000,
+            'rep_med':      round(1000 * rep_median) / 1000,
+            'rep_std':      round(1000 * rep_std) / 1000,
+            'rep_freq':     list2str(rep_freq),
+            'rea_freq':     list2str(reason_freq),
+        }
+        res_all.append(res)
+        # end of a single version-locale
+    # end of a single version / all locales
+
+    # Return combined results for one version
+    return res_all
+
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
@@ -720,18 +803,46 @@ def main() -> None:
     #
     # MultiProcessing on versions to handle splits: Loop all versions/languages/splits, each version in one process (TODO not ideal, should be refactored)
     #
-    print('\n=== Start Dataset/Split Analysis ===\n')
 
     vers_to_process: "list[str]" = DEBUG_CV_VER if DEBUG else const.CV_VERSIONS
 
+    #
+    # reported
+    #
+    print('\n=== Start Reported Analysis ===\n')
+    with mp.Pool(used_proc_count) as pool:
+        reported_res: list[list[dict[str, Any]]] = pool.map(handle_reported, vers_to_process)
+    # done, first flatten them
+    all_reported: list[dict[str, Any]] = []
+    for res in reported_res:
+        all_reported.extend(res)
+    # Sort and write-out
+    df: pd.DataFrame = pd.DataFrame(all_reported).reset_index(drop=True)
+    df.sort_values(['ver', 'lc'], inplace=True)
+    # Write out
+    df_write(df, os.path.join(
+        HERE, 'data', 'results', 'tsv', '$reported.tsv'))
+    df.to_json(os.path.join(
+        HERE, 'data', 'results', 'json', '$reported.json'),
+        orient='table', index=False)
+
+
+    #
+    # splits
+    #
+    print('\n=== Start Dataset/Split Analysis ===\n')
     with mp.Pool(used_proc_count) as pool:
         results: list[list[dict[str, Any]]] = pool.map(handle_version, vers_to_process)
 
-    # done, first flatten it
 
+    # done, first flatten them
     all_splits: list[dict[str, Any]] = []
     for res in results:
         all_splits.extend(res)
+
+    all_reported: list[dict[str, Any]] = []
+    for res in reported_res:
+        all_reported.extend(res)
 
     # next form the support matrix
     df: pd.DataFrame = pd.DataFrame(all_splits).reset_index(drop=True)
@@ -768,12 +879,10 @@ def main() -> None:
         HERE, 'data', 'results', 'json', '$support_matrix.json'),
         orient='table', index=False)
 
+
     # MORE TODO
-    # Save config
-    # Votes are problematic !!!
     # Fix DEM correction problem !!!
     # Get CV-Wide Datasets => Measures / Totals
-    # Get var, std, mad values for some measures
     # Get global min/max/mean/median values for health measures
     # Get some statistical plots as images (e.g. corrolation: age-char speed graph)
     # 
@@ -795,6 +904,8 @@ def main() -> None:
         "bins_chars": const.BINS_CHARS[:-1],
         "bins_words": const.BINS_WORDS[:-1],
         "bins_tokens": const.BINS_TOKENS[:-1],
+        "bins_reported": const.BINS_REPORTED[:-1],
+        "bins_reasons": const.REPORTING_ALL,
     }
     df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
     # Write out
