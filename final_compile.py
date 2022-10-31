@@ -303,6 +303,7 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         #
         # VOTES
         #
+        up_votes_sum: int = df["up_votes"].sum()
         votes_counts: pd.DataFrame = df["up_votes"].value_counts(
         ).dropna().to_frame().reset_index()
         votes_counts.rename(
@@ -323,6 +324,7 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
                     up_votes_freq[i] += rec["recordings"]
 
 
+        down_votes_sum: int = df["down_votes"].sum()
         votes_counts: pd.DataFrame = df["down_votes"].value_counts(
         ).dropna().to_frame().reset_index()
         votes_counts.rename(
@@ -420,11 +422,13 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             's_freq':       list2str(sentence_freq),
 
             # Votes
+            'uv_sum':       up_votes_sum,
             'uv_avg':       round(1000 * up_votes_mean) / 1000,
             'uv_med':       round(1000 * up_votes_median) / 1000,
             'uv_std':       round(1000 * up_votes_std) / 1000,
             'uv_freq':      list2str(up_votes_freq),
 
+            'dv_sum':       down_votes_sum,
             'dv_avg':       round(1000 * down_votes_mean) / 1000,
             'dv_med':       round(1000 * down_votes_median) / 1000,
             'dv_std':       round(1000 * down_votes_std) / 1000,
@@ -577,55 +581,58 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
     unique_normalized: int = df['normalized'].dropna().unique().shape[0]
     valid: int = df[df['valid'].dropna().astype(int) == 1].shape[0]
 
-    chars_total: int = df['chars'].dropna().sum()
-    chars_mean: float = df['chars'].dropna().mean()
-    chars_median: int = int(df['chars'].dropna().median())
-
-    has_val: int = 0
-    words_total: int = df['words'].dropna().sum()
-    words_mean: float = 0
-    words_median: int = 0
-    if words_total != 0:
-        has_val = 1
-        words_mean: float = df['words'].dropna().mean()
-        words_median: int = int(df['words'].dropna().median())
-
-    # freq distributions
-
+    # CHARS
+    ser: pd.Series[int] = df['chars'].dropna()
+    chars_total: int = ser.sum()
+    chars_mean: float = ser.mean()
+    chars_median: float = ser.median()
+    chars_std: float = ser.std(ddof=0)
     # Calc character length distribution
-    arr: np.ndarray = np.fromiter(df["chars"].dropna().apply(
+    arr: np.ndarray = np.fromiter(ser.apply(
         int).reset_index(drop=True).to_list(), int)
     hist: list[list[int]] = np.histogram(arr, bins=const.BINS_CHARS)
     character_freq: "list[int]" = hist[0]
-    character_bins: "list[int]" = hist[1]
 
-    # Calc word count distribution
+    has_val: int = 0
+
+    # WORDS
+    ser: pd.Series[int] = df['words'].dropna()
+    words_total: int = ser.sum()
+    words_mean: float = 0.0
+    words_median: float = 0.0
+    words_std: float = 0.0
     word_freq: "list[int]" = []
+    if words_total != 0:
+        has_val = 1
+        words_mean = ser.mean()
+        words_median = ser.median()
+        words_std = ser.std(ddof=0)
+    # Calc word count distribution
     if has_val == 1:
-        arr: np.ndarray = np.fromiter(df["words"].dropna().apply(
+        arr: np.ndarray = np.fromiter(ser.apply(
             int).reset_index(drop=True).to_list(), int)
         hist: list[list[int]] = np.histogram(arr, bins=const.BINS_WORDS)
         word_freq: "list[int]" = hist[0]
-        word_bins: "list[int]" = hist[1]
 
     # TOKENS
-
     tokens_total: int = 0
-    tokens_mean: float = 0
-    tokens_median: int = 0
+    tokens_mean: float = 0.0
+    tokens_median: float = 0.0
+    tokens_std: float = 0.0
     token_freq: "list[int]" = []
     if has_val == 1:
         df: pd.DataFrame = df_read(tokens_file)
         # "token", "count"
-        tokens_total: int = df.shape[0]
-        tokens_mean: float = df['count'].mean()
-        tokens_median: int = int(df['count'].median())
+        tokens_total = df.shape[0]
+        ser = df['count'].dropna()
+        tokens_mean = ser.mean()
+        tokens_median = ser.median()
+        tokens_std = ser.std(ddof=0)
         # Token/word repeat distribution
         arr: np.ndarray = np.fromiter(df["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
         hist: list[list[int]] = np.histogram(arr, bins=const.BINS_TOKENS)
         token_freq: "list[int]" = hist[0]
-        token_bins: "list[int]" = hist[1]
 
 
     results: "dict[str, Any]" = {
@@ -635,17 +642,20 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
         'uq_n': unique_normalized,
         'has_val': has_val,
         'val': valid,
-        'c_total': chars_total,
-        'c_mean': chars_mean,
-        'c_median': chars_median,
+        'c_sum': chars_total,
+        'c_avg': round(1000 * chars_mean) / 1000,
+        'c_med': round(1000 * chars_median) / 1000,
+        'c_std': round(1000 * chars_std) / 1000,
         'c_freq': list2str(character_freq),
-        'w_total': words_total,
-        'w_mean': words_mean,
-        'w_median': words_median,
+        'w_sum': words_total,
+        'w_avg': round(1000 * words_mean) / 1000,
+        'w_med': round(1000 * words_median) / 1000,
+        'w_std': round(1000 * words_std) / 1000,
         'w_freq': list2str(word_freq),
-        't_total': tokens_total,
-        't_mean': tokens_mean,
-        't_median': tokens_median,
+        't_sum': tokens_total,
+        't_avg': round(1000 * tokens_mean) / 1000,
+        't_med': round(1000 * tokens_median) / 1000,
+        't_std': round(1000 * tokens_std) / 1000,
         't_freq': list2str(token_freq),
     }
 
