@@ -18,12 +18,10 @@
 ###########################################################################
 
 from genericpath import isfile
-import sys
-import os
-import glob
-import csv
+import sys, os, glob, csv
 from datetime import datetime, timedelta
 from typing import Any
+from xmlrpc.client import boolean
 
 import numpy as np
 import pandas as pd
@@ -81,21 +79,24 @@ def df_read(fpath: str) -> pd.DataFrame:
     return df
 
 
-def df_write(df: pd.DataFrame, fpath: str) -> bool:
+def df_write(df: pd.DataFrame, fpath: Any, wMode: Any = "w") -> bool:
     """
     Writes out a dataframe to a file.
     """
+
+    _head: bool = False if wMode == "a" else True
     # Create/override the file
     df.to_csv(
         fpath,
-        header=True,
+        mode=wMode,
+        header=_head,
         index=False,
         encoding="utf-8",
         sep='\t',
         escapechar='\\',
         quoting=csv.QUOTE_NONE,
-        # float_format="%.4f"
     )
+    # float_format="%.4f"
     if VERBOSE:
         print(f'Generated: {fpath} Records={df.shape[0]}')
     return True
@@ -107,10 +108,8 @@ def df_int_convert(x: pd.Series) -> Any:
     except:
         return x
 
-
 def list2str(lst: "list[Any]") -> str:
     return const.SEP_COL.join(str(x) for x in lst)
-
 
 def arr2str(arr: "list[list[Any]]") -> str:
     return const.SEP_ROW.join(list2str(x) for x in arr)
@@ -145,8 +144,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
 
             # df is local dataframe which will keep records only necessay columns with some additional columns
             df: pd.DataFrame = df_split.copy().reset_index(drop=True)
-            df['v_enum'], v_unique = pd.factorize(df['client_id'])    # add an enumaration column for client_id's, more memory efficient
-            df['p_enum'], p_unique = pd.factorize(df['path'])         # add an enumaration column for recordings, more memory efficient
+            df['v_enum'], _ = pd.factorize(df['client_id'])    # add an enumaration column for client_id's, more memory efficient
+            df['p_enum'], _ = pd.factorize(df['path'])         # add an enumaration column for recordings, more memory efficient
             df = df[["v_enum", "age", "gender", "p_enum"]].fillna(const.NODATA).reset_index(drop=True)
 
             # prepare empty results
@@ -254,15 +253,15 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             # Calc duration distribution
             arr: np.ndarray = np.fromiter(df["duration"].dropna().apply(
                 int).reset_index(drop=True).to_list(), int)
-            hist: list[list[int]] = np.histogram(arr, bins=const.BINS_DURATION)
-            duration_freq: "list[int]" = hist[0]
+            hist = np.histogram(arr, bins=const.BINS_DURATION)
+            duration_freq = hist[0].tolist()
             # duration_bins: "list[int]" = hist[1]
         else:  # No Duration data, set illegal defaults and continue
             duration_total: float = -1
             duration_mean: float = -1
             duration_median: float = -1
             duration_std: float = -1
-            duration_freq: "list[int]" = []
+            duration_freq = []
             # duration_bins: "list[int]" = []
 
         #
@@ -279,8 +278,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(voice_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_VOICES)
-        voice_freq: "list[int]" = hist[0]
+        hist = np.histogram(arr, bins=const.BINS_VOICES)
+        voice_freq = hist[0].tolist()
         # voice_bins: "list[int]" = hist[1]
 
         #
@@ -297,8 +296,8 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(sentence_counts["recordings"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_SENTENCES)
-        sentence_freq: "list[int]" = hist[0]
+        hist = np.histogram(arr, bins=const.BINS_SENTENCES)
+        sentence_freq = hist[0].tolist()
         # sentence_bins: "list[int]" = hist[1]
 
         #
@@ -471,6 +470,10 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
 
     cnt_datasets += len(lc_list)
 
+    # delete any existing clips.tsv file at the source (we use append mode elsewhere)
+    if os.path.isfile(os.path.join(cv_dir, "clips.tsv")):
+        os.remove(os.path.join(cv_dir, "clips.tsv"))
+
     # Loop all locales
     cnt: int = 0
     res_all: "list[dict[str,Any]]" = []
@@ -516,6 +519,12 @@ def split_stats(cv_idx: int) -> "list[dict[str,Any]]":
             split="clips",
             fpath=os.path.join(vc_dir, 'validated.tsv') # to start with we set validated
         ))
+        # Append to clips.tsv at the source, at the base of that version (it will include all recording data for all locales to be used in CC & alternatives)
+        for sp in const.MAIN_SPLITS:
+            src: str = os.path.join(vc_dir, sp + ".tsv")
+            dst: str = os.path.join(cv_dir, "clips.tsv")
+            df_write( df_read(src), fpath=dst, wMode="a" )
+
 
         # def handle_split(ver: str, lc: str, algorithm: str, split: str, fpath: str) -> "dict[str, Any]":
         for sp in const.MAIN_SPLITS:
@@ -610,8 +619,8 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # Calc report-per-sentence distribution
         arr: np.ndarray = np.fromiter(rep_counts["reports"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_REPORTED)
-        rep_freq: "list[int]" = hist[0]
+        hist = np.histogram(arr, bins=const.BINS_REPORTED)
+        rep_freq = hist[0].tolist()
 
         # Get reason counts
         reason_counts: pd.DataFrame = df["reason"].value_counts().dropna().to_frame().reset_index()
@@ -619,7 +628,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
             columns={"reason": "reports"}, inplace=True)
         reason_counts.set_index(keys='index', inplace=True)
         reason_counts = reason_counts.reindex(index=const.REPORTING_ALL, fill_value=0)
-        reason_freq: "list[int]" = reason_counts['reports'].to_numpy(int).tolist()
+        reason_freq = reason_counts['reports'].to_numpy(int).tolist()
 
         res: dict[str, Any] = {
             'ver':          ver,
@@ -673,8 +682,8 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
     # Calc character length distribution
     arr: np.ndarray = np.fromiter(ser.apply(
         int).reset_index(drop=True).to_list(), int)
-    hist: list[list[int]] = np.histogram(arr, bins=const.BINS_CHARS)
-    character_freq: "list[int]" = hist[0]
+    hist = np.histogram(arr, bins=const.BINS_CHARS)
+    character_freq = hist[0].tolist()
 
     has_val: int = 0
 
@@ -694,8 +703,8 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
     if has_val == 1:
         arr: np.ndarray = np.fromiter(ser.apply(
             int).reset_index(drop=True).to_list(), int)
-        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_WORDS)
-        word_freq: "list[int]" = hist[0]
+        hist = np.histogram(arr, bins=const.BINS_WORDS)
+        word_freq = hist[0].tolist()
 
     # TOKENS
     tokens_total: int = 0
@@ -714,8 +723,8 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
         # Token/word repeat distribution
         arr: np.ndarray = np.fromiter(df["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist: list[list[int]] = np.histogram(arr, bins=const.BINS_TOKENS)
-        token_freq: "list[int]" = hist[0]
+        hist = np.histogram(arr, bins=const.BINS_TOKENS)
+        token_freq = hist[0].tolist()
 
 
     results: "dict[str, Any]" = {
@@ -840,16 +849,17 @@ def main() -> None:
     for res in results:
         all_splits.extend(res)
 
-    all_reported: list[dict[str, Any]] = []
-    for res in reported_res:
-        all_reported.extend(res)
+    num_splits: int = len(all_splits)
 
     # next form the support matrix
     df: pd.DataFrame = pd.DataFrame(all_splits).reset_index(drop=True)
     df = df[['ver', 'lc', 'alg']]
     df.drop_duplicates(['ver', 'lc', 'alg'], inplace=True)
     df.sort_values(['lc', 'ver', 'alg'], inplace=True)
+    num_all: int = df.shape[0]
     df = df[ df['alg'] != ""].reset_index(drop=True)
+    num_algorithms: int = df.shape[0]
+    num_datasets: int = num_all - num_algorithms
 
     # Prepare Support Matrix DataFrame
     rev_versions: "list[str]" = const.CV_VERSIONS.copy()
@@ -878,7 +888,6 @@ def main() -> None:
     df_support_matrix.to_json(os.path.join(
         HERE, 'data', 'results', 'json', '$support_matrix.json'),
         orient='table', index=False)
-
 
     # MORE TODO
     # Fix DEM correction problem !!!
@@ -915,7 +924,6 @@ def main() -> None:
         HERE, 'data', 'results', 'json', '$config.json'),
         orient='table', index=False)
 
-
     #
     # FINALIZE
     #
@@ -923,7 +931,7 @@ def main() -> None:
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()
     print(
-        f'Finished compiling statistics for {df.shape[0]} datasets in {str(process_timedelta)} secs, avg={process_seconds/df.shape[0]} secs.')
+        f'Finished compiling statistics for {num_datasets} datasets, {num_algorithms} algorithms, {num_splits} splits\nin {str(process_timedelta)}, avg={process_seconds/num_datasets} secs/dataset.')
 
 
 if __name__ == '__main__':
