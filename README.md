@@ -9,7 +9,7 @@ This code is provided as part of being open-source and as a reference for calcul
 
 ## Scripts
 
-The first two scripts should be run before the final one.
+The first two scripts should be run before the final one. The timings are based on the HW given at the bottom.
 
 ### split_compile.py
 
@@ -22,7 +22,7 @@ Assumes:
 
 This script reorganizes (compiles) them under this repo to be processed.
 
-This script currently runs on a single process to prevent disk overload, takes 5-6 mins on a 6 core (12 logical) development notebook, nVME SSD.
+This script currently runs on a single process to prevent disk overload, takes 5-6 minutes for 100 locales.
 Should be run with new versions/additions and/or new splitting algorithms.
 
 ### text_corpus_compile.py
@@ -33,7 +33,7 @@ Assumes:
 
 For each locale, this script combines existing files under that language into a single pandas dataframe compatible tsv file, also calculating a normalized version, char count, word count and validity. For normalization and validation it depends on [commonvoice-utils](https://github.com/ftyers/commonvoice-utils) (please see that repo for installation). Some of the languages there do not have this support, so they will not have the whole data.
 
-The script uses multi-processing, running in 5 processes on a 6 real core notebook, execution takes 5-6 mins.
+The script uses multi-processing, running in 5 processes on a 6 real core notebook, execution takes 5-6 mins for 132 locales.
 Should be ran from time to time to update the data with new strings, e.g. monthly.
 
 Known issue: String length calculation with unicode locales might be wrong, to be addressed shortly.
@@ -46,7 +46,7 @@ Assumes:
 
 This script processes all data and calculates some statistics and distributions and saves them in tsv & json formats under the results directory, grouped by languages. Each version's data is kept in a different file, keeping the file sizes at 10k max, so that we can limit the memory needed in the client and probably cache them whenever the client becomes a PWA. We do not include easily calculatable values into these results and leave simple divisions or substractions to the client.
 
-Uses multi-processing, running in 5 processes on a 6 real core notebook, takes about 25 mins.
+Uses multi-processing, running in 5 processes on a 6 real core notebook, takes about 30-31 mins.
 Should be run whenever previous scripts run.
 The json results will be copied to the [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer).
 
@@ -115,3 +115,14 @@ You can look at the results [Common Voice Dataset Analyzer](https://github.com/H
 This will eventually be part of the Common Voice Toolbox's Core, but it will be developed here...
 
 The project status can be found on the [project page](https://github.com/users/HarikalarKutusu/projects/10). Please post [issues and feature requests](https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler/issues), or [Pull Requests](https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler/pulls) to enhance.
+
+### Hardware used for duration measurements
+
+We used a development notebook for the timing with the following specs:
+
+- OS: Windows 10x64 21H2
+- CPU: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz (6 cores, 12 treads, but we used 5 actual cores at max, we used HW Turbo button on the notebook)
+- RAM: 16 GB RAM, made sure that we have 5-6 GB empty while running the scripts
+- SSD: CT500P2SSD8 (Crucial P2 500GB 2300-940MB/s NVMe PCI-e M2)
+
+At the end, CPU runs around 50-60% (max %70), RAM is only used higher on large datasets, but SSD -having lower specs- can be overloaded with 100% utilization.
