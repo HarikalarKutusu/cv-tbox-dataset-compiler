@@ -10,16 +10,19 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
-# These values are as of v11.0 and should be updated with each version
+# These values are as of v12.0 and should be updated with each version
+# Warning: We leave out v2
 CV_VERSIONS: "list[str]" = [
-    '1', '2', '3', '4', '5.1',
+    # '1', '2', '3', '4', '5.1',
+    '1', '3', '4', '5.1',
     '6.1', '7.0', '8.0', '9.0', '10.0',
-    '11.0'
+    '11.0', '12.0'
 ]
 CV_DATES: "list[str]" = [
-    '2019-02-25', '2019-06-11', '2019-06-24', '2019-12-10', '2020-06-22',
+    # '2019-02-25', '2019-06-11', '2019-06-24', '2019-12-10', '2020-06-22',
+    '2019-02-25', '2019-06-24', '2019-12-10', '2020-06-22',
     '2020-12-11', '2021-07-21', '2022-01-19', '2022-04-27', '2022-07-04',
-    '2022-09-21'
+    '2022-09-21', '2022-12-07'
 ]
 
 ALGORITHMS: "list[str]" = ["s1", "s99", "v1"]
@@ -27,29 +30,30 @@ MAIN_SPLITS: "list[str]" = ["validated", "invalidated", "other"]
 TRAINING_SPLITS: "list[str]" = ["train", "dev", "test"]
 
 ALL_LOCALES: "list[str]" = [
-    'ab', 'ar', 'as', 'ast', 'az',
-    'ba', 'bas', 'be', 'bg', 'bn', 'br',
-    'ca', 'ckb', 'cnh', 'cs', 'cv', 'cy',
-    'da', 'de', 'dv',
-    'el', 'en', 'eo', 'es', 'et', 'eu',
-    'fa', 'fi', 'fr', 'fy-NL',
-    'ga-IE', 'gl', 'gn',
-    'ha', 'hi', 'hsb', 'hu', 'hy-AM',
-    'ia', 'id', 'ig', 'it',
-    'ja',
-    'ka', 'kab', 'kk', 'kmr', 'ky',
-    'lg', 'lt', 'lv',
-    'mdf', 'mhr', 'mk', 'ml', 'mn', 'mr', 'mrj', 'mt', 'myv',
-    'nan-tw', 'ne-NP', 'nl', 'nn-NO',
-    'or',
-    'pa-IN', 'pl', 'pt',
-    'rm-sursilv', 'rm-vallader', 'ro', 'ru', 'rw',
-    'sah', 'sat', 'sc', 'sk', 'skr', 'sl', 'sr', 'sv-SE', 'sw',
-    'ta', 'th', 'ti', 'tig', 'tok', 'tr', 'tt', 'tw',
-    'ug', 'uk', 'ur', 'uz',
-    'vi', 'vot',
-    'yue',
-    'zh-CN', 'zh-HK', 'zh-TW',
+  'ab', 'ar', 'as', 'ast', 'az',
+  'ba', 'bas', 'be', 'bg', 'bn', 'br',
+  'ca', 'ckb', 'cnh', 'cs', 'cv', 'cy',
+  'da', 'de', 'dv',
+  'el', 'en', 'eo', 'es', 'et', 'eu',
+  'fa', 'fi', 'fr', 'fy-NL',
+  'ga-IE', 'gl', 'gn',
+  'ha', 'hi', 'hsb', 'hu', 'hy-AM',
+  'ia', 'id', 'ig', 'it',
+  'ja',
+  'ka', 'kab', 'kk', 'kmr', 'ko', 'ky',
+  'lg', 'lt', 'lv',
+  'mdf', 'mhr', 'mk', 'ml', 'mn', 'mr', 'mrj', 'mt', 'myv',
+  'nan-tw', 'ne-NP', 'nl', 'nn-NO',
+  'oc', 'or',
+  'pa-IN', 'pl', 'pt',
+  'quy',
+  'rm-sursilv', 'rm-vallader', 'ro', 'ru', 'rw',
+  'sah', 'sat', 'sc', 'sk', 'skr', 'sl', 'sr', 'sv-SE', 'sw',
+  'ta', 'th', 'ti', 'tig', 'tok', 'tr', 'tt', 'tw',
+  'ug', 'uk', 'ur', 'uz',
+  'vi', 'vot',
+  'yo', 'yue',
+  'zh-CN', 'zh-HK', 'zh-TW'
 ]
 
 NODATA: str = 'nodata'    # .isna cases replaced with this
