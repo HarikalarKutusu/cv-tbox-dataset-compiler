@@ -35,8 +35,9 @@ def main() -> None:
 
     start_time: datetime = datetime.now()
 
+    # Destination voice corpus
     vc_dir_base: str = os.path.join(HERE, 'data', "voice-corpus")
-    # tc_dir_base: str = os.path.join(HERE, 'data', "text-corpus")
+    # Destination clip durations
     cd_dir_base: str = os.path.join(HERE, 'data', "clip-durations")
 
     # Loop all versions
@@ -76,7 +77,7 @@ def main() -> None:
             # copy splitting algorithm independent files
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc)
             dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc)
-            if conf.FORCE_CREATE or not os.path.isdir(dst_dir):
+            if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                 os.makedirs(os.path.join(dst_dir, const.ALGORITHMS[0]), exist_ok=True)
                 for fn in ["validated.tsv", "invalidated.tsv", "other.tsv", "reported.tsv"]:
                     if os.path.isfile(os.path.join(src_dir, fn)):
@@ -84,7 +85,7 @@ def main() -> None:
 
             # copy to s1
             dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[0])
-            if conf.FORCE_CREATE or not os.path.isdir(dst_dir):
+            if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                 os.makedirs(dst_dir, exist_ok=True)
                 for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
                     if os.path.isfile(os.path.join(src_dir, fn)):
@@ -94,7 +95,7 @@ def main() -> None:
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc)
             if os.path.isdir(src_dir):
                 dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[1])
-                if conf.FORCE_CREATE or not os.path.isdir(dst_dir):
+                if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
                         if os.path.isfile(os.path.join(src_dir, fn)):
@@ -104,7 +105,7 @@ def main() -> None:
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc)
             if os.path.isdir(src_dir):
                 dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[2])
-                if conf.FORCE_CREATE or not os.path.isdir(dst_dir):
+                if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
                         if os.path.isfile(os.path.join(src_dir, fn)):
