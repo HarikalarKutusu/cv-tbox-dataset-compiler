@@ -77,19 +77,24 @@ def main() -> None:
             # copy splitting algorithm independent files
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc)
             dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc)
+            # print(os.path.join(src_dir, fn), " => ", dst_dir)
+            print("\n=> ", dst_dir, "\n")
             if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
-                os.makedirs(os.path.join(dst_dir, const.ALGORITHMS[0]), exist_ok=True)
+                # os.makedirs(os.path.join(dst_dir, const.ALGORITHMS[0]), exist_ok=True)
+                os.makedirs(dst_dir, exist_ok=True)
                 for fn in ["validated.tsv", "invalidated.tsv", "other.tsv", "reported.tsv"]:
-                    if os.path.isfile(os.path.join(src_dir, fn)):
-                        shutil.copy2(os.path.join(src_dir, fn), dst_dir)
+                    tsvFile: str = os.path.join(src_dir, fn)
+                    if os.path.isfile(tsvFile):
+                        shutil.copy2(tsvFile, dst_dir)
 
             # copy to s1
             dst_dir: str = os.path.join(vc_dir_base, cv_dir_name, lc, const.ALGORITHMS[0])
             if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                 os.makedirs(dst_dir, exist_ok=True)
                 for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
-                    if os.path.isfile(os.path.join(src_dir, fn)):
-                        shutil.copy2(os.path.join(src_dir, fn), dst_dir)
+                    tsvFile: str = os.path.join(src_dir, fn)
+                    if os.path.isfile(tsvFile):
+                        shutil.copy2(tsvFile, dst_dir)
 
             # check if exists to copy to s99
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc)
@@ -98,8 +103,9 @@ def main() -> None:
                 if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
-                        if os.path.isfile(os.path.join(src_dir, fn)):
-                            shutil.copy2(os.path.join(src_dir, fn), dst_dir)
+                        tsvFile: str = os.path.join(src_dir, fn)
+                        if os.path.isfile(tsvFile):
+                            shutil.copy2(tsvFile, dst_dir)
 
             # check if exists to copy to v1
             src_dir: str = os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc)
@@ -108,8 +114,9 @@ def main() -> None:
                 if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in ["train.tsv", "dev.tsv", "test.tsv"]:
-                        if os.path.isfile(os.path.join(src_dir, fn)):
-                            shutil.copy2(os.path.join(src_dir, fn), dst_dir)
+                        tsvFile: str = os.path.join(src_dir, fn)
+                        if os.path.isfile(tsvFile):
+                            shutil.copy2(tsvFile, dst_dir)
 
             # special case for clip durations, we need to find it
             # But dor this only for the latest version !!!
