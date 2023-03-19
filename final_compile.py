@@ -31,6 +31,7 @@ import psutil
 # This package
 import const
 import config as conf
+from getLocales import get_locales
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -54,6 +55,8 @@ DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: "list[str]" = ['12.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
 
+
+ALL_LOCALES: "list[str]" = get_locales(const.CV_VERSIONS[-1])
 
 ########################################################
 # Tooling
@@ -255,7 +258,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # Source 
         vc_dir: str = os.path.join(cv_dir, lc)
         rep_file: str = os.path.join(vc_dir, 'reported.tsv')
-        print(f"Handling repoerted.tsv in v{ver} - {lc}")
+        print(f"Handling reported.tsv in v{ver} - {lc}")
         if not os.path.isfile(rep_file): # skip process if no such file
             continue
         if os.path.getsize(rep_file) == 0:  # there can be empty files :/
@@ -446,7 +449,6 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Calc duration agregate values
         if df_clip_durations.shape[0] > 0 and ver != '1':  # there must be records + v1 cannot be mapped
             # Connect with duration table
-            print(df_clip_durations)
             df["duration"] = df["path"].map(df_clip_durations["duration"])
             ser: pd.Series = df["duration"].dropna()
             duration_total: float = ser.sum()
@@ -906,13 +908,13 @@ def main() -> None:
     COLS_SUPPORT_MATRIX: "list[str]" = ['lc', 'lang']
     COLS_SUPPORT_MATRIX.extend(rev_versions)
     df_support_matrix: pd.DataFrame = pd.DataFrame(
-        index=const.ALL_LOCALES,
+        index=ALL_LOCALES,
         columns=COLS_SUPPORT_MATRIX,
     )
-    df_support_matrix['lc'] = const.ALL_LOCALES
+    df_support_matrix['lc'] = ALL_LOCALES
 
     # Now loop and put the results inside
-    for lc in const.ALL_LOCALES:
+    for lc in ALL_LOCALES:
         for ver in const.CV_VERSIONS:
             algo_list: "list[str]" = df[
                 (df['lc'] == lc ) & 
@@ -943,7 +945,7 @@ def main() -> None:
         "date": datetime.now().strftime("%Y-%m-%d"),
         "cv_versions": const.CV_VERSIONS,
         "cv_dates": const.CV_DATES,
-        "cv_locales": const.ALL_LOCALES,
+        "cv_locales": ALL_LOCALES,
         "algorithms": const.ALGORITHMS,
         "bins_duration": const.BINS_DURATION[:-1],          # Drop the last huge values from these lists
         "bins_voices": const.BINS_VOICES[:-1],
