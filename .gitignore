@@ -1,8 +1,5 @@
 # Actual data, but keep structure
-data/*.tsv
-data/*.json
-data/**/*.tsv
-data/**/*.json
+data
 !**/.gitkeep
 # !data/*/.*
 # !data/*/*/.*
