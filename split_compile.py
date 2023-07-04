@@ -119,16 +119,23 @@ def main() -> None:
                             shutil.copy2(tsvFile, dst_dir)
 
             # special case for clip durations, we need to find it
-            # But dor this only for the latest version !!!
+            # But do this only for the latest version !!!
             if cv_ver == const.CV_VERSIONS[-1]:
                 dst_dir: str = os.path.join(cd_dir_base, lc)
                 os.makedirs(dst_dir, exist_ok=True)
-                cd_file: str = '$clip_durations.tsv'
                 cd_found: bool = False
+                # cd_file: str = '$clip_durations.tsv'
+                # search_paths: list[str] = [
+                #     os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc, 'clips', cd_file),
+                #     os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc, 'clips', cd_file),
+                #     os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc, 'clips', cd_file)
+                # ]
+                # With v14.0, we used the provided "times.txt" to create "clip_durations.tsv" at the root
+                cd_file: str = 'clip_durations.tsv'
                 search_paths: list[str] = [
-                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc, 'clips', cd_file),
-                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc, 'clips', cd_file),
-                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc, 'clips', cd_file)
+                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[0], cv_dir_name, lc, cd_file),
+                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[1], cv_dir_name, lc, cd_file),
+                    os.path.join(conf.SRC_BASE_DIR, const.ALGORITHMS[2], cv_dir_name, lc, cd_file)
                 ]
                 for p in search_paths:
                     if os.path.isfile(p):
