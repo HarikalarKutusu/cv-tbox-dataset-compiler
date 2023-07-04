@@ -48,9 +48,8 @@ PROC_COUNT: int = psutil.cpu_count(logical=True)            # Full usage
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: "list[str]" = ['12.0']
+DEBUG_CV_VER: "list[str]" = ['14.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
-
 
 ALL_LOCALES: "list[str]" = get_locales(const.CV_VERSIONS[-1])
 
