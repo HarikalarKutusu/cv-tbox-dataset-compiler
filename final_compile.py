@@ -52,7 +52,7 @@ PROC_COUNT: int = psutil.cpu_count(logical=True)            # Full usage
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: "list[str]" = ['12.0']
+DEBUG_CV_VER: "list[str]" = ['14.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
 
 
@@ -274,31 +274,31 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
 
         reported_total: int = df.shape[0]
         reported_sentences: int = len(df['sentence_id'].unique().tolist())
-        # get a distribution of resons/sentence & stats
+
+        # get a distribution of reasons/sentence & stats
         rep_counts: pd.DataFrame = df["sentence_id"].value_counts().dropna().to_frame().reset_index()
-        rep_counts.rename(
-            columns={"index": "sentence_id", "sentence_id": "reports"}, inplace=True)
         # make others 'other'
         df.loc[ ~df['reason'].isin(const.REPORTING_BASE) ] = 'other'
 
         # Get statistics
-        ser: pd.Series = rep_counts["reports"]
+        ser: pd.Series = rep_counts["count"]
+        # sys.exit(0)
         rep_mean: float = ser.mean()
         rep_median: float = ser.median()
         rep_std: float = ser.std(ddof=0)
         # Calc report-per-sentence distribution
-        arr: np.ndarray = np.fromiter(rep_counts["reports"].dropna().apply(
+        arr: np.ndarray = np.fromiter(rep_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
         hist = np.histogram(arr, bins=const.BINS_REPORTED)
         rep_freq = hist[0].tolist()
 
         # Get reason counts
         reason_counts: pd.DataFrame = df["reason"].value_counts().dropna().to_frame().reset_index()
-        reason_counts.rename(
-            columns={"reason": "reports"}, inplace=True)
-        reason_counts.set_index(keys='index', inplace=True)
+        # reason_counts.rename(
+        #     columns={"reason": "reports"}, inplace=True)
+        reason_counts.set_index(keys='reason', inplace=True)
         reason_counts = reason_counts.reindex(index=const.REPORTING_ALL, fill_value=0)
-        reason_freq = reason_counts['reports'].to_numpy(int).tolist()
+        reason_freq = reason_counts['count'].to_numpy(int).tolist()
 
         res: dict[str, Any] = {
             'ver':          ver,
@@ -472,16 +472,15 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         #
         # VOICES
         #
-        voice_counts: pd.DataFrame = df["client_id"].value_counts(
-        ).dropna().to_frame().reset_index()
-        voice_counts.rename(
-            columns={"index": "voice", "client_id": "recordings"}, inplace=True)
-        ser = voice_counts["recordings"]
+        voice_counts: pd.DataFrame = df["client_id"].value_counts().dropna().to_frame().reset_index()
+        # voice_counts.rename(
+        #     columns={"index": "voice", "client_id": "recordings"}, inplace=True)
+        ser = voice_counts["count"]
         voice_mean: float = ser.mean()
         voice_median: float = ser.median()
         voice_std: float = ser.std(ddof=0)
         # Calc speaker recording distribution
-        arr: np.ndarray = np.fromiter(voice_counts["recordings"].dropna().apply(
+        arr: np.ndarray = np.fromiter(voice_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
         hist = np.histogram(arr, bins=const.BINS_VOICES)
         voice_freq = hist[0].tolist()
@@ -490,16 +489,15 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         #
         # SENTENCES
         #
-        sentence_counts: pd.DataFrame = df["sentence"].value_counts(
-        ).dropna().to_frame().reset_index()
-        sentence_counts.rename(
-            columns={"index": "sentence", "sentence": "recordings"}, inplace=True)
-        ser = sentence_counts["recordings"]
+        sentence_counts: pd.DataFrame = df["sentence"].value_counts().dropna().to_frame().reset_index()
+        # sentence_counts.rename(
+        #     columns={"index": "sentence", "sentence": "recordings"}, inplace=True)
+        ser = sentence_counts["count"]
         sentence_mean: float = ser.mean()
         sentence_median: float = ser.median()
         sentence_std: float = ser.std(ddof=0)
         # Calc speaker recording distribution
-        arr: np.ndarray = np.fromiter(sentence_counts["recordings"].dropna().apply(
+        arr: np.ndarray = np.fromiter(sentence_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
         hist = np.histogram(arr, bins=const.BINS_SENTENCES)
         sentence_freq = hist[0].tolist()
@@ -509,12 +507,11 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # VOTES
         #
         up_votes_sum: int = df["up_votes"].sum()
-        votes_counts: pd.DataFrame = df["up_votes"].value_counts(
-        ).dropna().to_frame().reset_index()
-        votes_counts.rename(
-            columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
+        votes_counts: pd.DataFrame = df["up_votes"].value_counts().dropna().to_frame().reset_index()
+        # votes_counts.rename(
+        #     columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
         votes_counts = votes_counts.astype(int).reset_index(drop=True)
-        ser = votes_counts["votes"]
+        ser = votes_counts["count"]
         up_votes_mean: float = ser.mean()
         up_votes_median: float = ser.median()
         up_votes_std: float = ser.std(ddof=0)
@@ -524,17 +521,16 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             bin_val: int = const.BINS_VOTES_UP[i]
             bin_next: int = const.BINS_VOTES_UP[i+1]
             for inx, rec in votes_counts.iterrows():
-                votes: int = rec["votes"]
+                votes: int = rec["count"]
                 if ((votes >= bin_val) and (votes < bin_next)):
-                    up_votes_freq[i] += rec["recordings"]
+                    up_votes_freq[i] += rec["up_votes"]
 
 
         down_votes_sum: int = df["down_votes"].sum()
-        votes_counts: pd.DataFrame = df["down_votes"].value_counts(
-        ).dropna().to_frame().reset_index()
-        votes_counts.rename(
-            columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
-        ser = votes_counts["votes"]
+        votes_counts: pd.DataFrame = df["down_votes"].value_counts().dropna().to_frame().reset_index()
+        # votes_counts.rename(
+        #     columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
+        ser = votes_counts["count"]
         down_votes_mean: float = ser.mean()
         down_votes_median: float = ser.median()
         down_votes_std: float = ser.std(ddof=0)
@@ -544,9 +540,9 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             bin_val: int = const.BINS_VOTES_DOWN[i]
             bin_next: int = const.BINS_VOTES_DOWN[i+1]
             for inx, rec in votes_counts.iterrows():
-                votes: int = rec["votes"]
+                votes: int = rec["count"]
                 if ((votes >= bin_val) and (votes < bin_next)):
-                    down_votes_freq[i] += rec["recordings"]
+                    down_votes_freq[i] += rec["down_votes"]
 
         #
         # BASIC MEASURES
@@ -684,7 +680,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     #
     # Clip Durations
     #
-    cd_file: str = os.path.join(cd_dir, '$clip_durations.tsv')
+    # cd_file: str = os.path.join(cd_dir, '$clip_durations.tsv')
+    cd_file: str = os.path.join(cd_dir, 'clip_durations.tsv')
     df_clip_durations: pd.DataFrame = pd.DataFrame(columns=const.COLS_CLIP_DURATIONS).set_index("clip")
     if os.path.isfile(cd_file):
         df_clip_durations = df_read(cd_file).set_index("clip")
