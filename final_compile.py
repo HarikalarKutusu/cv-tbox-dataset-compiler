@@ -125,6 +125,8 @@ def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
     else:
         return "cv-corpus-" + cv_ver + "-" + const.CV_DATES[cv_idx]
 
+def dec3(x: float) -> float:
+    return round( 1000 * x)
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
@@ -212,19 +214,19 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
         'has_val': has_val,
         'val': valid,
         'c_sum': chars_total,
-        'c_avg': round(1000 * chars_mean) / 1000,
-        'c_med': round(1000 * chars_median) / 1000,
-        'c_std': round(1000 * chars_std) / 1000,
+        'c_avg': dec3(chars_mean),
+        'c_med': dec3(chars_median),
+        'c_std': dec3(chars_std),
         'c_freq': list2str(character_freq),
         'w_sum': words_total,
-        'w_avg': round(1000 * words_mean) / 1000,
-        'w_med': round(1000 * words_median) / 1000,
-        'w_std': round(1000 * words_std) / 1000,
+        'w_avg': dec3(words_mean),
+        'w_med': dec3(words_median),
+        'w_std': dec3(words_std),
         'w_freq': list2str(word_freq),
         't_sum': tokens_total,
-        't_avg': round(1000 * tokens_mean) / 1000,
-        't_med': round(1000 * tokens_median) / 1000,
-        't_std': round(1000 * tokens_std) / 1000,
+        't_avg': dec3(tokens_mean),
+        't_med': dec3(tokens_median),
+        't_std': dec3(tokens_std),
         't_freq': list2str(token_freq),
     }
 
@@ -305,9 +307,9 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
             'lc':           lc,
             'rep_sum':      reported_total,
             'rep_sen':      reported_sentences,
-            'rep_avg':      round(1000 * rep_mean) / 1000,
-            'rep_med':      round(1000 * rep_median) / 1000,
-            'rep_std':      round(1000 * rep_std) / 1000,
+            'rep_avg':      dec3(rep_mean),
+            'rep_med':      dec3(rep_median),
+            'rep_std':      dec3(rep_std),
             'rep_freq':     list2str(rep_freq),
             'rea_freq':     list2str(reason_freq),
         }
@@ -608,35 +610,35 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             'uq_sl':        unique_sentences_lower,
 
             # Duration
-            'dur_total':    round(1000 * duration_total) / 1000,
-            'dur_avg':      round(1000 * duration_mean) / 1000,
-            'dur_med':      round(1000 * duration_median) / 1000,
-            'dur_std':      round(1000 * duration_std) / 1000,
+            'dur_total':    dec3(duration_total),
+            'dur_avg':      dec3(duration_mean),
+            'dur_med':      dec3(duration_median),
+            'dur_std':      dec3(duration_std),
             'dur_freq':     list2str(duration_freq),
 
             # Recordings per Voice
-            'v_avg':        round(1000 * voice_mean) / 1000,
-            'v_med':        round(1000 * voice_median) / 1000,
-            'v_std':        round(1000 * voice_std) / 1000,
+            'v_avg':        dec3(voice_mean),
+            'v_med':        dec3(voice_median),
+            'v_std':        dec3(voice_std),
             'v_freq':       list2str(voice_freq),
 
             # Recordings per Sentence
-            's_avg':        round(1000 * sentence_mean) / 1000,
-            's_med':        round(1000 * sentence_median) / 1000,
-            's_std':        round(1000 * sentence_std) / 1000,
+            's_avg':        dec3(sentence_mean),
+            's_med':        dec3(sentence_median),
+            's_std':        dec3(sentence_std),
             's_freq':       list2str(sentence_freq),
 
             # Votes
             'uv_sum':       up_votes_sum,
-            'uv_avg':       round(1000 * up_votes_mean) / 1000,
-            'uv_med':       round(1000 * up_votes_median) / 1000,
-            'uv_std':       round(1000 * up_votes_std) / 1000,
+            'uv_avg':       dec3(up_votes_mean),
+            'uv_med':       dec3(up_votes_median),
+            'uv_std':       dec3(up_votes_std),
             'uv_freq':      list2str(up_votes_freq),
 
             'dv_sum':       down_votes_sum,
-            'dv_avg':       round(1000 * down_votes_mean) / 1000,
-            'dv_med':       round(1000 * down_votes_median) / 1000,
-            'dv_std':       round(1000 * down_votes_std) / 1000,
+            'dv_avg':       dec3(down_votes_mean),
+            'dv_med':       dec3(down_votes_median),
+            'dv_std':       dec3(down_votes_std),
             'dv_freq':      list2str(down_votes_freq),
 
             # Demographics distribution for recordings
