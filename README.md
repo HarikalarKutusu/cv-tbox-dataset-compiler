@@ -50,6 +50,10 @@ Uses multi-processing, running in 5 processes on a 6 real core notebook, takes a
 Should be run whenever previous scripts run.
 The json results will be copied to the [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer).
 
+### pack_splits.py
+
+Simple script to create `tar.xz` files from training splits (tarin/dev/test) to make them downloadable.
+
 ## Data Structure
 
 .The following structure is under the web/data directory
@@ -59,7 +63,7 @@ STRUCTURE AT SOURCE
 
 clip-durations
   <lc>
-    $clip_durations.tsv           # Durations of all clips, calculated using external process during download (not provided yet)
+    clip_durations.tsv            # Durations of all clips, previousşy calculated using external process during download, with v14.0 it is generated from times.txt file provided in the datasets
 text-corpus                       # Compiled by "text_corpus_compile.py" from fresh Common Voice repository clone
   <lc>
     $text_corpus.tsv              # Combined text corpus with additional info
@@ -79,16 +83,17 @@ voice-corpus
 FINAL STRUCTURE AT DESTINATION
 
 results
-  tsv                             # Created for internal use / further python pandas processing if needed
-    $support_matrix.tsv           # Combined support matrix, keeping what languages/versions/splitting algorithms are supported by the system
-    $text_corpus_stats.tsv        # Combined text-corpus statistics
+  tsv                               # Created for internal use / further python pandas processing if needed
+    $support_matrix.tsv             # Combined support matrix, keeping what languages/versions/splitting algorithms are supported by the system
+    $text_corpus_stats.tsv          # Combined text-corpus statistics
     <lc>
-      <lc>_<ver>_splits.tsv       # eg: "tr_v11.0_splits.tsv", keeps all split statistics of this version of locale dataset.
-  json                            # For being copied into webapp's public/assets/data directory 
-    $support_matrix.json          # Combined support matrix, keeping what languages/versions/splitting algorithms are supported by the system
-    $text_corpus_stats.json       # Combined text-corpus statistics
+      <lc>_<ver>_splits.tsv         # eg: "tr_v11.0_splits.tsv", keeps all split statistics of this version of locale dataset.
+  json                              # For being copied into webapp's public/assets/data directory 
+    $support_matrix.json            # Combined support matrix, keeping what languages/versions/splitting algorithms are supported by the system
+    $text_corpus_stats.json         # Combined text-corpus statistics
     <lc>
-      <lc>_<ver>_splits.json      # eg: "tr_v11.0_splits.json", keeps all split statistics of this version of locale dataset.
+      <lc>_<ver>_splits.json        # eg: "tr_v11.0_splits.json", keeps all split statistics of this version of locale dataset.
+      <lc>-<ver>_<algorithm>.tar.xz # eg: "tr_v11.0_s99.tar.xz", compressed split files to download.
 ```
 
 ## Setup and Run
@@ -126,3 +131,6 @@ We used a development notebook for the timing with the following specs:
 - SSD: CT500P2SSD8 (Crucial P2 500GB 2300-940MB/s NVMe PCI-e M2)
 
 At the end, CPU runs around 50-60% (max %70), RAM is only used higher on large datasets, but SSD -having lower specs- can be overloaded with 100% utilization.
+
+Addition: With v14.0 release, we re-ran the whole set on a i7-8700K / 48 GB / SSD desktop.
+Compiling statistics for 978 datasets, 2927 algorithms, 12693 splits took 0:43:54, 2.7 sec/dataset on the average.
