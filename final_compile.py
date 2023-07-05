@@ -506,43 +506,47 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         #
         # VOTES
         #
+        bins: list[int] = const.BINS_VOTES_UP
         up_votes_sum: int = df["up_votes"].sum()
-        votes_counts: pd.DataFrame = df["up_votes"].value_counts().dropna().to_frame().reset_index()
-        # votes_counts.rename(
-        #     columns={"index": "votes", "up_votes": "recordings"}, inplace=True)
-        votes_counts = votes_counts.astype(int).reset_index(drop=True)
-        ser = votes_counts["count"]
+        vote_counts_df: pd.DataFrame = df["up_votes"].value_counts().dropna().to_frame().astype(int).reset_index()
+        vote_counts_df.rename(columns={"up_votes": "votes"}, inplace=True)
+
+        ser = vote_counts_df["count"]
         up_votes_mean: float = ser.mean()
         up_votes_median: float = ser.median()
         up_votes_std: float = ser.std(ddof=0)
-        # FIXME This is bad coding
-        up_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_UP) -1)
-        for i in range(0, len(const.BINS_VOTES_UP)-1):
-            bin_val: int = const.BINS_VOTES_UP[i]
-            bin_next: int = const.BINS_VOTES_UP[i+1]
-            for inx, rec in votes_counts.iterrows():
-                votes: int = rec["count"]
-                if ((votes >= bin_val) and (votes < bin_next)):
-                    up_votes_freq[i] += rec["up_votes"]
 
+        up_votes_freq: "list[int]" = []
+        for i in range(0, len(bins)-1):
+            bin_val: int = bins[i]
+            bin_next: int = bins[i+1]
+            up_votes_freq.append(
+                vote_counts_df.loc[ 
+                    (vote_counts_df["votes"] >= bin_val) &
+                    (vote_counts_df["votes"] < bin_next)
+                    ]["count"].sum()
+            )             
 
+        bins: list[int] = const.BINS_VOTES_DOWN
         down_votes_sum: int = df["down_votes"].sum()
-        votes_counts: pd.DataFrame = df["down_votes"].value_counts().dropna().to_frame().reset_index()
-        # votes_counts.rename(
-        #     columns={"index": "votes", "down_votes": "recordings"}, inplace=True)
-        ser = votes_counts["count"]
+        vote_counts_df: pd.DataFrame = df["down_votes"].value_counts().dropna().to_frame().astype(int).reset_index()
+        vote_counts_df.rename(columns={"down_votes": "votes"}, inplace=True)
+
+        ser = vote_counts_df["count"]
         down_votes_mean: float = ser.mean()
         down_votes_median: float = ser.median()
         down_votes_std: float = ser.std(ddof=0)
-        # FIXME This is bad coding
-        down_votes_freq: "list[int]" = [0] * (len(const.BINS_VOTES_DOWN) -1)
-        for i in range(0, len(const.BINS_VOTES_DOWN)-1):
-            bin_val: int = const.BINS_VOTES_DOWN[i]
-            bin_next: int = const.BINS_VOTES_DOWN[i+1]
-            for inx, rec in votes_counts.iterrows():
-                votes: int = rec["count"]
-                if ((votes >= bin_val) and (votes < bin_next)):
-                    down_votes_freq[i] += rec["down_votes"]
+
+        down_votes_freq: "list[int]" = []
+        for i in range(0, len(bins)-1):
+            bin_val: int = bins[i]
+            bin_next: int = bins[i+1]
+            down_votes_freq.append(
+                vote_counts_df.loc[ 
+                    (vote_counts_df["votes"] >= bin_val) &
+                    (vote_counts_df["votes"] < bin_next)
+                    ]["count"].sum()
+            )             
 
         #
         # BASIC MEASURES
