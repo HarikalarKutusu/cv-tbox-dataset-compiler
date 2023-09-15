@@ -29,7 +29,7 @@ import multiprocessing as mp
 import psutil
 
 # This package
-import const
+import const as c
 import config as conf
 from getLocales import get_locales
 
@@ -52,11 +52,11 @@ PROC_COUNT: int = psutil.cpu_count(logical=True)            # Full usage
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: "list[str]" = ['14.0']
+DEBUG_CV_VER: "list[str]" = ['15.0']
 DEBUG_CV_LC: "list[str]" = ['tr']
 
 
-ALL_LOCALES: "list[str]" = get_locales(const.CV_VERSIONS[-1])
+ALL_LOCALES: "list[str]" = get_locales(c.CV_VERSIONS[-1])
 
 ########################################################
 # Tooling
@@ -113,17 +113,17 @@ def df_int_convert(x: pd.Series) -> Any:
         return x
 
 def list2str(lst: "list[Any]") -> str:
-    return const.SEP_COL.join(str(x) for x in lst)
+    return c.SEP_COL.join(str(x) for x in lst)
 
 def arr2str(arr: "list[list[Any]]") -> str:
-    return const.SEP_ROW.join(list2str(x) for x in arr)
+    return c.SEP_ROW.join(list2str(x) for x in arr)
 
 # Calc CV_DIR - Different for v1-4 !!!
 def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
     if cv_ver in ['1', '2', '3', '4']:
         return "cv-corpus-" + cv_ver
     else:
-        return "cv-corpus-" + cv_ver + "-" + const.CV_DATES[cv_idx]
+        return "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
 
 def dec3(x: float) -> float:
     return round( 1000 * x)
@@ -161,7 +161,7 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
     # Calc character length distribution
     arr: np.ndarray = np.fromiter(ser.apply(
         int).reset_index(drop=True).to_list(), int)
-    hist = np.histogram(arr, bins=const.BINS_CHARS)
+    hist = np.histogram(arr, bins=c.BINS_CHARS)
     character_freq = hist[0].tolist()
 
     has_val: int = 0
@@ -182,7 +182,7 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
     if has_val == 1:
         arr: np.ndarray = np.fromiter(ser.apply(
             int).reset_index(drop=True).to_list(), int)
-        hist = np.histogram(arr, bins=const.BINS_WORDS)
+        hist = np.histogram(arr, bins=c.BINS_WORDS)
         word_freq = hist[0].tolist()
 
     # TOKENS
@@ -202,7 +202,7 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
         # Token/word repeat distribution
         arr: np.ndarray = np.fromiter(df["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist = np.histogram(arr, bins=const.BINS_TOKENS)
+        hist = np.histogram(arr, bins=c.BINS_TOKENS)
         token_freq = hist[0].tolist()
 
 
@@ -239,9 +239,9 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
 
 def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
     # Fins idx
-    cv_idx: int = const.CV_VERSIONS.index(cv_ver)
+    cv_idx: int = c.CV_VERSIONS.index(cv_ver)
     # Calc CV_DIR
-    ver: str = const.CV_VERSIONS[cv_idx]
+    ver: str = c.CV_VERSIONS[cv_idx]
     cv_dir_name: str = calc_cv_dir_name(cv_idx, ver)
     # Calc voice-corpus directory
     cv_dir: str = os.path.join(HERE, "data", "voice-corpus", cv_dir_name)
@@ -280,7 +280,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # get a distribution of reasons/sentence & stats
         rep_counts: pd.DataFrame = df["sentence_id"].value_counts().dropna().to_frame().reset_index()
         # make others 'other'
-        df.loc[ ~df['reason'].isin(const.REPORTING_BASE) ] = 'other'
+        df.loc[ ~df['reason'].isin(c.REPORTING_BASE) ] = 'other'
 
         # Get statistics
         ser: pd.Series = rep_counts["count"]
@@ -291,7 +291,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # Calc report-per-sentence distribution
         arr: np.ndarray = np.fromiter(rep_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist = np.histogram(arr, bins=const.BINS_REPORTED)
+        hist = np.histogram(arr, bins=c.BINS_REPORTED)
         rep_freq = hist[0].tolist()
 
         # Get reason counts
@@ -299,7 +299,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # reason_counts.rename(
         #     columns={"reason": "reports"}, inplace=True)
         reason_counts.set_index(keys='reason', inplace=True)
-        reason_counts = reason_counts.reindex(index=const.REPORTING_ALL, fill_value=0)
+        reason_counts = reason_counts.reindex(index=c.REPORTING_ALL, fill_value=0)
         reason_freq = reason_counts['count'].to_numpy(int).tolist()
 
         res: dict[str, Any] = {
@@ -353,7 +353,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             df: pd.DataFrame = df_split.copy().reset_index(drop=True)
             df['v_enum'], _ = pd.factorize(df['client_id'])    # add an enumaration column for client_id's, more memory efficient
             df['p_enum'], _ = pd.factorize(df['path'])         # add an enumaration column for recordings, more memory efficient
-            df = df[["v_enum", "age", "gender", "p_enum"]].fillna(const.NODATA).reset_index(drop=True)
+            df = df[["v_enum", "age", "gender", "p_enum"]].fillna(c.NODATA).reset_index(drop=True)
 
             # prepare empty results
             fixes: pd.DataFrame = pd.DataFrame(columns=df.columns).reset_index(drop=True)
@@ -372,14 +372,14 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             # now, work only on problem voices & records. For each voice, get related records and decide
             for v in v_processable:
                 recs: pd.DataFrame = df[ df["v_enum"] == v ].copy()
-                recs_blanks: pd.DataFrame = recs[ (recs["gender"] == const.NODATA) | (recs["age"] == const.NODATA) ].copy()          # get full blanks
+                recs_blanks: pd.DataFrame = recs[ (recs["gender"] == c.NODATA) | (recs["age"] == c.NODATA) ].copy()          # get full blanks
                 # gender
-                recs_w_gender: pd.DataFrame = recs[ ~(recs["gender"] == const.NODATA) ].copy()
+                recs_w_gender: pd.DataFrame = recs[ ~(recs["gender"] == c.NODATA) ].copy()
                 if recs_w_gender.shape[0] > 0:
                     val: str = recs_w_gender["gender"].tolist()[0]
                     recs_blanks.loc[:, "gender"] = val
                 # age
-                recs_w_age: pd.DataFrame = recs[ ~(recs["age"] == const.NODATA) ].copy()
+                recs_w_age: pd.DataFrame = recs[ ~(recs["age"] == c.NODATA) ].copy()
                 if recs_w_age.shape[0] > 0:
                     val: str = recs_w_age["age"].tolist()[0]
                     recs_blanks.loc[:, "age"] = val
@@ -395,8 +395,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
                     )
                 # get only value parts : nodata is just negative sum of these, and TOTAL will be 0,
                 # so we drop them for file size and leave computation to the client
-                pt = pt.reindex(const.CV_AGES, axis=0).reindex(const.CV_GENDERS, axis=1).fillna(
-                    value=0).astype(int).drop(const.NODATA, axis=0).drop(const.NODATA, axis=1)
+                pt = pt.reindex(c.CV_AGES, axis=0).reindex(c.CV_GENDERS, axis=1).fillna(
+                    value=0).astype(int).drop(c.NODATA, axis=0).drop(c.NODATA, axis=1)
                 dem_fixes_recs = arr2str(pt.to_numpy(int).tolist())
 
                 # voices
@@ -405,8 +405,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
                     fixes, values='v_enum', index=['age'], columns=['gender'], aggfunc='count',
                     fill_value=0, dropna=False, margins=False)
                 # get only value parts : nodata is just -sum of these, sum will be 0
-                pt = pt.reindex(const.CV_AGES, axis=0).reindex(const.CV_GENDERS, axis=1).fillna(
-                    value=0).astype(int).drop(const.NODATA, axis=0).drop(const.NODATA, axis=1)
+                pt = pt.reindex(c.CV_AGES, axis=0).reindex(c.CV_GENDERS, axis=1).fillna(
+                    value=0).astype(int).drop(c.NODATA, axis=0).drop(c.NODATA, axis=1)
                 dem_fixes_voices = arr2str(pt.to_numpy(int).tolist())
 
             return [dem_fixes_recs, dem_fixes_voices]
@@ -440,7 +440,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             return results
 
         # Replace NA with NODATA
-        df: pd.DataFrame = df_orig.fillna(value=const.NODATA)
+        df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
         # add lowercase sentence column
         df['sentence_lower'] = df['sentence'].str.lower()
 
@@ -451,7 +451,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Calc duration agregate values
         if df_clip_durations.shape[0] > 0 and ver != '1':  # there must be records + v1 cannot be mapped
             # Connect with duration table
-            df["duration"] = df["path"].map(df_clip_durations["duration"])
+            df["duration"] = df["path"].map(df_clip_durations["duration[ms]"] / 1000) # convert to seconds
             ser: pd.Series = df["duration"].dropna()
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
@@ -460,7 +460,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             # Calc duration distribution
             arr: np.ndarray = np.fromiter(df["duration"].dropna().apply(
                 int).reset_index(drop=True).to_list(), int)
-            hist = np.histogram(arr, bins=const.BINS_DURATION)
+            hist = np.histogram(arr, bins=c.BINS_DURATION)
             duration_freq = hist[0].tolist()
             # duration_bins: "list[int]" = hist[1]
         else:  # No Duration data, set illegal defaults and continue
@@ -484,7 +484,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(voice_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist = np.histogram(arr, bins=const.BINS_VOICES)
+        hist = np.histogram(arr, bins=c.BINS_VOICES)
         voice_freq = hist[0].tolist()
         # voice_bins: "list[int]" = hist[1]
 
@@ -501,14 +501,14 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Calc speaker recording distribution
         arr: np.ndarray = np.fromiter(sentence_counts["count"].dropna().apply(
             int).reset_index(drop=True).to_list(), int)
-        hist = np.histogram(arr, bins=const.BINS_SENTENCES)
+        hist = np.histogram(arr, bins=c.BINS_SENTENCES)
         sentence_freq = hist[0].tolist()
         # sentence_bins: "list[int]" = hist[1]
 
         #
         # VOTES
         #
-        bins: list[int] = const.BINS_VOTES_UP
+        bins: list[int] = c.BINS_VOTES_UP
         up_votes_sum: int = df["up_votes"].sum()
         vote_counts_df: pd.DataFrame = df["up_votes"].value_counts().dropna().to_frame().astype(int).reset_index()
         vote_counts_df.rename(columns={"up_votes": "votes"}, inplace=True)
@@ -529,7 +529,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
                     ]["count"].sum()
             )             
 
-        bins: list[int] = const.BINS_VOTES_DOWN
+        bins: list[int] = c.BINS_VOTES_DOWN
         down_votes_sum: int = df["down_votes"].sum()
         vote_counts_df: pd.DataFrame = df["down_votes"].value_counts().dropna().to_frame().astype(int).reset_index()
         vote_counts_df.rename(columns={"down_votes": "votes"}, inplace=True)
@@ -567,9 +567,9 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         #
 
         # Add TOTAL to lists
-        pt_ages: list[str] = const.CV_AGES.copy()
+        pt_ages: list[str] = c.CV_AGES.copy()
         pt_ages.append("TOTAL")
-        pt_genders: list[str] = const.CV_GENDERS.copy()
+        pt_genders: list[str] = c.CV_GENDERS.copy()
         pt_genders.append("TOTAL")
 
         #
@@ -688,7 +688,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     #
     # cd_file: str = os.path.join(cd_dir, '$clip_durations.tsv')
     cd_file: str = os.path.join(cd_dir, 'clip_durations.tsv')
-    df_clip_durations: pd.DataFrame = pd.DataFrame(columns=const.COLS_CLIP_DURATIONS).set_index("clip")
+    df_clip_durations: pd.DataFrame = pd.DataFrame(columns=c.COLS_CLIP_DURATIONS).set_index("clip")
     if os.path.isfile(cd_file):
         df_clip_durations = df_read(cd_file).set_index("clip")
     else:
@@ -710,13 +710,13 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     validated_result: dict[str, Any] = res[-1]
     validated_records: int = validated_result["clips"]
     # Append to clips.tsv at the source, at the base of that version (it will include all recording data for all locales to be used in CC & alternatives)
-    for sp in const.MAIN_SPLITS:
+    for sp in c.MAIN_BUCKETS:
         src: str = os.path.join(ds_path, sp + ".tsv")
         dst: str = os.path.join(cv_dir, "clips.tsv")
         df_write( df_read(src), fpath=dst, wMode="a" )
 
     # def handle_split(ver: str, lc: str, algorithm: str, split: str, fpath: str) -> "dict[str, Any]":
-    for sp in const.MAIN_SPLITS:
+    for sp in c.MAIN_BUCKETS:
         res.append(handle_split(
             ver=ver,
             lc=lc,
@@ -731,8 +731,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
 
     # SPLITTING ALGO SPECIFIC (inc default splits)
 
-    for algo in const.ALGORITHMS:
-        for sp in const.TRAINING_SPLITS:
+    for algo in c.ALGORITHMS:
+        for sp in c.TRAINING_SPLITS:
             if os.path.isfile(os.path.join(ds_path, algo, sp + '.tsv')):
                 res.append(handle_split(
                     ver=ver,
@@ -789,7 +789,7 @@ def main() -> None:
                 handle_text_corpus, lc_to_process)
 
         # Create result DF
-        # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=const.COLS_TEXT_CORPUS)
+        # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=c.COLS_TEXT_CORPUS)
         print(f'>>> Finished... Now saving...')
         df: pd.DataFrame = pd.DataFrame(tc_stats)
         df_write(df, os.path.join(
@@ -803,7 +803,7 @@ def main() -> None:
     #
     if not conf.SKIP_REPORTED:
 
-        vers_to_process: "list[str]" = DEBUG_CV_VER if DEBUG else const.CV_VERSIONS
+        vers_to_process: "list[str]" = DEBUG_CV_VER if DEBUG else c.CV_VERSIONS
 
         #
         # reported
@@ -904,7 +904,7 @@ def main() -> None:
 
 
     # Prepare Support Matrix DataFrame
-    rev_versions: "list[str]" = const.CV_VERSIONS.copy() # versions in reverse order
+    rev_versions: "list[str]" = c.CV_VERSIONS.copy() # versions in reverse order
     rev_versions.reverse()
     for inx, ver in enumerate(rev_versions):
         rev_versions[inx] = ver2vercol(ver)
@@ -918,12 +918,12 @@ def main() -> None:
 
     # Now loop and put the results inside
     for lc in ALL_LOCALES:
-        for ver in const.CV_VERSIONS:
+        for ver in c.CV_VERSIONS:
             algo_list: "list[str]" = df[
                 (df['lc'] == lc ) & 
                 (df['ver'] == ver)
                 ]['alg'].unique().tolist()
-            algos: str = const.SEP_ALGO.join(algo_list)
+            algos: str = c.SEP_ALGO.join(algo_list)
             df_support_matrix.at[lc, ver2vercol(ver)] = algos
 
     # Write out
@@ -946,20 +946,20 @@ def main() -> None:
     #
     config_data: "dict[str, Any]" = {
         "date": datetime.now().strftime("%Y-%m-%d"),
-        "cv_versions": const.CV_VERSIONS,
-        "cv_dates": const.CV_DATES,
+        "cv_versions": c.CV_VERSIONS,
+        "cv_dates": c.CV_DATES,
         "cv_locales": ALL_LOCALES,
-        "algorithms": const.ALGORITHMS,
-        "bins_duration": const.BINS_DURATION[:-1],          # Drop the last huge values from these lists
-        "bins_voices": const.BINS_VOICES[:-1],
-        "bins_votes_up": const.BINS_VOTES_UP[:-1],
-        "bins_votes_down": const.BINS_VOTES_DOWN[:-1],
-        "bins_sentences": const.BINS_SENTENCES[:-1],
-        "bins_chars": const.BINS_CHARS[:-1],
-        "bins_words": const.BINS_WORDS[:-1],
-        "bins_tokens": const.BINS_TOKENS[:-1],
-        "bins_reported": const.BINS_REPORTED[:-1],
-        "bins_reasons": const.REPORTING_ALL,
+        "algorithms": c.ALGORITHMS,
+        "bins_duration": c.BINS_DURATION[:-1],          # Drop the last huge values from these lists
+        "bins_voices": c.BINS_VOICES[:-1],
+        "bins_votes_up": c.BINS_VOTES_UP[:-1],
+        "bins_votes_down": c.BINS_VOTES_DOWN[:-1],
+        "bins_sentences": c.BINS_SENTENCES[:-1],
+        "bins_chars": c.BINS_CHARS[:-1],
+        "bins_words": c.BINS_WORDS[:-1],
+        "bins_tokens": c.BINS_TOKENS[:-1],
+        "bins_reported": c.BINS_REPORTED[:-1],
+        "bins_reasons": c.REPORTING_ALL,
     }
     df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
     # Write out

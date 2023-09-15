@@ -30,13 +30,12 @@ import psutil
 # Common Voice Utilities
 import cvutils as cvu
 
+import const as c
+import config as conf
+
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
-
-import const
-import config as conf
-
 
 def df_write(df: pd.DataFrame, fpath: str) -> bool:
     """
@@ -71,7 +70,7 @@ def handle_locale(lc: str) -> None:
     tokenCounter: Counter = Counter()
 
     # Create a DataFrame
-    df: pd.DataFrame = pd.DataFrame(columns=const.COLS_TEXT_CORPUS)
+    df: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS)
 
     # get file list
     files: "list[str]" = glob.glob(
@@ -110,7 +109,7 @@ def handle_locale(lc: str) -> None:
             data.append(rec)
             # print(rec)
         # end of file
-        data_df: pd.DataFrame = pd.DataFrame(data, columns=const.COLS_TEXT_CORPUS).reset_index(
+        data_df: pd.DataFrame = pd.DataFrame(data, columns=c.COLS_TEXT_CORPUS).reset_index(
             drop=True)
         df = pd.concat([df.loc[:], data_df]).reset_index(
             drop=True)  # type: ignore
@@ -120,7 +119,7 @@ def handle_locale(lc: str) -> None:
     df_write(df, dst_file)
     # tokens df
     df: pd.DataFrame = pd.DataFrame(tokenCounter.items(
-    ), columns=const.COLS_TOKENS).reset_index(drop=True)
+    ), columns=c.COLS_TOKENS).reset_index(drop=True)
     df.sort_values("count", ascending=False, inplace=True)
     df_write(df, dst_tokens_file)
 
