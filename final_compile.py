@@ -126,7 +126,7 @@ def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
         return "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
 
 def dec3(x: float) -> float:
-    return round( 1000 * x)
+    return round( 1000 * x) / 1000
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
@@ -451,7 +451,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Calc duration agregate values
         if df_clip_durations.shape[0] > 0 and ver != '1':  # there must be records + v1 cannot be mapped
             # Connect with duration table
-            df["duration"] = df["path"].map(df_clip_durations["duration[ms]"] / 1000) # convert to seconds
+            df["duration"] = df["path"].map(df_clip_durations["duration[ms]"] / 1000, na_action="ignore") # convert to seconds
             ser: pd.Series = df["duration"].dropna()
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
