@@ -15,6 +15,7 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+# Standard Lib
 import sys
 import os
 import glob
@@ -24,36 +25,19 @@ from typing import Any
 from collections import Counter
 import multiprocessing as mp
 
+# External dependencies
 import pandas as pd
 import psutil
-
-# Common Voice Utilities
 import cvutils as cvu
 
+# Module
 import const as c
 import config as conf
+from lib import df_write
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
-
-
-def df_write(df: pd.DataFrame, fpath: str) -> bool:
-    """
-    Writes out a dataframe to a file.
-    """
-    # Create/override the file
-    df.to_csv(
-        fpath,
-        header=True,
-        index=False,
-        encoding="utf-8",
-        sep="\t",
-        escapechar="\\",
-        quoting=csv.QUOTE_NONE,
-    )
-    print(f"Generated: {fpath} Records={df.shape[0]}")
-    return True
 
 
 def handle_locale(lc: str) -> None:

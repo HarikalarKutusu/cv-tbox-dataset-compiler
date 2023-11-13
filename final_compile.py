@@ -9,8 +9,6 @@
 # Use:
 # python final_compile.py
 #
-#
-#
 # This script is part of Common Voice ToolBox Package
 #
 # github: https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler
@@ -20,7 +18,6 @@
 import os
 import sys
 import glob
-import csv
 from datetime import datetime, timedelta
 from typing import Any
 import multiprocessing as mp
@@ -33,6 +30,15 @@ import psutil
 import const as c
 import config as conf
 from get_locales import get_locales
+from lib import (
+    df_read,
+    df_write,
+    list2str,
+    arr2str,
+    calc_cv_dir_name,
+    dec3,
+    # df_int_convert,
+)
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -45,86 +51,6 @@ if not HERE in sys.path:
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
-
-########################################################
-# Tooling
-########################################################
-
-
-def df_read(fpath: str) -> pd.DataFrame:
-    """Read a tsv file into a dataframe"""
-    if not os.path.isfile(fpath):
-        print(f"FATAL: File {fpath} cannot be located!")
-        if conf.FAIL_ON_NOT_FOUND:
-            sys.exit(1)
-
-    df: pd.DataFrame = pd.read_csv(
-        fpath,
-        sep="\t",
-        parse_dates=False,
-        engine="python",
-        encoding="utf-8",
-        on_bad_lines="skip",
-        quotechar='"',
-        quoting=csv.QUOTE_NONE,
-        dtype={"ver": str},
-    )
-    return df
-
-
-def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
-    """
-    Writes out a dataframe to a file.
-    """
-
-    _head: bool = False if mode == "a" else True
-    # Create/override the file
-    df.to_csv(
-        fpath,
-        mode=mode,
-        header=_head,
-        index=False,
-        encoding="utf-8",
-        sep="\t",
-        escapechar="\\",
-        quoting=csv.QUOTE_NONE,
-    )
-    # float_format="%.4f"
-    if conf.VERBOSE:
-        print(f"Generated: {fpath} Records={df.shape[0]}")
-    return True
-
-
-def df_int_convert(x: pd.Series) -> Any:
-    """Convert columns to int if possible"""
-    try:
-        return x.astype(int)
-    except:
-        return x
-
-
-def list2str(lst: list[Any]) -> str:
-    """Convert a list into a string"""
-    return c.SEP_COL.join(str(x) for x in lst)
-
-
-def arr2str(arr: list[list[Any]]) -> str:
-    """Convert an array (list of lists) into a string"""
-    return c.SEP_ROW.join(list2str(x) for x in arr)
-
-
-# Calc CV_DIR - Different for v1-4 !!!
-def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
-    """Create CV dataset main directory name"""
-    if cv_ver in ["1", "2", "3", "4"]:
-        return "cv-corpus-" + cv_ver
-    else:
-        return "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
-
-
-def dec3(x: float) -> float:
-    """Make to 3 decimals"""
-    return round(1000 * x) / 1000
 
 
 ########################################################
@@ -332,8 +258,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         # end of a single version-locale
     # end of a single version / all locales
 
-    # Return combined results for one version
-    return res_all
+    return res_all  # Return combined results for one version
 
 
 ########################################################
@@ -343,15 +268,9 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
 
 def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     """Handle a single dataset (ver/lc)"""
-
-    # global cnt_datasets
-
-    #
     # Handle one split, this is where calculations happen
-    #
-    # The default column structure of CV dataset splits is as follows
+    # The default column structure of CV dataset splits is as follows [FIXME] variants?
     # client_id, path, sentence, up_votes, down_votes, age, gender, accents, locale, segment
-
     # we have as input:
     # 'version', 'locale', 'algorithm', 'split'
 
@@ -363,9 +282,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
 
         nonlocal df_clip_durations
 
-        #
         # find_fixes
-        #
         def find_fixes(df_split: pd.DataFrame) -> list[str]:
             """Finds fixable demographic info from the split and returns a string"""
 
@@ -515,11 +432,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # add lowercase sentence column
         df["sentence_lower"] = df["sentence"].str.lower()
 
-        #
-        # DURATIONS
-        #
-
-        # Calc duration agregate values
+        # === DURATIONS: Calc duration agregate values
         if (
             df_clip_durations.shape[0] > 0 and ver != "1"
         ):  # there must be records + v1 cannot be mapped
@@ -538,18 +451,14 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             )
             hist = np.histogram(arr, bins=c.BINS_DURATION)
             duration_freq = hist[0].tolist()
-            # duration_bins: list[int] = hist[1]
         else:  # No Duration data, set illegal defaults and continue
             duration_total: float = -1
             duration_mean: float = -1
             duration_median: float = -1
             duration_std: float = -1
             duration_freq = []
-            # duration_bins: list[int] = []
 
-        #
-        # VOICES
-        #
+        # === VOICES
         voice_counts: pd.DataFrame = (
             df["client_id"].value_counts().dropna().to_frame().reset_index()
         )
@@ -564,11 +473,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         )
         hist = np.histogram(arr, bins=c.BINS_VOICES)
         voice_freq = hist[0].tolist()
-        # voice_bins: list[int] = hist[1]
 
-        #
-        # SENTENCES
-        #
+        # === SENTENCES
         sentence_counts: pd.DataFrame = (
             df["sentence"].value_counts().dropna().to_frame().reset_index()
         )
@@ -587,11 +493,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         )
         hist = np.histogram(arr, bins=c.BINS_SENTENCES)
         sentence_freq = hist[0].tolist()
-        # sentence_bins: list[int] = hist[1]
 
-        #
-        # VOTES
-        #
+        # === VOTES
         bins: list[int] = c.BINS_VOTES_UP
         up_votes_sum: int = df["up_votes"].sum()
         vote_counts_df: pd.DataFrame = (
@@ -643,9 +546,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
                 ]["count"].sum()
             )
 
-        #
-        # BASIC MEASURES
-        #
+        # === BASIC MEASURES
         clips_cnt: int = df.shape[0]
         unique_voices: int = df["client_id"].unique().shape[0]
         unique_sentences: int = df["sentence"].unique().shape[0]
@@ -654,9 +555,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # duplicate_sentence_cnt: int = clips_cnt - unique_sentences
         # duplicate_sentence_cnt_lower: int = clips_cnt - unique_sentences_lower
 
-        #
-        # DEMOGRAPHICS
-        #
+        # === DEMOGRAPHICS
 
         # Add TOTAL to lists
         pt_ages: list[str] = c.CV_AGES.copy()
@@ -664,9 +563,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         pt_genders: list[str] = c.CV_GENDERS.copy()
         pt_genders.append("TOTAL")
 
-        #
         # get a pt for all demographics (based on recordings)
-        #
         _pt_dem: pd.DataFrame = pd.pivot_table(
             df,
             values="path",
@@ -685,9 +582,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             .astype(int)
         )
 
-        #
         # get a pt for all demographics (based on unique voices)
-        #
         _df_uqdem: pd.DataFrame = df[["client_id", "age", "gender"]]
         _df_uqdem = _df_uqdem.drop_duplicates().reset_index(drop=True)
         _pt_uqdem: pd.DataFrame = pd.pivot_table(
@@ -708,10 +603,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             .astype(int)
         )
 
-        #
         # Create a table for all demographic info corrections (based on recordings)
         # Correctable ones are: clients with both blank and a single gender (or age) specified
-        #
         dem_fixes_list: list[str] = find_fixes(df_orig)
 
         results: dict[str, Any] = {
@@ -764,9 +657,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     # --------------------------------------------
     # START main process for a single CV dataset
     # --------------------------------------------
-
-    # we have input ds_path in format:
-    # ...\data\voice-corpus\cv-corpus-12.0-2022-12-07\tr
+    # we have input ds_path in format: # ...\data\voice-corpus\cv-corpus-12.0-2022-12-07\tr
     # <ver> <lc> [<algo>]
 
     lc: str = os.path.split(ds_path)[1]
@@ -791,15 +682,10 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     os.makedirs(tsv_path, exist_ok=True)
     os.makedirs(json_path, exist_ok=True)
 
-    #
     # First Handle Splits in voice-corpus
-    #
-
     # Load general DF's if they exist, else initialize
 
-    #
-    # Clip Durations
-    #
+    # === Clip Durations
     # cd_file: str = os.path.join(cd_dir, '$clip_durations.tsv')
     cd_file: str = os.path.join(cd_dir, "clip_durations.tsv")
     df_clip_durations: pd.DataFrame = pd.DataFrame(
@@ -810,9 +696,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     else:
         print(f"WARNING: No duration data for {lc}\n")
 
-    #
-    # MAIN SPLITS (clips, validated, invalidated, other)
-    #
+    # === MAIN BUCKETS (clips, validated, invalidated, other)
     res: list[dict[str, Any]] = []  # Init the result list
 
     # Special case for temporary "clips.tsv"
@@ -930,10 +814,8 @@ def main() -> None:
             index=False,
         )
 
-    #
-    # MultiProcessing on versions to handle splits:
+    # === MULTI-PROCESSING on versions to handle splits:
     # Loop all versions/languages/splits, each version in one process ([TODO] not ideal, should be refactored)
-    #
     if not conf.SKIP_REPORTED:
         vers_to_process: list[str] = conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS
 
@@ -962,9 +844,7 @@ def main() -> None:
             index=False,
         )
 
-    #
-    # splits
-    #
+    # === SPLITS
     if not conf.SKIP_SPLITS:
         print("\n=== Start Dataset/Split Analysis ===\n")
 
@@ -1005,7 +885,6 @@ def main() -> None:
             results: list[list[dict[str, Any]]] = pool.map(
                 handle_dataset_splits, ds_paths
             )
-            # results: list[list[dict[str, Any]]] = pool.map(handle_version, vers_to_process)
 
         # done, first flatten them
         all_splits: list[dict[str, Any]] = []
@@ -1014,9 +893,7 @@ def main() -> None:
 
         print(f">>> Processed {len(all_splits)} splits...\n")
 
-    #
-    # Support Matrix
-    #
+    # === SUPPORT MATRIX
     print("\n=== Build Support Matrix ===\n")
 
     # Scan files once again (we could have run it partial)
@@ -1030,8 +907,6 @@ def main() -> None:
     for tsv_path in all_tsv_paths:
         if os.path.split(tsv_path)[1][0] != "$":  # ignore system files (starts with $)
             df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
-
-    # print(df.tail(30))
 
     num_splits: int = df.shape[0]
     num_datasets: int = df[df["sp"] == "validated"].shape[0]
@@ -1051,11 +926,11 @@ def main() -> None:
     rev_versions.reverse()
     for inx, ver in enumerate(rev_versions):
         rev_versions[inx] = ver2vercol(ver)
-    COLS_SUPPORT_MATRIX: list[str] = ["lc", "lang"]
-    COLS_SUPPORT_MATRIX.extend(rev_versions)
+    cols_support_matrix: list[str] = ["lc", "lang"]
+    cols_support_matrix.extend(rev_versions)
     df_support_matrix: pd.DataFrame = pd.DataFrame(
         index=ALL_LOCALES,
-        columns=COLS_SUPPORT_MATRIX,
+        columns=cols_support_matrix,
     )
     df_support_matrix["lc"] = ALL_LOCALES
 
@@ -1080,16 +955,12 @@ def main() -> None:
         index=False,
     )
 
-    # MORE TODO
-    # Fix DEM correction problem !!!
-    # Get CV-Wide Datasets => Measures / Totals
-    # Get global min/max/mean/median values for health measures
-    # Get some statistical plots as images (e.g. corrolation: age-char speed graph)
-    #
+    # [TODO] Fix DEM correction problem !!!
+    # [TODO] Get CV-Wide Datasets => Measures / Totals
+    # [TODO] Get global min/max/mean/median values for health measures
+    # [TODO] Get some statistical plots as images (e.g. corrolation: age-char speed graph)
 
-    #
     # Save config
-    #
     config_data: dict[str, Any] = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "cv_versions": c.CV_VERSIONS,
@@ -1119,9 +990,7 @@ def main() -> None:
         index=False,
     )
 
-    #
     # FINALIZE
-    #
     finish_time: datetime = datetime.now()
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()

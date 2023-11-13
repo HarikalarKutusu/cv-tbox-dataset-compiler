@@ -1,10 +1,14 @@
 """ Get all CV locales with released datasets from API """
 
+# Standard Lib
 import sys
 import json
-from typing import Literal
-from typing import Any
+from typing import Literal, Any
 from urllib.request import urlopen
+
+# External dependencies
+
+# Module
 from const import CV_VERSIONS, CV_DATES, CV_DATASET_BASE_URL
 
 

@@ -15,12 +15,16 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+# Standard Lib
 import os
 import sys
 import shutil
 import glob
 from datetime import datetime, timedelta
 
+# External dependencies
+
+# Module
 import const as c
 import config as conf
 
