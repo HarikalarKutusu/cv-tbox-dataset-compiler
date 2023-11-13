@@ -1,0 +1,62 @@
+[MAIN]
+recursive=yes
+source-roots=*/**/*.py
+
+[BASIC]
+bad-names=foo,
+          baz,
+          toto,
+          tutu,
+          tata
+
+[CLASSES]
+
+[DESIGN]
+
+[EXCEPTIONS]
+
+[FORMAT]
+max-line-length=130
+
+[IMPORTS]
+
+[LOGGING]
+logging-format-style=new
+
+[MESSAGES CONTROL]
+disable=raw-checker-failed,
+        bad-inline-option,
+        locally-disabled,
+        file-ignored,
+        suppressed-message,
+        useless-suppression,
+        deprecated-pragma,
+        use-symbolic-message-instead,
+        use-implicit-booleaness-not-comparison-to-string,
+        use-implicit-booleaness-not-comparison-to-zero,
+        # added
+        missing-module-docstring,
+        logging-fstring-interpolation,
+        unused-variable,
+        unused-private-member,
+        unused-import
+
+
+[METHOD_ARGS]
+
+[MISCELLANEOUS]
+
+[REFACTORING]
+
+[REPORTS]
+
+[SIMILARITIES]
+
+[SPELLING]
+# spelling-dict=en_US
+
+[STRING]
+
+[TYPECHECK]
+
+[VARIABLES]
