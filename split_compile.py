@@ -54,11 +54,8 @@ def main() -> None:
         overall_cnt += 1
         cnt += 1
 
-        print("\033[F" + " " * 80)
-        print(
-            f"\033[FProcessing version {cv_ver} ({cv_idx+1}/{len(c.CV_VERSIONS)})"
-            + f"locale {cnt}/{len(lc_list)} : {lc}"
-        )
+        txt: str = f"Processing version {cv_ver} ({cv_idx+1}/{len(c.CV_VERSIONS)}) locale {cnt}/{len(lc_list)} : {lc}"
+        print(txt if conf.VERBOSE else "\033[F" + txt)
 
         # copy splitting algorithm independent files
 
@@ -152,8 +149,6 @@ def main() -> None:
 
         print("=" * 80)
         print(f"Processing locales in {cv_dir_name}\n")
-        print("=" * 80)
-        print()
 
         # Create destination
         dst_dir = os.path.join(vc_dir_base, cv_dir_name)
