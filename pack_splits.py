@@ -41,7 +41,8 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 # Program parameters
-PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+PROC_COUNT: int = int(1.5 * psutil.cpu_count(logical=True))  # OVER usage
+BATCH_SIZE: int = 10
 ALL_LOCALES: list[str] = get_locales(const.CV_VERSIONS[-1])
 
 
@@ -83,7 +84,7 @@ def main() -> None:
     # extra line is for progress line
     print(f"Compressing for {len(dspaths)} datasets...\n")
 
-    with mp.Pool(psutil.cpu_count(logical=False)) as pool:
+    with mp.Pool(processes=PROC_COUNT, maxtasksperchild=BATCH_SIZE) as pool:
         pool.map(handle_ds, dspaths)
 
     # done
