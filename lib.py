@@ -11,7 +11,7 @@ import pandas as pd
 
 # Module
 import const as c
-import config as conf
+import conf
 
 
 def df_read(fpath: str) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def df_int_convert(x: pd.Series) -> Any:
     """Convert columns to int if possible"""
     try:
         return x.astype(int)
-    except:
+    except ValueError as e:
         return x
 
 
