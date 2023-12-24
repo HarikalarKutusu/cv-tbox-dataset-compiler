@@ -34,6 +34,7 @@ CV_VERSIONS: list[str] = [
     "13.0",
     "14.0",
     "15.0",
+    "16.0",
 ]
 
 CV_DATES: list[str] = [
@@ -52,6 +53,7 @@ CV_DATES: list[str] = [
     "2023-03-09",
     "2023-06-23",
     "2023-09-08",
+    "2023-12-06",
 ]
 
 ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
