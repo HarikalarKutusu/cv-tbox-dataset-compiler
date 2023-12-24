@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 
 # Module
 import const as c
-import config as conf
+import conf
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -55,7 +55,7 @@ def main() -> None:
         cnt += 1
 
         txt: str = f"Processing version {cv_ver} ({cv_idx+1}/{len(c.CV_VERSIONS)}) locale {cnt}/{len(lc_list)} : {lc}"
-        print(txt if conf.VERBOSE else "\033[F" + txt)
+        print(txt if conf.VERBOSE else "\033[F" + txt + " " * 20)
 
         # copy splitting algorithm independent files
 

@@ -28,7 +28,7 @@ import psutil
 
 # This package
 import const as c
-import config as conf
+import conf
 from get_locales import get_locales
 from lib import (
     df_read,

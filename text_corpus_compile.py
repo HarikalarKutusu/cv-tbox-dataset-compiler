@@ -32,7 +32,7 @@ import cvutils as cvu
 
 # Module
 import const as c
-import config as conf
+import conf
 from lib import df_write
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
