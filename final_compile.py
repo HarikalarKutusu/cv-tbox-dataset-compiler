@@ -19,7 +19,6 @@ import os
 import sys
 import glob
 from datetime import datetime, timedelta
-from typing import Any
 import multiprocessing as mp
 
 import numpy as np
@@ -833,14 +832,24 @@ def main() -> None:
         # Sort and write-out
         df: pd.DataFrame = pd.DataFrame(flattened).reset_index(drop=True)
         df.sort_values(["ver", "lc"], inplace=True)
-        # Write out
         print(">>> Finished... Now saving...")
+        # Write out combined ([TODO] REMOVE)
         df_write(df, os.path.join(HERE, "data", "results", "tsv", "$reported.tsv"))
         df.to_json(
             os.path.join(HERE, "data", "results", "json", "$reported.json"),
             orient="table",
             index=False,
         )
+        # Write out per locale
+        for lc in ALL_LOCALES:
+            # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
+            df_lc: pd.DataFrame = df[df["lc"] == lc] #pylint: disable=E1136
+            df_write(df_lc, os.path.join(HERE, "data", "results", "tsv", lc, "$reported.tsv"))
+            df_lc.to_json(
+                os.path.join(HERE, "data", "results", "json", lc, "$reported.json"),
+                orient="table",
+                index=False,
+            )
 
     #
     # SPLITS
