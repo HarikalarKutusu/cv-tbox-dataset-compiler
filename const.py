@@ -11,6 +11,10 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+#
+# cv related
+#
+
 # cv-dataset repo base URL
 CV_DATASET_BASE_URL: str = (
     "https://raw.githubusercontent.com/common-voice/cv-dataset/main/datasets"
@@ -19,7 +23,6 @@ CV_DATASET_BASE_URL: str = (
 # These values are as of v15.0 and should be updated with each version
 # Warning: We leave out v2, v3 just came out with fixes afterwards
 CV_VERSIONS: list[str] = [
-    # '1', '2', '3', '4', '5.1',
     "1",
     "3",
     "4",
@@ -35,10 +38,13 @@ CV_VERSIONS: list[str] = [
     "14.0",
     "15.0",
     "16.0",
+    # "17.0",
+    # "18.0",
+    # "19.0",
+    # "20.0",
 ]
 
 CV_DATES: list[str] = [
-    # '2019-02-25', '2019-06-11', '2019-06-24', '2019-12-10', '2020-06-22',
     "2019-02-25",
     "2019-06-24",
     "2019-12-10",
@@ -54,9 +60,12 @@ CV_DATES: list[str] = [
     "2023-06-23",
     "2023-09-08",
     "2023-12-06",
+    # "2024-03-00",
+    # "2024-06-00",
+    # "2024-09-00",
+    # "2024-12-00",
 ]
 
-ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
 MAIN_BUCKETS: list[str] = ["validated", "invalidated", "other"]
 EXTENDED_BUCKET_FILES: list[str] = [
     "validated.tsv",
@@ -82,11 +91,6 @@ CV_AGES: list[str] = [
     NODATA,
 ]
 
-# SEPARATORS
-SEP_ROW: str = "|"
-SEP_COL: str = "#"
-SEP_ALGO: str = "|"
-
 # COLUMNS FOR DATAFRAMES
 CLIP_DURATIONS_FILE: str = "clip_durations.tsv"
 COLS_CLIP_DURATIONS: list[str] = [
@@ -94,6 +98,19 @@ COLS_CLIP_DURATIONS: list[str] = [
     "duration[ms]",
 ]
 
+
+#
+# cv-tbox related
+#
+
+ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
+
+# SEPARATORS
+SEP_ROW: str = "|"
+SEP_COL: str = "#"
+SEP_ALGO: str = "|"
+
+# COLUMNS FOR DATAFRAMES
 COLS_TEXT_CORPUS: list[str] = [
     "file",
     "sentence",
@@ -109,7 +126,7 @@ COLS_TEXT_CORPUS: list[str] = [
 COLS_TEXT_CORPUS: list[str] = [
     "file",
     "sentence",
-    "lower",
+    # "lower",
     "normalized",
     "chars",
     "words",
