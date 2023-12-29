@@ -12,7 +12,7 @@ from urllib.request import urlopen
 from const import CV_VERSIONS, CV_DATES, CV_DATASET_BASE_URL
 
 
-def is_version_valid(ver) -> Literal[True]:
+def is_version_valid(ver: str) -> Literal[True]:
     """Check a ver string in valid"""
 
     if not ver in CV_VERSIONS:
@@ -22,24 +22,30 @@ def is_version_valid(ver) -> Literal[True]:
     return True
 
 
-def calc_dataset_prefix(ver) -> str | None:
+def calc_dataset_prefix(ver: str) -> str:
     """Build the dataset string from version (valid for > v4)"""
 
     if is_version_valid(ver):
         inx: int = CV_VERSIONS.index(ver)
+        if ver in ["1", "3", "4"]:
+            return f"cv-corpus-{ver}"
         return f"cv-corpus-{ver}-{CV_DATES[inx]}"
-    return None
+    return ""
 
+
+def get_from_cv_api(url: str) -> Any:
+    """Get data from CV API"""
+    try:
+        res: Any = urlopen(url)
+    except RuntimeError as e:
+        print(f"Metadata at {url} could not be located!")
+        print(f"Error: {e}")
+        sys.exit(-1)
+    return json.loads(res.read())
 
 def get_locales(ver: str) -> list[str]:
     """Get data from API 'datasets' endpoint"""
-    url: str = f"{CV_DATASET_BASE_URL}/{calc_dataset_prefix(ver)}.json"
-    try:
-        res: Any = urlopen(url)
-    except:
-        print(f"Metadata for version {ver} could not be located!")
-        sys.exit()
-    jdict: Any = json.loads(res.read())
+    jdict: Any = get_from_cv_api(f"{CV_DATASET_BASE_URL}/{calc_dataset_prefix(ver)}.json")
     jlocales: Any = jdict["locales"]
     locales: list[str] = []
     for loc, _data in jlocales.items():

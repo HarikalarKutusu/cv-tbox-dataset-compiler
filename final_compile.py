@@ -19,7 +19,6 @@ import os
 import sys
 import glob
 from datetime import datetime, timedelta
-from typing import Any
 import multiprocessing as mp
 
 import numpy as np
@@ -29,7 +28,8 @@ import psutil
 # This package
 import const as c
 import conf
-from get_locales import get_locales
+from get_locales import calc_dataset_prefix, get_locales
+from typedef import ConfigRec, TextCorpusStatsRec, ReportedStatsRec, SplitStatsRec
 from lib import (
     df_read,
     df_write,
@@ -58,7 +58,7 @@ ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 ########################################################
 
 
-def handle_text_corpus(lc: str) -> "dict[str,Any]":
+def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
     """Multi-Process text-corpus for a single locale"""
 
     if conf.VERBOSE:
@@ -137,31 +137,30 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
         hist = np.histogram(arr, bins=c.BINS_TOKENS)
         token_freq = hist[0].tolist()
 
-    results: dict[str, Any] = {
-        "lc": lc,
-        "s_cnt": sentence_cnt,
-        "uq_s": unique_sentences,
-        "uq_n": unique_normalized,
-        "has_val": has_val,
-        "val": valid,
-        "c_sum": chars_total,
-        "c_avg": dec3(chars_mean),
-        "c_med": dec3(chars_median),
-        "c_std": dec3(chars_std),
-        "c_freq": list2str(character_freq),
-        "w_sum": words_total,
-        "w_avg": dec3(words_mean),
-        "w_med": dec3(words_median),
-        "w_std": dec3(words_std),
-        "w_freq": list2str(word_freq),
-        "t_sum": tokens_total,
-        "t_avg": dec3(tokens_mean),
-        "t_med": dec3(tokens_median),
-        "t_std": dec3(tokens_std),
-        "t_freq": list2str(token_freq),
-    }
-
-    return results
+    res: TextCorpusStatsRec = TextCorpusStatsRec(
+        lc=lc,
+        s_cnt=sentence_cnt,
+        uq_s=unique_sentences,
+        uq_n=unique_normalized,
+        has_val=has_val,
+        val=valid,
+        c_sum=chars_total,
+        c_avg=dec3(chars_mean),
+        c_med=dec3(chars_median),
+        c_std=dec3(chars_std),
+        c_freq=list2str(character_freq),
+        w_sum=words_total,
+        w_avg=dec3(words_mean),
+        w_med=dec3(words_median),
+        w_std=dec3(words_std),
+        w_freq=list2str(word_freq),
+        t_sum=tokens_total,
+        t_avg=dec3(tokens_mean),
+        t_med=dec3(tokens_median),
+        t_std=dec3(tokens_std),
+        t_freq=list2str(token_freq),
+    )
+    return res
 
 
 ########################################################
@@ -169,7 +168,7 @@ def handle_text_corpus(lc: str) -> "dict[str,Any]":
 ########################################################
 
 
-def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
+def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
     """Process text-corpus for a single locale"""
 
     # Fins idx
@@ -188,7 +187,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
             lc_list.append(os.path.split(lc_path)[1])
 
     lc_to_process: list[str] = conf.DEBUG_CV_LC if conf.DEBUG else lc_list
-    res_all: list[dict[str, Any]] = []
+    res_all: list[ReportedStatsRec] = []
     for lc in lc_to_process:
         # Source
         vc_dir: str = os.path.join(cv_dir, lc)
@@ -243,17 +242,18 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
         reason_counts = reason_counts.reindex(index=c.REPORTING_ALL, fill_value=0)
         reason_freq = reason_counts["count"].to_numpy(int).tolist()
 
-        res: dict[str, Any] = {
-            "ver": ver,
-            "lc": lc,
-            "rep_sum": reported_total,
-            "rep_sen": reported_sentences,
-            "rep_avg": dec3(rep_mean),
-            "rep_med": dec3(rep_median),
-            "rep_std": dec3(rep_std),
-            "rep_freq": list2str(rep_freq),
-            "rea_freq": list2str(reason_freq),
-        }
+        res: ReportedStatsRec = ReportedStatsRec(
+            ver=ver,
+            lc=lc,
+            rep_sum=reported_total,
+            rep_sen=reported_sentences,
+            rep_avg=dec3(rep_mean),
+            rep_med=dec3(rep_median),
+            rep_std=dec3(rep_std),
+            rep_freq=list2str(rep_freq),
+            rea_freq=list2str(reason_freq),
+        )
+
         res_all.append(res)
         # end of a single version-locale
     # end of a single version / all locales
@@ -266,7 +266,7 @@ def handle_reported(cv_ver: str) -> "list[dict[str,Any]]":
 ########################################################
 
 
-def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
+def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     """Handle a single dataset (ver/lc)"""
     # Handle one split, this is where calculations happen
     # The default column structure of CV dataset splits is as follows [FIXME] variants?
@@ -277,7 +277,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     # now, do calculate some statistics...
     def handle_split(
         ver: str, lc: str, algorithm: str, split: str, fpath: str
-    ) -> "dict[str, Any]":
+    ) -> SplitStatsRec:
         """Processes a single split and return calculated values"""
 
         nonlocal df_clip_durations
@@ -417,15 +417,12 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             )  # add other
             df_orig = pd.concat([df_orig.loc[:], df2])
 
+        # default result values
+        res: SplitStatsRec = SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
+
         # Do nothing, if there is no data
         if df_orig.shape[0] == 0:
-            results = {
-                "ver": ver,
-                "lc": lc,
-                "alg": algorithm,
-                "sp": split,
-            }
-            return results
+            return res
 
         # Replace NA with NODATA
         df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
@@ -607,50 +604,50 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         # Correctable ones are: clients with both blank and a single gender (or age) specified
         dem_fixes_list: list[str] = find_fixes(df_orig)
 
-        results: dict[str, Any] = {
-            "ver": ver,
-            "lc": lc,
-            "alg": algorithm,
-            "sp": split,
-            "clips": clips_cnt,
-            "uq_v": unique_voices,
-            "uq_s": unique_sentences,
-            "uq_sl": unique_sentences_lower,
+        res: SplitStatsRec = SplitStatsRec(
+            ver=ver,
+            lc=lc,
+            alg=algorithm,
+            sp=split,
+            clips=clips_cnt,
+            uq_v=unique_voices,
+            uq_s=unique_sentences,
+            uq_sl=unique_sentences_lower,
             # Duration
-            "dur_total": dec3(duration_total),
-            "dur_avg": dec3(duration_mean),
-            "dur_med": dec3(duration_median),
-            "dur_std": dec3(duration_std),
-            "dur_freq": list2str(duration_freq),
+            dur_total=dec3(duration_total),
+            dur_avg=dec3(duration_mean),
+            dur_med=dec3(duration_median),
+            dur_std=dec3(duration_std),
+            dur_freq=list2str(duration_freq),
             # Recordings per Voice
-            "v_avg": dec3(voice_mean),
-            "v_med": dec3(voice_median),
-            "v_std": dec3(voice_std),
-            "v_freq": list2str(voice_freq),
+            v_avg=dec3(voice_mean),
+            v_med=dec3(voice_median),
+            v_std=dec3(voice_std),
+            v_freq=list2str(voice_freq),
             # Recordings per Sentence
-            "s_avg": dec3(sentence_mean),
-            "s_med": dec3(sentence_median),
-            "s_std": dec3(sentence_std),
-            "s_freq": list2str(sentence_freq),
+            s_avg=dec3(sentence_mean),
+            s_med=dec3(sentence_median),
+            s_std=dec3(sentence_std),
+            s_freq=list2str(sentence_freq),
             # Votes
-            "uv_sum": up_votes_sum,
-            "uv_avg": dec3(up_votes_mean),
-            "uv_med": dec3(up_votes_median),
-            "uv_std": dec3(up_votes_std),
-            "uv_freq": list2str(up_votes_freq),
-            "dv_sum": down_votes_sum,
-            "dv_avg": dec3(down_votes_mean),
-            "dv_med": dec3(down_votes_median),
-            "dv_std": dec3(down_votes_std),
-            "dv_freq": list2str(down_votes_freq),
+            uv_sum=up_votes_sum,
+            uv_avg=dec3(up_votes_mean),
+            uv_med=dec3(up_votes_median),
+            uv_std=dec3(up_votes_std),
+            uv_freq=list2str(up_votes_freq),
+            dv_sum=down_votes_sum,
+            dv_avg=dec3(down_votes_mean),
+            dv_med=dec3(down_votes_median),
+            dv_std=dec3(down_votes_std),
+            dv_freq=list2str(down_votes_freq),
             # Demographics distribution for recordings
-            "dem_table": arr2str(_pt_dem.to_numpy(int).tolist()),
-            "dem_uq": arr2str(_pt_uqdem.to_numpy(int).tolist()),
-            "dem_fix_r": dem_fixes_list[0],
-            "dem_fix_v": dem_fixes_list[1],
-        }
+            dem_table=arr2str(_pt_dem.to_numpy(int).tolist()),
+            dem_uq=arr2str(_pt_uqdem.to_numpy(int).tolist()),
+            dem_fix_r=dem_fixes_list[0],
+            dem_fix_v=dem_fixes_list[1],
+        )
 
-        return results
+        return res
 
     # END handle_split
 
@@ -679,9 +676,6 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
     tsv_path: str = os.path.join(HERE, "data", "results", "tsv", lc)
     json_path: str = os.path.join(HERE, "data", "results", "json", lc)
 
-    os.makedirs(tsv_path, exist_ok=True)
-    os.makedirs(json_path, exist_ok=True)
-
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize
 
@@ -697,7 +691,7 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
         print(f"WARNING: No duration data for {lc}\n")
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
-    res: list[dict[str, Any]] = []  # Init the result list
+    res: list[SplitStatsRec] = []  # Init the result list
 
     # Special case for temporary "clips.tsv"
     res.append(
@@ -711,8 +705,8 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
             ),  # to start with we set validated
         )
     )
-    validated_result: dict[str, Any] = res[-1]
-    validated_records: int = validated_result["clips"]
+    validated_result: SplitStatsRec = res[-1]
+    validated_records: int = validated_result.clips
     # Append to clips.tsv at the source, at the base of that version
     # (it will include all recording data for all locales to be used in CC & alternatives)
     for sp in c.MAIN_BUCKETS:
@@ -768,20 +762,19 @@ def handle_dataset_splits(ds_path: str) -> "list[dict[str,Any]]":
 def main() -> None:
     """Compile all data by calculating stats"""
 
+    num_datasets: int = 0
+    num_algorithms: int = 0
+    num_splits: int = 0
+
     def ver2vercol(ver: str) -> str:
         """Converts a data version in format '11.0' to column/variable name format 'v11_0'"""
         return "v" + ver.replace(".", "_")
 
-    used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
-    print(
-        f"=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({used_proc_count} processes)==="
-    )
-    start_time: datetime = datetime.now()
-
     #
-    # MultiProcessing on text-corpora: Loop all locales, each locale in one process
+    # TEXT-CORPORA
     #
-    if not conf.SKIP_TEXT_CORPUS:
+    def main_text_corpora() -> None:
+        """Handle all text corpora"""
         print("\n=== Start Text Corpora Analysis ===\n")
 
         # First get list of languages with text corpora
@@ -798,13 +791,14 @@ def main() -> None:
 
         print(f">>> Processing {len(lc_to_process)} text-corpora...\n")
         # Now multi-process each lc
+        results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
-            tc_stats: list[dict[str, Any]] = pool.map(handle_text_corpus, lc_to_process)
+            results = pool.map(handle_text_corpus, lc_to_process)
 
         # Create result DF
         # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=c.COLS_TEXT_CORPUS)
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(tc_stats)
+        df: pd.DataFrame = pd.DataFrame(results)
         df_write(
             df, os.path.join(HERE, "data", "results", "tsv", "$text_corpus_stats.tsv")
         )
@@ -814,38 +808,53 @@ def main() -> None:
             index=False,
         )
 
-    # === MULTI-PROCESSING on versions to handle splits:
-    # Loop all versions/languages/splits, each version in one process ([TODO] not ideal, should be refactored)
-    if not conf.SKIP_REPORTED:
-        vers_to_process: list[str] = conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS
-
-        #
-        # reported
-        #
+    #
+    # REPORTED SENTENCES
+    #
+    def main_reported() -> None:
+        """Handle all reported sentences"""
+        vers_to_process: list[str] = (
+            conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS.copy()
+        )
+        vers_to_process.reverse()  # start with largest (latest) to maximize core usage
         print("\n=== Start Reported Analysis ===\n")
         print(f">>> Processing {len(vers_to_process)} versions...\n")
-        with mp.Pool(used_proc_count) as pool:
-            reported_res: list[list[dict[str, Any]]] = pool.map(
-                handle_reported, vers_to_process
-            )
+        results: list[list[ReportedStatsRec]] = []
+        with mp.Pool(processes=used_proc_count, maxtasksperchild=1) as pool:
+            results = pool.map(handle_reported, vers_to_process)
         # done, first flatten them
-        all_reported: list[dict[str, Any]] = []
-        for res in reported_res:
-            all_reported.extend(res)
+        flattened: list[ReportedStatsRec] = []
+        for res in results:
+            flattened += res
         # Sort and write-out
-        df: pd.DataFrame = pd.DataFrame(all_reported).reset_index(drop=True)
+        df: pd.DataFrame = pd.DataFrame(flattened).reset_index(drop=True)
         df.sort_values(["ver", "lc"], inplace=True)
-        # Write out
         print(">>> Finished... Now saving...")
+        # Write out combined ([TODO] REMOVE)
         df_write(df, os.path.join(HERE, "data", "results", "tsv", "$reported.tsv"))
         df.to_json(
             os.path.join(HERE, "data", "results", "json", "$reported.json"),
             orient="table",
             index=False,
         )
+        # Write out per locale
+        for lc in ALL_LOCALES:
+            # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
+            df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
+            df_write(
+                df_lc, os.path.join(HERE, "data", "results", "tsv", lc, "$reported.tsv")
+            )
+            df_lc.to_json(
+                os.path.join(HERE, "data", "results", "json", lc, "$reported.json"),
+                orient="table",
+                index=False,
+            )
 
-    # === SPLITS
-    if not conf.SKIP_SPLITS:
+    #
+    # SPLITS
+    #
+    def main_splits() -> None:
+        """Handle all splits"""
         print("\n=== Start Dataset/Split Analysis ===\n")
 
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
@@ -853,9 +862,8 @@ def main() -> None:
         all_validated: list[str] = sorted(
             glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
         )
-        source_datasets: list[str] = [
-            os.path.split(p)[0] for p in all_validated
-        ]  # get path part
+        # get path part
+        source_datasets: list[str] = [os.path.split(p)[0] for p in all_validated]
         cnt_datasets: int = len(source_datasets)
         print(f">>> We have {cnt_datasets} datasets total...\n")
 
@@ -881,79 +889,160 @@ def main() -> None:
         print(f">>> We have {cnt_to_process} datasets queued to be processed...\n")
 
         # now process each dataset
+        results: list[list[SplitStatsRec]]
         with mp.Pool(used_proc_count) as pool:
-            results: list[list[dict[str, Any]]] = pool.map(
-                handle_dataset_splits, ds_paths
-            )
+            results = pool.map(handle_dataset_splits, ds_paths)
 
         # done, first flatten them
-        all_splits: list[dict[str, Any]] = []
+        flattened: list[SplitStatsRec] = []
         for res in results:
-            all_splits.extend(res)
+            flattened += res
 
-        print(f">>> Processed {len(all_splits)} splits...\n")
+        print(f">>> Processed {len(flattened)} splits...\n")
 
-    # === SUPPORT MATRIX
-    print("\n=== Build Support Matrix ===\n")
+    #
+    # SUPPORT MATRIX
+    #
+    def main_support_matrix() -> None:
+        """Handle support matrix"""
+        nonlocal num_datasets, num_splits, num_algorithms
 
-    # Scan files once again (we could have run it partial)
-    all_tsv_paths: list[str] = sorted(
-        glob.glob(
-            os.path.join(HERE, "data", "results", "tsv", "**", "*.tsv"), recursive=True
-        )
-    )
+        print("\n=== Build Support Matrix ===\n")
 
-    df: pd.DataFrame = pd.DataFrame().reset_index(drop=True)
-    for tsv_path in all_tsv_paths:
-        if os.path.split(tsv_path)[1][0] != "$":  # ignore system files (starts with $)
-            df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
-
-    num_splits: int = df.shape[0]
-    num_datasets: int = df[df["sp"] == "validated"].shape[0]
-
-    df = df[["ver", "lc", "alg"]].drop_duplicates()
-    df = (
-        df[~df["alg"].isnull()].sort_values(["lc", "ver", "alg"]).reset_index(drop=True)
-    )
-    num_algorithms: int = df.shape[0]
-
-    print(
-        f"Read in - Datasets: {num_datasets}, Algorithms: {num_algorithms}, Splits: {num_splits}"
-    )
-
-    # Prepare Support Matrix DataFrame
-    rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
-    rev_versions.reverse()
-    for inx, ver in enumerate(rev_versions):
-        rev_versions[inx] = ver2vercol(ver)
-    cols_support_matrix: list[str] = ["lc", "lang"]
-    cols_support_matrix.extend(rev_versions)
-    df_support_matrix: pd.DataFrame = pd.DataFrame(
-        index=ALL_LOCALES,
-        columns=cols_support_matrix,
-    )
-    df_support_matrix["lc"] = ALL_LOCALES
-
-    # Now loop and put the results inside
-    for lc in ALL_LOCALES:
-        for ver in c.CV_VERSIONS:
-            algo_list: list[str] = (
-                df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
+        # Scan files once again (we could have run it partial)
+        all_tsv_paths: list[str] = sorted(
+            glob.glob(
+                os.path.join(HERE, "data", "results", "tsv", "**", "*.tsv"),
+                recursive=True,
             )
-            algos: str = c.SEP_ALGO.join(algo_list)
-            df_support_matrix.at[lc, ver2vercol(ver)] = algos
+        )
 
-    # Write out
-    print(">>> Save Support Matrix")
-    df_write(
-        df_support_matrix,
-        os.path.join(HERE, "data", "results", "tsv", "$support_matrix.tsv"),
+        df: pd.DataFrame = pd.DataFrame().reset_index(drop=True)
+        for tsv_path in all_tsv_paths:
+            if (
+                os.path.split(tsv_path)[1][0] != "$"
+            ):  # ignore system files (starts with $)
+                df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
+
+        num_splits = df.shape[0]
+        num_datasets = df[df["sp"] == "validated"].shape[0]
+
+        df = df[["ver", "lc", "alg"]].drop_duplicates()
+        df = (
+            df[~df["alg"].isnull()]
+            .sort_values(["lc", "ver", "alg"])
+            .reset_index(drop=True)
+        )
+        num_algorithms = df.shape[0]
+
+        print(
+            f"Read in - Datasets: {num_datasets}, Algorithms: {num_algorithms}, Splits: {num_splits}"
+        )
+
+        # Prepare Support Matrix DataFrame
+        rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
+        rev_versions.reverse()
+        for inx, ver in enumerate(rev_versions):
+            rev_versions[inx] = ver2vercol(ver)
+        cols_support_matrix: list[str] = ["lc", "lang"]
+        cols_support_matrix.extend(rev_versions)
+        df_support_matrix: pd.DataFrame = pd.DataFrame(
+            index=ALL_LOCALES,
+            columns=cols_support_matrix,
+        )
+        df_support_matrix["lc"] = ALL_LOCALES
+
+        # Now loop and put the results inside
+        for lc in ALL_LOCALES:
+            for ver in c.CV_VERSIONS:
+                algo_list: list[str] = (
+                    df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
+                )
+                algos: str = c.SEP_ALGO.join(algo_list)
+                df_support_matrix.at[lc, ver2vercol(ver)] = algos
+
+        # Write out
+        print(">>> Save Support Matrix")
+        df_write(
+            df_support_matrix,
+            os.path.join(HERE, "data", "results", "tsv", "$support_matrix.tsv"),
+        )
+        df_support_matrix.to_json(
+            os.path.join(HERE, "data", "results", "json", "$support_matrix.json"),
+            orient="table",
+            index=False,
+        )
+
+    #
+    # CONFIG
+    #
+    def main_config() -> None:
+        """Save config"""
+        config_data: ConfigRec = ConfigRec(
+            date=datetime.now().strftime("%Y-%m-%d"),
+            cv_versions=c.CV_VERSIONS,
+            cv_dates=c.CV_DATES,
+            cv_locales=ALL_LOCALES,
+            algorithms=c.ALGORITHMS,
+            # Drop the last huge values from bins
+            bins_duration=c.BINS_DURATION[:-1],
+            bins_voices=c.BINS_VOICES[:-1],
+            bins_votes_up=c.BINS_VOTES_UP[:-1],
+            bins_votes_down=c.BINS_VOTES_DOWN[:-1],
+            bins_sentences=c.BINS_SENTENCES[:-1],
+            bins_chars=c.BINS_CHARS[:-1],
+            bins_words=c.BINS_WORDS[:-1],
+            bins_tokens=c.BINS_TOKENS[:-1],
+            bins_reported=c.BINS_REPORTED[:-1],
+            bins_reasons=c.REPORTING_ALL,
+        )
+        df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
+        # Write out
+        print("\n=== Save Configuration ===\n")
+        df_write(df, os.path.join(HERE, "data", "results", "tsv", "$config.tsv"))
+        df.to_json(
+            os.path.join(HERE, "data", "results", "json", "$config.json"),
+            orient="table",
+            index=False,
+        )
+
+    #
+    # MAIN
+    #
+    used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
+    print(
+        f"=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({used_proc_count} processes)==="
     )
-    df_support_matrix.to_json(
-        os.path.join(HERE, "data", "results", "json", "$support_matrix.json"),
-        orient="table",
-        index=False,
-    )
+    start_time: datetime = datetime.now()
+
+    # PREPARE DIRECTORY STRUCTURES
+    for lc in ALL_LOCALES:
+        os.makedirs(os.path.join(HERE, "data", "clip-durations", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "text-corpus", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "results", "tsv", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "results", "json", lc), exist_ok=True)
+
+    for ver in c.CV_VERSIONS:
+        ver_lc: list[str] = get_locales(ver)
+        for lc in ver_lc:
+            os.makedirs(
+                os.path.join(
+                    HERE, "data", "voice-corpus", calc_dataset_prefix(ver), lc
+                ),
+                exist_ok=True,
+            )
+
+    # TEXT-CORPORA
+    if not conf.SKIP_TEXT_CORPUS:
+        main_text_corpora()
+    # REPORTED SENTENCES
+    if not conf.SKIP_REPORTED:
+        main_reported()
+    # SPLITS
+    if not conf.SKIP_SPLITS:
+        main_splits()
+    # SUPPORT MATRIX
+    main_support_matrix()
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
@@ -961,34 +1050,7 @@ def main() -> None:
     # [TODO] Get some statistical plots as images (e.g. corrolation: age-char speed graph)
 
     # Save config
-    config_data: dict[str, Any] = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "cv_versions": c.CV_VERSIONS,
-        "cv_dates": c.CV_DATES,
-        "cv_locales": ALL_LOCALES,
-        "algorithms": c.ALGORITHMS,
-        "bins_duration": c.BINS_DURATION[
-            :-1
-        ],  # Drop the last huge values from these lists
-        "bins_voices": c.BINS_VOICES[:-1],
-        "bins_votes_up": c.BINS_VOTES_UP[:-1],
-        "bins_votes_down": c.BINS_VOTES_DOWN[:-1],
-        "bins_sentences": c.BINS_SENTENCES[:-1],
-        "bins_chars": c.BINS_CHARS[:-1],
-        "bins_words": c.BINS_WORDS[:-1],
-        "bins_tokens": c.BINS_TOKENS[:-1],
-        "bins_reported": c.BINS_REPORTED[:-1],
-        "bins_reasons": c.REPORTING_ALL,
-    }
-    df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
-    # Write out
-    print("\n=== Save Configuration ===\n")
-    df_write(df, os.path.join(HERE, "data", "results", "tsv", "$config.tsv"))
-    df.to_json(
-        os.path.join(HERE, "data", "results", "json", "$config.json"),
-        orient="table",
-        index=False,
-    )
+    main_config()
 
     # FINALIZE
     finish_time: datetime = datetime.now()
