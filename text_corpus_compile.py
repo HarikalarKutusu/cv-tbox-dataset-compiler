@@ -19,9 +19,8 @@
 import sys
 import os
 import glob
-import csv
 from datetime import datetime, timedelta
-from typing import Any
+from typing import cast
 from collections import Counter
 import multiprocessing as mp
 
@@ -34,6 +33,7 @@ import cvutils as cvu
 import const as c
 import conf
 from lib import df_write
+from typedef import TextCorpusRec
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -73,32 +73,20 @@ def handle_locale(lc: str) -> None:
     for text_file in files:
         with open(text_file, mode="r", encoding="utf-8") as fp:
             lines: list[str] = fp.readlines()
-        data: list[dict[str, Any]] = []
+        data: list[TextCorpusRec] = []
+        fn: str = os.path.split(text_file)[1]
         # Process each line
         for line in lines:
-            line: str = line.strip("\n")
-            valid: int = 1
-            norm: str | None = None
+            rec: TextCorpusRec = TextCorpusRec(file=fn, sentence=line.strip("\n"))
             tokens: list[str] = []
             if supported:
-                norm = validator.validate(line)
-                if norm:
-                    tokens = tokeniser.tokenise(norm)
+                rec.normalized = validator.validate(rec.sentence)
+                if rec.normalized:
+                    tokens = cast(list[str], tokeniser.tokenise(rec.normalized))
                     token_counter.update(tokens)
                 else:
-                    valid = 0
-
-            # "file", "sentence", "lower", "normalized", "chars", "words" #, 'valid'
-            rec: dict[str, Any] = {
-                "file": os.path.split(text_file)[1],
-                "sentence": line,
-                "normalized": norm,
-                "chars": len(line),
-                "words": len(tokens),
-                "valid": valid,
-            }
+                    rec.valid = 0
             data.append(rec)
-            # print(rec)
         # end of file
         data_df: pd.DataFrame = pd.DataFrame(
             data, columns=c.COLS_TEXT_CORPUS
