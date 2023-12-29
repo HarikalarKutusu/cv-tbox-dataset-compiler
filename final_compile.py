@@ -28,7 +28,7 @@ import psutil
 # This package
 import const as c
 import conf
-from get_locales import get_locales
+from get_locales import calc_dataset_prefix, get_locales
 from typedef import ConfigRec, TextCorpusStatsRec, ReportedStatsRec, SplitStatsRec
 from lib import (
     df_read,
@@ -676,9 +676,6 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     tsv_path: str = os.path.join(HERE, "data", "results", "tsv", lc)
     json_path: str = os.path.join(HERE, "data", "results", "json", lc)
 
-    os.makedirs(tsv_path, exist_ok=True)
-    os.makedirs(json_path, exist_ok=True)
-
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize
 
@@ -843,8 +840,10 @@ def main() -> None:
         # Write out per locale
         for lc in ALL_LOCALES:
             # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
-            df_lc: pd.DataFrame = df[df["lc"] == lc] #pylint: disable=E1136
-            df_write(df_lc, os.path.join(HERE, "data", "results", "tsv", lc, "$reported.tsv"))
+            df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
+            df_write(
+                df_lc, os.path.join(HERE, "data", "results", "tsv", lc, "$reported.tsv")
+            )
             df_lc.to_json(
                 os.path.join(HERE, "data", "results", "json", lc, "$reported.json"),
                 orient="table",
@@ -1015,6 +1014,23 @@ def main() -> None:
         f"=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({used_proc_count} processes)==="
     )
     start_time: datetime = datetime.now()
+
+    # PREPARE DIRECTORY STRUCTURES
+    for lc in ALL_LOCALES:
+        os.makedirs(os.path.join(HERE, "data", "clip-durations", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "text-corpus", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "results", "tsv", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, "data", "results", "json", lc), exist_ok=True)
+
+    for ver in c.CV_VERSIONS:
+        ver_lc: list[str] = get_locales(ver)
+        for lc in ver_lc:
+            os.makedirs(
+                os.path.join(
+                    HERE, "data", "voice-corpus", calc_dataset_prefix(ver), lc
+                ),
+                exist_ok=True,
+            )
 
     # TEXT-CORPORA
     if not conf.SKIP_TEXT_CORPUS:
