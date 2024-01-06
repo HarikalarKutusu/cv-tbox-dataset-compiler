@@ -28,7 +28,7 @@ import psutil
 
 # This package
 import const as c
-from get_locales import get_locales
+from lib import get_locales
 
 import conf
 
