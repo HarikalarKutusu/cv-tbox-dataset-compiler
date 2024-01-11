@@ -134,6 +134,8 @@ COLS_TEXT_CORPUS: list[str] = [
 ]
 
 COLS_TOKENS: list[str] = ["token", "count"]
+COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
+COLS_PHONEMES: list[str] = ["phoneme", "count"]
 
 # COL_TC_STATS: list[str] = [
 #     "lc", "s_cnt", "uq_s", "uq_n", "has_val", "val",
