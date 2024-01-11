@@ -95,7 +95,7 @@ def df_int_convert(x: pd.Series) -> Any:
     """Convert columns to int if possible"""
     try:
         return x.astype(int)
-    except ValueError as e:
+    except ValueError as e: # pylint: disable=W0612
         return x
 
 
@@ -119,7 +119,7 @@ def calc_dataset_prefix(ver: str) -> str:
 
     if is_version_valid(ver):
         inx: int = c.CV_VERSIONS.index(ver)
-        if ver in ["1", "3", "4"]:
+        if ver in ["1", "2", "3", "4"]:
             return f"cv-corpus-{ver}"
         return f"cv-corpus-{ver}-{c.CV_DATES[inx]}"
     return ""
@@ -162,15 +162,6 @@ def list2str(lst: list[Any]) -> str:
 def arr2str(arr: list[list[Any]]) -> str:
     """Convert an array (list of lists) into a string"""
     return c.SEP_ROW.join(list2str(x) for x in arr)
-
-
-# Calc CV_DIR - Different for v1-4 !!!
-def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
-    """Create CV dataset main directory name"""
-    if cv_ver in ["1", "2", "3", "4"]:
-        return "cv-corpus-" + cv_ver
-    else:
-        return "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
 
 
 #
