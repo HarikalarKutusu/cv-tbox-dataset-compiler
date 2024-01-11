@@ -78,11 +78,9 @@ def main() -> None:
     print("=== Split Compressor for cv-tbox-dataset-analyzer ===")
     start_time: datetime = datetime.now()
 
-    tc_base_dir: str = os.path.join(HERE, "data", "voice-corpus")
-
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
-        os.path.join(tc_base_dir, "**", c.ALGORITHMS[0]), recursive=True
+        os.path.join(HERE, "data", "voice-corpus", "**", c.ALGORITHMS[0]), recursive=True
     )
     for inx, dspath in enumerate(dspaths):
         dspaths[inx] = os.path.split(dspath)[0]  # get rid of the final part
