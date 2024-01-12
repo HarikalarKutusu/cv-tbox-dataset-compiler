@@ -11,8 +11,45 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
-from dataclasses import dataclass
+# Standard Lib
+from dataclasses import dataclass, field
+from datetime import datetime
 
+#
+# Process
+#
+
+
+@dataclass
+class Globals:  # pylint: disable=too-many-instance-attributes
+    """Class to keep globals in one place"""
+
+    total_ver: int = 0  # total count of versions
+    total_lc: int = 0  # total count of languages in all versions
+    total_algo: int = 0  # total count of algorithms
+
+    processed_ver: int = 0  # counter for corpora processed
+    processed_lc: int = 0  # counter for corpora processed
+    processed_algo: int = 0  # counter for corpora processed
+
+    skipped_exists: int = 0  # skipped befcause the destination already exists
+
+    start_time: datetime = datetime.now()
+
+
+#
+# Language
+#
+
+@dataclass
+class LanguageRec:
+    """Record definition for the language"""
+    lc: str = ""  # cv language code
+    n_name: str = "" # Native name
+    e_name: str = "" # Name in English
+    w_url: str = "" # Wikipedia English URL
+    g_url: str = "" # Glattolog URL
+    g_code: str = "" # Glattolog code
 
 #
 # Text Corpus
@@ -26,9 +63,9 @@ class TextCorpusRec:
     file: str = ""  # filename in cv repo
     sentence: str = ""  # original sentence
     normalized: str = ""  # normalized sentence
-    chars: int = 0  # number of characters
-    words: int = 0  # number of words
-    valid: int = 1  # is it a valid sentence according to coommonvoice-utils? 1=valid
+    chars: int = 0  # number of characters (graphemes)
+    words: int = 0  # number of words (words > 0 also indicates that the language has validator in commonvoice-utils)
+    valid: int = 1  # is it a valid sentence according to commonvoice-utils? 1=valid
 
 
 @dataclass
@@ -142,17 +179,17 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     """Record definition for config"""
 
     date: str = ""
-    cv_versions: list[str] = []
-    cv_dates: list[str] = []
-    cv_locales: list[str] = []
-    algorithms: list[str] = []
-    bins_duration: list[int] = []
-    bins_voices: list[int] = []
-    bins_votes_up: list[int] = []
-    bins_votes_down: list[int] = []
-    bins_sentences: list[int] = []
-    bins_chars: list[int] = []
-    bins_words: list[int] = []
-    bins_tokens: list[int] = []
-    bins_reported: list[int] = []
-    bins_reasons: list[str] = []
+    cv_versions: list[str] = field(default_factory=lambda: [])
+    cv_dates: list[str] = field(default_factory=lambda: [])
+    cv_locales: list[str] = field(default_factory=lambda: [])
+    algorithms: list[str] = field(default_factory=lambda: [])
+    bins_duration: list[int] = field(default_factory=lambda: [])
+    bins_voices: list[int] = field(default_factory=lambda: [])
+    bins_votes_up: list[int] = field(default_factory=lambda: [])
+    bins_votes_down: list[int] = field(default_factory=lambda: [])
+    bins_sentences: list[int] = field(default_factory=lambda: [])
+    bins_chars: list[int] = field(default_factory=lambda: [])
+    bins_words: list[int] = field(default_factory=lambda: [])
+    bins_tokens: list[int] = field(default_factory=lambda: [])
+    bins_reported: list[int] = field(default_factory=lambda: [])
+    bins_reasons: list[str] = field(default_factory=lambda: [])
