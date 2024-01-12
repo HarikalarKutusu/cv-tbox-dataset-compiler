@@ -4,7 +4,9 @@
 import os
 import sys
 import csv
-from typing import Any
+import json
+from typing import Literal, Any
+from urllib.request import urlopen
 
 # External dependencies
 import pandas as pd
@@ -12,6 +14,37 @@ import pandas as pd
 # Module
 import const as c
 import conf
+
+#
+# Init
+#
+
+
+def init_directories(basedir: str) -> None:
+    """Creates data directory structures"""
+    all_locales: list[str] = get_locales(c.CV_VERSIONS[-1])
+    data_dir: str = os.path.join(basedir, "data")
+    for lc in all_locales:
+        os.makedirs(os.path.join(data_dir, "clip-durations", lc), exist_ok=True)
+        os.makedirs(os.path.join(data_dir, "results", "tsv", lc), exist_ok=True)
+        os.makedirs(os.path.join(data_dir, "results", "json", lc), exist_ok=True)
+    for ver in c.CV_VERSIONS:
+        ver_lc: list[str] = get_locales(ver)
+        for lc in ver_lc:
+            ds_dir: str = os.path.join(calc_dataset_prefix(ver), lc)
+            os.makedirs(
+                os.path.join(data_dir, "text-corpus", ds_dir),
+                exist_ok=True,
+            )
+            os.makedirs(
+                os.path.join(data_dir, "voice-corpus", ds_dir),
+                exist_ok=True,
+            )
+
+
+#
+# DataFrames
+#
 
 
 def df_read(fpath: str) -> pd.DataFrame:
@@ -62,8 +95,63 @@ def df_int_convert(x: pd.Series) -> Any:
     """Convert columns to int if possible"""
     try:
         return x.astype(int)
-    except ValueError as e:
+    except ValueError as e: # pylint: disable=W0612
         return x
+
+
+#
+# Common Voice Dataset & API Related
+#
+
+
+def is_version_valid(ver: str) -> Literal[True]:
+    """Check a ver string in valid"""
+
+    if not ver in c.CV_VERSIONS:
+        print(f"FATAL: {ver} is not a supported Common Voice version.")
+
+        sys.exit(1)
+    return True
+
+
+def calc_dataset_prefix(ver: str) -> str:
+    """Build the dataset string from version (valid for > v4)"""
+
+    if is_version_valid(ver):
+        inx: int = c.CV_VERSIONS.index(ver)
+        if ver in ["1", "2", "3", "4"]:
+            return f"cv-corpus-{ver}"
+        return f"cv-corpus-{ver}-{c.CV_DATES[inx]}"
+    return ""
+
+
+def get_from_cv_api(url: str) -> Any:
+    """Get data from CV API"""
+    try:
+        res: Any = urlopen(url)
+    except RuntimeError as e:
+        print(f"Metadata at {url} could not be located!")
+        print(f"Error: {e}")
+        sys.exit(-1)
+    return json.loads(res.read())
+
+
+def get_locales(ver: str) -> list[str]:
+    """Get data from API 'datasets' endpoint"""
+    jdict: Any = get_from_cv_api(
+        f"{c.CV_DATASET_BASE_URL}/{calc_dataset_prefix(ver)}.json"
+    )
+    jlocales: Any = jdict["locales"]
+    locales: list[str] = []
+    for loc, _data in jlocales.items():
+        locales.append(loc)
+    locales.sort()
+    return locales
+
+
+#
+# Conversion
+#
 
 
 def list2str(lst: list[Any]) -> str:
@@ -76,13 +164,9 @@ def arr2str(arr: list[list[Any]]) -> str:
     return c.SEP_ROW.join(list2str(x) for x in arr)
 
 
-# Calc CV_DIR - Different for v1-4 !!!
-def calc_cv_dir_name(cv_idx: int, cv_ver: str) -> str:
-    """Create CV dataset main directory name"""
-    if cv_ver in ["1", "2", "3", "4"]:
-        return "cv-corpus-" + cv_ver
-    else:
-        return "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
+#
+# Numbers
+#
 
 
 def dec3(x: float) -> float:
