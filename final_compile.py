@@ -15,17 +15,19 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+# Standard Lib
 import os
 import sys
 import glob
 from datetime import datetime, timedelta
 import multiprocessing as mp
 
+# External dependencies
 import numpy as np
 import pandas as pd
 import psutil
 
-# This package
+# Module
 import const as c
 import conf
 from typedef import ConfigRec, TextCorpusStatsRec, ReportedStatsRec, SplitStatsRec
@@ -34,11 +36,9 @@ from lib import (
     df_write,
     list2str,
     arr2str,
-    calc_cv_dir_name,
     dec3,
     calc_dataset_prefix,
     get_locales,
-    # df_int_convert,
 )
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -62,16 +62,20 @@ ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
     """Multi-Process text-corpus for a single locale"""
 
+    tc_dir: str = os.path.join(HERE, "data", "text-corpus", lc)
+    tc_file: str = os.path.join(tc_dir, "$text_corpus.tsv")
+
+    if not os.path.isfile(tc_file):
+        print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
+        return TextCorpusStatsRec(lc=lc)
+
+    tokens_file: str = os.path.join(tc_dir, "$tokens.tsv")
+
     if conf.VERBOSE:
         print(f"Processing text-corpus for locale: {lc}")
     else:
         print("\033[F" + " " * 80)
         print(f"\033[FProcessing text-corpus for locale: {lc}")
-
-    tc_dir: str = os.path.join(HERE, "data", "text-corpus", lc)
-
-    tc_file: str = os.path.join(tc_dir, "$text_corpus.tsv")
-    tokens_file: str = os.path.join(tc_dir, "$tokens.tsv")
 
     # TEXT CORPUS
 
@@ -176,7 +180,7 @@ def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
     cv_idx: int = c.CV_VERSIONS.index(cv_ver)
     # Calc CV_DIR
     ver: str = c.CV_VERSIONS[cv_idx]
-    cv_dir_name: str = calc_cv_dir_name(cv_idx, ver)
+    cv_dir_name: str = calc_dataset_prefix(ver)
     # Calc voice-corpus directory
     cv_dir: str = os.path.join(HERE, "data", "voice-corpus", cv_dir_name)
 
@@ -1018,29 +1022,17 @@ def main() -> None:
 
     # PREPARE DIRECTORY STRUCTURES
     for lc in ALL_LOCALES:
-        os.makedirs(os.path.join(HERE, "data", "clip-durations", lc), exist_ok=True)
-        os.makedirs(os.path.join(HERE, "data", "text-corpus", lc), exist_ok=True)
         os.makedirs(os.path.join(HERE, "data", "results", "tsv", lc), exist_ok=True)
         os.makedirs(os.path.join(HERE, "data", "results", "json", lc), exist_ok=True)
 
-    for ver in c.CV_VERSIONS:
-        ver_lc: list[str] = get_locales(ver)
-        for lc in ver_lc:
-            os.makedirs(
-                os.path.join(
-                    HERE, "data", "voice-corpus", calc_dataset_prefix(ver), lc
-                ),
-                exist_ok=True,
-            )
-
     # TEXT-CORPORA
-    if not conf.SKIP_TEXT_CORPUS:
+    if not conf.SKIP_TEXT_CORPORA:
         main_text_corpora()
     # REPORTED SENTENCES
     if not conf.SKIP_REPORTED:
         main_reported()
     # SPLITS
-    if not conf.SKIP_SPLITS:
+    if not conf.SKIP_VOICE_CORPORA:
         main_splits()
     # SUPPORT MATRIX
     main_support_matrix()
