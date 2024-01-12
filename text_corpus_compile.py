@@ -19,12 +19,13 @@
 import sys
 import os
 import glob
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import cast
 from collections import Counter
 import multiprocessing as mp
 
 # External dependencies
+from tqdm import tqdm
 import pandas as pd
 import psutil
 import cvutils as cvu
@@ -32,7 +33,7 @@ import cvutils as cvu
 # Module
 import const as c
 import conf
-from lib import df_write
+from lib import dec3, df_write
 from typedef import TextCorpusRec
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -66,7 +67,7 @@ def handle_locale(lc: str) -> None:
 
     # print('\033[F' + ' ' * 120)
     # print(f'\033[FProcessing locale {cnt}/{len(lc_list)} : {lc}')
-    print(f"Processing locale: {lc}")
+    # print(f"Processing locale: {lc}")
 
     tc_base_dir: str = os.path.join(HERE, "data", "text-corpus")
 
@@ -77,14 +78,10 @@ def handle_locale(lc: str) -> None:
     dst_phonemes_file: str = os.path.join(tc_base_dir, lc, "$phonemes.tsv")
 
     # cvu
-    validator: cvu.Validator = cvu.Validator(lc)
-    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
-    phonemiser: cvu.Tokeniser = cvu.Phonemiser(lc)
-
     # do we have them?
-    has_validator: bool = lc in VALIDATORS
-    has_phonemiser: bool = lc in PHONEMISERS
-    # has_alphabet: bool = lc in ALPHABETS
+    validator: cvu.Validator = cvu.Validator(lc) if lc in VALIDATORS else None
+    phonemiser: cvu.Phonemiser = cvu.Phonemiser(lc) if lc in PHONEMISERS else None
+    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
 
     token_counter: Counter = Counter()
     grapheme_counter: Counter = Counter()
@@ -111,15 +108,15 @@ def handle_locale(lc: str) -> None:
 
             grapheme_counter.update(line)
 
-            if has_phonemiser:
+            if phonemiser:
                 phons: list[str] = [
                     phonemiser.phonemise(w) for w in rec.sentence.split(" ")
                 ]
                 if phons:
-                    phoneme_counter.update("".join(p for p in phons))
+                    phoneme_counter.update("".join(p for p in phons if p))
 
             tokens: list[str] = []
-            if has_validator:
+            if validator:
                 rec.normalized = validator.validate(rec.sentence)
                 if rec.normalized:
                     tokens = cast(list[str], tokeniser.tokenise(rec.normalized))
@@ -147,7 +144,7 @@ def handle_locale(lc: str) -> None:
     df_write(df, dst_graphemes_file)
 
     # tokens df
-    if has_validator:
+    if validator:
         df: pd.DataFrame = pd.DataFrame(
             token_counter.items(), columns=c.COLS_TOKENS
         ).reset_index(drop=True)
@@ -155,7 +152,7 @@ def handle_locale(lc: str) -> None:
         df_write(df, dst_tokens_file)
 
     # phonemes df
-    if has_phonemiser:
+    if phonemiser:
         df: pd.DataFrame = pd.DataFrame(
             phoneme_counter.items(), columns=c.COLS_PHONEMES
         ).reset_index(drop=True)
@@ -182,10 +179,13 @@ def main() -> None:
 
     # Get a list of available language codes
     lc_paths: list[str] = glob.glob(os.path.join(conf.CV_REPO, "*"), recursive=False)
-    lc_list: list[str] = []
-    for lc_path in lc_paths:
-        if os.path.isdir(lc_path):  # ignore files
-            lc_list.append(os.path.split(lc_path)[1])
+    lc_list: list[str] = sorted(
+        [os.path.split(p)[-1] for p in lc_paths if os.path.isdir(p)]
+    )
+
+    # for lc_path in lc_paths:
+    #     if os.path.isdir(lc_path):  # ignore files
+    #         lc_list.append(os.path.split(lc_path)[1])
 
     # Create directory structure at the destination
     for lc in lc_list:
@@ -193,23 +193,21 @@ def main() -> None:
 
     # extra line is for progress line
     num_locales: int = len(lc_list)
-    chunk_size: int = (
-        num_locales // PROC_COUNT + 0 if (num_locales % PROC_COUNT) == 0 else 1
-    )
+    chunk_size: int = min(10, num_locales // PROC_COUNT + 0 if num_locales % PROC_COUNT == 0 else 1)
     print(
         f"Processing text-corpora for {num_locales} locales in {PROC_COUNT} processes with chunk_size {chunk_size}...\n"
     )
 
     with mp.Pool(PROC_COUNT) as pool:
-        pool.map(handle_locale, lc_list, chunksize=chunk_size)
+        with tqdm(total=num_locales, desc="") as pbar:
+            for result in pool.imap_unordered(handle_locale, lc_list, chunksize=chunk_size):
+                pbar.update()
 
     # done
-    finish_time: datetime = datetime.now()
-    process_timedelta: timedelta = finish_time - start_time
-    process_seconds: float = process_timedelta.total_seconds()
+    process_seconds: float = (datetime.now() - start_time).total_seconds()
     print(
-        f"Finished compiling text-corpus for {len(lc_list)} locales in {str(process_timedelta)}"
-        + f" avg={process_seconds/len(lc_list)} sec/locale"
+        f"Finished compiling text-corpus for {num_locales} locales in {dec3(process_seconds)}"
+        + f" avg={dec3(process_seconds/num_locales)} sec/locale"
     )
 
 

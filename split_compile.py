@@ -20,25 +20,39 @@ import os
 import sys
 import shutil
 import glob
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # External dependencies
+from tqdm import tqdm
 
 # Module
 import const as c
 import conf
+from typedef import Globals
+from lib import calc_dataset_prefix, dec3
 
+# Globals
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
+
+g: Globals = Globals(
+    total_ver=len(c.CV_VERSIONS),
+    total_algo=len(c.ALGORITHMS),
+)
 
 
 # MAIN PROCESS
 def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
 
-    overall_cnt: int = 0
-    cnt: int = 0
+    # Destination voice corpus
+    vc_dir_base: str = os.path.join(HERE, "data", "voice-corpus")
+    # Destination clip durations
+    cd_dir_base: str = os.path.join(HERE, "data", "clip-durations")
+    # CV Release directory name
+    cv_dir_name: str = ""
+
     src_dir: str = ""
     dst_dir: str = ""
 
@@ -46,24 +60,18 @@ def main() -> None:
     # Subs
     #
 
-    def handle_locale() -> None:
+    def handle_locale(lc: str) -> None:
         """Handles one locale's data"""
 
-        nonlocal overall_cnt, cnt, src_dir, dst_dir
+        nonlocal src_dir, dst_dir
 
-        overall_cnt += 1
-        cnt += 1
-
-        txt: str = f"Processing version {cv_ver} ({cv_idx+1}/{len(c.CV_VERSIONS)}) locale {cnt}/{len(lc_list)} : {lc}"
-        print(txt if conf.VERBOSE else "\033[F" + txt + " " * 20)
+        g.processed_lc += 1
+        g.processed_algo += g.total_algo
 
         # copy splitting algorithm independent files
-
         src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name, lc)
         dst_dir = os.path.join(vc_dir_base, cv_dir_name, lc)
-        # print(os.path.join(src_dir, fn), " => ", dst_dir)
         tsv_fpath: str = ""
-        # print("\n=> ", dst_dir, "\n")
 
         if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
             # os.makedirs(os.path.join(dst_dir, c.ALGORITHMS[0]), exist_ok=True)
@@ -72,6 +80,8 @@ def main() -> None:
                 tsv_fpath = os.path.join(src_dir, fn)
                 if os.path.isfile(tsv_fpath):
                     shutil.copy2(tsv_fpath, dst_dir)
+        # else:
+        #     g.skipped_exists += 1
 
         # copy default splits (s1)
 
@@ -83,6 +93,8 @@ def main() -> None:
                 tsv_fpath = os.path.join(src_dir, fn)
                 if os.path.isfile(tsv_fpath):
                     shutil.copy2(tsv_fpath, dst_dir)
+        else:
+            g.skipped_exists += 1
 
         # copy other splitting algorithms' split files
 
@@ -97,6 +109,8 @@ def main() -> None:
                         tsv_fpath = os.path.join(src_dir, fn)
                         if os.path.isfile(tsv_fpath):
                             shutil.copy2(tsv_fpath, dst_dir)
+                else:
+                    g.skipped_exists += 1
 
         # clip durations table, the one from the latest version (v15.0+) is valid
         # for all CV versions (not taking deletions into account)
@@ -115,7 +129,7 @@ def main() -> None:
                 shutil.copy2(cd_file, dst_dir)
             else:
                 # [TODO]: If it is not found, we need to create it.
-                print("\n\nWARNING: $clip_durations.tsv file not found for", lc, "\n")
+                print(f"WARNING: clip_durations.tsv file not found for {cv_ver} - {lc}")
 
     #
     # Main
@@ -125,30 +139,15 @@ def main() -> None:
         "=== Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler ==="
     )
 
-    start_time: datetime = datetime.now()
-
-    # Destination voice corpus
-    vc_dir_base: str = os.path.join(HERE, "data", "voice-corpus")
-    # Destination clip durations
-    cd_dir_base: str = os.path.join(HERE, "data", "clip-durations")
-    # CV Release directory name
-    cv_dir_name: str = ""
-
     # Loop all versions
-    for cv_idx, cv_ver in enumerate(c.CV_VERSIONS):
-        # Calc CV_DIR - Different for v1-4 !!!
-        if cv_ver in ["1", "2", "3", "4"]:
-            cv_dir_name = "cv-corpus-" + cv_ver
-        else:
-            cv_dir_name = "cv-corpus-" + cv_ver + "-" + c.CV_DATES[cv_idx]
+    # pbar_ver = tqdm(c.CV_VERSIONS, desc="Versions", total=g.total_ver, unit=" Version")
+    for cv_ver in c.CV_VERSIONS:
         # Check if it exists in source (check "s1", if not there, it is nowhere)
+        cv_dir_name = calc_dataset_prefix(cv_ver)
         if not os.path.isdir(
             os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name)
         ):
-            continue  # Does, not exist, so skip
-
-        print("=" * 80)
-        print(f"Processing locales in {cv_dir_name}\n")
+            continue  # Does not exist, so skip
 
         # Create destination
         dst_dir = os.path.join(vc_dir_base, cv_dir_name)
@@ -159,24 +158,32 @@ def main() -> None:
             pathname=os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name, "*"),
             recursive=False,
         )
-        lc_list: list[str] = []
-        for lc_path in lc_paths:
-            lc: str = os.path.split(lc_path)[1]
-            lc_list.append(lc)
+        lc_list: list[str] = [os.path.split(p)[-1] for p in lc_paths]
+        lc_cnt: int = len(lc_list)
 
-        # ALGO-1 (s1 - default splits)
+        g.processed_ver += 1
+        g.total_lc += lc_cnt
+
+        # print("=" * 80)
+        # print(f"Processing {lc_cnt} locales in {cv_dir_name}")
+
+        pbar_lc = tqdm(
+            lc_list, desc=("   v" + cv_ver)[-5:], total=lc_cnt, unit=" Locale"
+        )
         for lc in lc_list:
-            handle_locale()
+            handle_locale(lc)
+            pbar_lc.update()
+
+        pbar_lc.close()
+        # pbar_ver.update()
 
     # done
-    finish_time: datetime = datetime.now()
-    process_timedelta: timedelta = finish_time - start_time
-    process_seconds: float = process_timedelta.total_seconds()
-    print(
-        f"\nFinished copy of {overall_cnt} datasets in {str(process_timedelta)},"
-        + f" avg={process_seconds/overall_cnt} sec"
-    )
-
+    process_seconds: float = (datetime.now() - g.start_time).total_seconds()
+    print("=" * 80)
+    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo}")
+    print(f"Scanned\t\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}")
+    print(f"Skipped\t\t: Algo: {g.skipped_exists}")
+    print(f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ (g.processed_algo - g.skipped_exists))}")
 
 if __name__ == "__main__":
     main()
