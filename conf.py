@@ -10,9 +10,9 @@ SRC_BASE_DIR: str = "C:\\GITREPO\\_HK_GITHUB\\common-voice-diversity-check\\expe
 CV_REPO: str = "C:\\GITREPO\\_AI_VOICE\\_CV\\common-voice\\server\\data"
 
 # Regenerate the data or skip existing?
-SKIP_TEXT_CORPUS: bool = False
+SKIP_VOICE_CORPORA: bool = False
+SKIP_TEXT_CORPORA: bool = False
 SKIP_REPORTED: bool = False
-SKIP_SPLITS: bool = False
 
 # Should we re-create old version even if they exist?
 FORCE_CREATE_SPLIT_STATS: bool = False
