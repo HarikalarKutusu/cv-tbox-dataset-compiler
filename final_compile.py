@@ -28,6 +28,7 @@ import psutil
 # This package
 import const as c
 import conf
+from get_locales import calc_dataset_prefix, get_locales
 from typedef import ConfigRec, TextCorpusStatsRec, ReportedStatsRec, SplitStatsRec
 from lib import (
     df_read,
@@ -36,8 +37,6 @@ from lib import (
     arr2str,
     calc_cv_dir_name,
     dec3,
-    calc_dataset_prefix,
-    get_locales,
     # df_int_convert,
 )
 
