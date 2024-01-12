@@ -26,5 +26,5 @@ FAIL_ON_NOT_FOUND: bool = True
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: list[str] = ["15.0"]
+DEBUG_CV_VER: list[str] = ["16.1"]
 DEBUG_CV_LC: list[str] = ["tr"]

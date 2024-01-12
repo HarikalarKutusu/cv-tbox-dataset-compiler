@@ -126,7 +126,6 @@ COLS_TEXT_CORPUS: list[str] = [
 COLS_TEXT_CORPUS: list[str] = [
     "file",
     "sentence",
-    # "lower",
     "normalized",
     "chars",
     "words",
