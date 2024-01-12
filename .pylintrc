@@ -35,11 +35,11 @@ disable=raw-checker-failed,
         use-implicit-booleaness-not-comparison-to-string,
         use-implicit-booleaness-not-comparison-to-zero,
         # added
-        # missing-module-docstring,
-        # logging-fstring-interpolation,
-        # unused-variable,
-        # unused-private-member,
-        # unused-import
+        missing-module-docstring,
+        logging-fstring-interpolation,
+        unused-variable,
+        unused-private-member,
+        unused-import
 
 
 [METHOD_ARGS]
