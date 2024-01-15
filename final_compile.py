@@ -63,20 +63,20 @@ ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
     """Multi-Process text-corpus for a single locale"""
 
-    tc_dir: str = os.path.join(HERE, "data", "text-corpus", lc)
-    tc_file: str = os.path.join(tc_dir, "$text_corpus.tsv")
+    tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    tc_file: str = os.path.join(tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
 
     if not os.path.isfile(tc_file):
-        print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
+        # print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
         return TextCorpusStatsRec(lc=lc)
 
-    tokens_file: str = os.path.join(tc_dir, "$tokens.tsv")
+    tokens_file: str = os.path.join(tc_dir, f"{c.TOKENS_FN}.tsv")
 
-    if conf.VERBOSE:
-        print(f"Processing text-corpus for locale: {lc}")
-    else:
-        print("\033[F" + " " * 80)
-        print(f"\033[FProcessing text-corpus for locale: {lc}")
+    # if conf.VERBOSE:
+    #     print(f"Processing text-corpus for locale: {lc}")
+    # else:
+    #     print("\033[F" + " " * 80)
+    #     print(f"\033[FProcessing text-corpus for locale: {lc}")
 
     # TEXT CORPUS
 
@@ -183,7 +183,7 @@ def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
     ver: str = c.CV_VERSIONS[cv_idx]
     cv_dir_name: str = calc_dataset_prefix(ver)
     # Calc voice-corpus directory
-    cv_dir: str = os.path.join(HERE, "data", "voice-corpus", cv_dir_name)
+    cv_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, cv_dir_name)
 
     # Get a list of available language codes
     lc_paths: list[str] = sorted(glob.glob(os.path.join(cv_dir, "*"), recursive=False))
@@ -198,11 +198,11 @@ def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
         # Source
         vc_dir: str = os.path.join(cv_dir, lc)
         rep_file: str = os.path.join(vc_dir, "reported.tsv")
-        if conf.VERBOSE:
-            print(f"Handling reported.tsv in v{ver} - {lc}")
-        else:
-            print("\033[F" + " " * 80)
-            print(f"\033[FHandling reported.tsv in v{ver} - {lc}")
+        # if conf.VERBOSE:
+        #     print(f"Handling reported.tsv in v{ver} - {lc}")
+        # else:
+        #     print("\033[F" + " " * 80)
+        #     print(f"\033[FHandling reported.tsv in v{ver} - {lc}")
         if not os.path.isfile(rep_file):  # skip process if no such file
             continue
         if os.path.getsize(rep_file) == 0:  # there can be empty files :/
@@ -404,8 +404,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         #
         # === START ===
         #
-        if conf.DEBUG:
-            print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
+        # if conf.DEBUG:
+        #     print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
 
         # Read in DataFrames
         if split != "clips":
@@ -669,18 +669,18 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     # extract version info
     ver: str = cv_dir_name.split("-")[2]
 
-    if conf.VERBOSE:
-        print(f"Processing version {ver} - {lc}")
-    else:
-        print("\033[F" + " " * 80)
-        print(f"\033[FProcessing version {ver} - {lc}")
+    # if conf.VERBOSE:
+    #     print(f"Processing version {ver} - {lc}")
+    # else:
+    #     print("\033[F" + " " * 80)
+    #     print(f"\033[FProcessing version {ver} - {lc}")
 
     # Source directories
-    cd_dir: str = os.path.join(HERE, "data", "clip-durations", lc)
+    cd_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME, lc)
 
     # Create destinations if thet do not exist
-    tsv_path: str = os.path.join(HERE, "data", "results", "tsv", lc)
-    json_path: str = os.path.join(HERE, "data", "results", "json", lc)
+    tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc)
+    json_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc)
 
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize
@@ -693,8 +693,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     ).set_index("clip")
     if os.path.isfile(cd_file):
         df_clip_durations = df_read(cd_file).set_index("clip")
-    else:
-        print(f"WARNING: No duration data for {lc}\n")
+    # else:
+    #     print(f"WARNING: No duration data for {lc}\n")
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
     res: list[SplitStatsRec] = []  # Init the result list
@@ -784,7 +784,7 @@ def main() -> None:
         print("\n=== Start Text Corpora Analysis ===\n")
 
         # First get list of languages with text corpora
-        tc_base: str = os.path.join(HERE, "data", "text-corpus")
+        tc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
         lc_paths: list[str] = sorted(
             glob.glob(os.path.join(tc_base, "*"), recursive=False)
         )
@@ -795,67 +795,106 @@ def main() -> None:
 
         lc_to_process: list[str] = conf.DEBUG_CV_LC if conf.DEBUG else lc_list
 
-        print(f">>> Processing {len(lc_to_process)} text-corpora...\n")
         # Now multi-process each lc
-        # num_locales: int = len(lc_to_process)
-        # chunk_size: int = min(10, num_locales // used_proc_count + 0 if num_locales % used_proc_count == 0 else 1)
-        # print(
-        #     f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
-        # )
-        # results: list[TextCorpusStatsRec] = []
-        # with mp.Pool(used_proc_count) as pool:
-        #     with tqdm(total=num_locales, desc="") as pbar:
-        #         for res in pool.imap_unordered(handle_text_corpus, lc_to_process, chunksize=chunk_size):
-        #             results.append(res)
-        #             pbar.update()
-
+        num_locales: int = len(lc_to_process)
+        chunk_size: int = min(
+            10,
+            num_locales // used_proc_count + 0
+            if num_locales % used_proc_count == 0
+            else 1,
+        )
+        print(
+            f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
+        )
+        results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
-            results = pool.map(handle_text_corpus, lc_to_process)
+            with tqdm(total=num_locales, desc="") as pbar:
+                for res in pool.imap_unordered(
+                    handle_text_corpus, lc_to_process, chunksize=chunk_size
+                ):
+                    results.append(res)
+                    pbar.update()
 
         # Create result DF
         # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=c.COLS_TEXT_CORPUS)
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(results)
-        df_write(
-            df, os.path.join(HERE, "data", "results", "tsv", f"{c.TEXT_CORPUS_STATS_FN}.tsv")
-        )
-        df.to_json(
-            os.path.join(HERE, "data", "results", "json", f"{c.TEXT_CORPUS_STATS_FN}.json"),
-            orient="table",
-            index=False,
-        )
+        df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
+        df.sort_values(["lc", "ver"], inplace=True)
+
+        # # Write out combined ([TODO] Remove this)
+        # df_write(
+        #     df, os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, f"{c.TEXT_CORPUS_STATS_FN}.tsv")
+        # )
+        # df.to_json(
+        #     os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, f"{c.TEXT_CORPUS_STATS_FN}.json"),
+        #     orient="table",
+        #     index=False,
+        # )
+
+        # Write out per locale
+        for lc in ALL_LOCALES:
+            # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
+            df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
+            df_write(
+                df_lc,
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc, f"{c.TEXT_CORPUS_STATS_FN}.tsv"
+                ),
+            )
+            df_lc.to_json(
+                os.path.join(
+                    HERE,
+                    c.DATA_DIRNAME,
+                    c.RES_DIRNAME,
+                    c.JSON_DIRNAME,
+                    lc,
+                    f"{c.TEXT_CORPUS_STATS_FN}.json",
+                ),
+                orient="table",
+                index=False,
+            )
 
     #
     # REPORTED SENTENCES
     #
     def main_reported() -> None:
         """Handle all reported sentences"""
+        print("\n=== Start Reported Analysis ===\n")
         vers_to_process: list[str] = (
             conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS.copy()
         )
         vers_to_process.reverse()  # start with largest (latest) to maximize core usage
-        print("\n=== Start Reported Analysis ===\n")
-        print(f">>> Processing {len(vers_to_process)} versions...\n")
-        results: list[list[ReportedStatsRec]] = []
-        with mp.Pool(processes=used_proc_count, maxtasksperchild=1) as pool:
-            results = pool.map(handle_reported, vers_to_process)
-        # done, first flatten them
-        flattened: list[ReportedStatsRec] = []
-        for res in results:
-            flattened += res
+
+        print(
+            f">>> Processing {len(vers_to_process)} versions in {used_proc_count} processes (maxtasksperchild=1)...\n"
+        )
+        results: list[ReportedStatsRec] = []
+        with mp.Pool(used_proc_count) as pool:
+            with tqdm(total=len(vers_to_process), desc="") as pbar:
+                for res in pool.imap_unordered(handle_reported, vers_to_process):
+                    results.extend(res)
+                    pbar.update()
+        # with mp.Pool(processes=used_proc_count, maxtasksperchild=1) as pool:
+        #     results = pool.map(handle_reported, vers_to_process)
+
         # Sort and write-out
-        df: pd.DataFrame = pd.DataFrame(flattened).reset_index(drop=True)
-        df.sort_values(["ver", "lc"], inplace=True)
         print(">>> Finished... Now saving...")
+        df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
+        df.sort_values(["lc", "ver"], inplace=True)
         # Write out per locale
         for lc in ALL_LOCALES:
             # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
             df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
             df_write(
-                df_lc, os.path.join(HERE, "data", "results", "tsv", lc, f"{c.REPORTED_STATS_FN}.tsv")
+                df_lc,
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc, f"{c.REPORTED_STATS_FN}.tsv"
+                ),
             )
             df_lc.to_json(
-                os.path.join(HERE, "data", "results", "json", lc, f"{c.REPORTED_STATS_FN}.json"),
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc, f"{c.REPORTED_STATS_FN}.json"
+                ),
                 orient="table",
                 index=False,
             )
@@ -868,25 +907,26 @@ def main() -> None:
         print("\n=== Start Dataset/Split Analysis ===\n")
 
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
-        vc_dir: str = os.path.join(HERE, "data", "voice-corpus")
-        all_validated: list[str] = sorted(
-            glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
-        )
+        vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
         # get path part
-        source_datasets: list[str] = [os.path.split(p)[0] for p in all_validated]
-        cnt_datasets: int = len(source_datasets)
-        print(f">>> We have {cnt_datasets} datasets total...\n")
+        src_datasets: list[str] = [
+            os.path.split(p)[0]
+            for p in sorted(
+                glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
+            )
+        ]
+        # print(f">>> We have {len(src_datasets)} datasets total...\n")
 
         # skip existing?
         ds_paths: list[str] = []
         if conf.FORCE_CREATE_SPLIT_STATS:
-            ds_paths = source_datasets
+            ds_paths = src_datasets
         else:
-            print(">>> Check existing dataset statistics to not re-create...\n")
-            tsv_path: str = os.path.join(HERE, "data", "results", "tsv")
-            json_path: str = os.path.join(HERE, "data", "results", "json")
+            # print(">>> Check existing dataset statistics to not re-create...\n")
+            tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
+            json_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME)
 
-            for p in source_datasets:
+            for p in src_datasets:
                 lc: str = os.path.split(p)[1]
                 ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
                 tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
@@ -896,19 +936,33 @@ def main() -> None:
         # finish filter out existing
 
         cnt_to_process: int = len(ds_paths)
-        print(f">>> We have {cnt_to_process} datasets queued to be processed...\n")
+        chunk_size: int = min(
+            10,
+            cnt_to_process // used_proc_count + 0
+            if cnt_to_process % used_proc_count == 0
+            else 1,
+        )
+        print(
+            f"Processing {cnt_to_process} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
+        )
 
         # now process each dataset
-        results: list[list[SplitStatsRec]]
+        results: list[SplitStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
-            results = pool.map(handle_dataset_splits, ds_paths)
+            with tqdm(total=cnt_to_process, desc="") as pbar:
+                for res in pool.imap_unordered(handle_dataset_splits, ds_paths, chunksize=chunk_size):
+                    results.extend(res)
+                    pbar.update()
+        
+        # with mp.Pool(used_proc_count) as pool:
+        #     results = pool.map(handle_dataset_splits, ds_paths)
 
         # done, first flatten them
-        flattened: list[SplitStatsRec] = []
-        for res in results:
-            flattened += res
+        # flattened: list[SplitStatsRec] = []
+        # for res in results:
+        #     flattened += res
 
-        print(f">>> Processed {len(flattened)} splits...\n")
+        print(f">>> Processed {len(results)} splits...\n")
 
     #
     # SUPPORT MATRIX
@@ -922,7 +976,7 @@ def main() -> None:
         # Scan files once again (we could have run it partial)
         all_tsv_paths: list[str] = sorted(
             glob.glob(
-                os.path.join(HERE, "data", "results", "tsv", "**", "*.tsv"),
+                os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "**", "*.tsv"),
                 recursive=True,
             )
         )
@@ -975,10 +1029,12 @@ def main() -> None:
         print(">>> Save Support Matrix")
         df_write(
             df_support_matrix,
-            os.path.join(HERE, "data", "results", "tsv", f"{c.SUPPORT_MATRIX_FN}.tsv"),
+            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, f"{c.SUPPORT_MATRIX_FN}.tsv"),
         )
         df_support_matrix.to_json(
-            os.path.join(HERE, "data", "results", "json", f"{c.SUPPORT_MATRIX_FN}.json"),
+            os.path.join(
+                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, f"{c.SUPPORT_MATRIX_FN}.json"
+            ),
             orient="table",
             index=False,
         )
@@ -1009,9 +1065,9 @@ def main() -> None:
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
         # Write out
         print("\n=== Save Configuration ===\n")
-        df_write(df, os.path.join(HERE, "data", "results", "tsv", "$config.tsv"))
+        df_write(df, os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"))
         df.to_json(
-            os.path.join(HERE, "data", "results", "json", "$config.json"),
+            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"),
             orient="table",
             index=False,
         )
@@ -1027,8 +1083,8 @@ def main() -> None:
 
     # PREPARE DIRECTORY STRUCTURES
     for lc in ALL_LOCALES:
-        os.makedirs(os.path.join(HERE, "data", "results", "tsv", lc), exist_ok=True)
-        os.makedirs(os.path.join(HERE, "data", "results", "json", lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc), exist_ok=True)
+        os.makedirs(os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True)
 
     # TEXT-CORPORA
     if not conf.SKIP_TEXT_CORPORA:
