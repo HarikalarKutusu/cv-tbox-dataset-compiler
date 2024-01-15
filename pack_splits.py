@@ -63,8 +63,8 @@ def handle_ds(dspath: str) -> None:
             tarpath2: str = os.path.join(uploaded_dir, f"{lc}_{ver}_{algo}")
             # Skip existing?
             if (
-                not os.path.isfile(tarpath1 + ".tar.xz")
-                and not os.path.isfile(tarpath2 + ".tar.xz")
+                not os.path.isfile(tarpath2 + ".tar.xz")
+                and not os.path.isfile(tarpath1 + ".tar.xz")
             ) or conf.FORCE_CREATE_COMPRESSED:
                 shutil.make_archive(
                     base_name=tarpath1, format="xztar", root_dir=dspath, base_dir=algo
