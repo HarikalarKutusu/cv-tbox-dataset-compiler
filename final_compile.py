@@ -26,6 +26,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 import psutil
+from tqdm import tqdm
 
 # Module
 import const as c
@@ -796,7 +797,18 @@ def main() -> None:
 
         print(f">>> Processing {len(lc_to_process)} text-corpora...\n")
         # Now multi-process each lc
-        results: list[TextCorpusStatsRec] = []
+        # num_locales: int = len(lc_to_process)
+        # chunk_size: int = min(10, num_locales // used_proc_count + 0 if num_locales % used_proc_count == 0 else 1)
+        # print(
+        #     f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
+        # )
+        # results: list[TextCorpusStatsRec] = []
+        # with mp.Pool(used_proc_count) as pool:
+        #     with tqdm(total=num_locales, desc="") as pbar:
+        #         for res in pool.imap_unordered(handle_text_corpus, lc_to_process, chunksize=chunk_size):
+        #             results.append(res)
+        #             pbar.update()
+
         with mp.Pool(used_proc_count) as pool:
             results = pool.map(handle_text_corpus, lc_to_process)
 
@@ -805,10 +817,10 @@ def main() -> None:
         print(">>> Finished... Now saving...")
         df: pd.DataFrame = pd.DataFrame(results)
         df_write(
-            df, os.path.join(HERE, "data", "results", "tsv", "$text_corpus_stats.tsv")
+            df, os.path.join(HERE, "data", "results", "tsv", f"{c.TEXT_CORPUS_STATS_FN}.tsv")
         )
         df.to_json(
-            os.path.join(HERE, "data", "results", "json", "$text_corpus_stats.json"),
+            os.path.join(HERE, "data", "results", "json", f"{c.TEXT_CORPUS_STATS_FN}.json"),
             orient="table",
             index=False,
         )
@@ -835,22 +847,15 @@ def main() -> None:
         df: pd.DataFrame = pd.DataFrame(flattened).reset_index(drop=True)
         df.sort_values(["ver", "lc"], inplace=True)
         print(">>> Finished... Now saving...")
-        # Write out combined ([TODO] REMOVE)
-        df_write(df, os.path.join(HERE, "data", "results", "tsv", "$reported.tsv"))
-        df.to_json(
-            os.path.join(HERE, "data", "results", "json", "$reported.json"),
-            orient="table",
-            index=False,
-        )
         # Write out per locale
         for lc in ALL_LOCALES:
             # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
             df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
             df_write(
-                df_lc, os.path.join(HERE, "data", "results", "tsv", lc, "$reported.tsv")
+                df_lc, os.path.join(HERE, "data", "results", "tsv", lc, f"{c.REPORTED_STATS_FN}.tsv")
             )
             df_lc.to_json(
-                os.path.join(HERE, "data", "results", "json", lc, "$reported.json"),
+                os.path.join(HERE, "data", "results", "json", lc, f"{c.REPORTED_STATS_FN}.json"),
                 orient="table",
                 index=False,
             )
@@ -970,10 +975,10 @@ def main() -> None:
         print(">>> Save Support Matrix")
         df_write(
             df_support_matrix,
-            os.path.join(HERE, "data", "results", "tsv", "$support_matrix.tsv"),
+            os.path.join(HERE, "data", "results", "tsv", f"{c.SUPPORT_MATRIX_FN}.tsv"),
         )
         df_support_matrix.to_json(
-            os.path.join(HERE, "data", "results", "json", "$support_matrix.json"),
+            os.path.join(HERE, "data", "results", "json", f"{c.SUPPORT_MATRIX_FN}.json"),
             orient="table",
             index=False,
         )

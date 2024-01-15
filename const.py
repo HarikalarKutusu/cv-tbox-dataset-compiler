@@ -157,6 +157,15 @@ REPORTING_BASE: list[str] = [
 REPORTING_ALL: list[str] = REPORTING_BASE.copy()
 REPORTING_ALL.append("other")
 
+
+#
+# FILENAMES
+#
+TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
+REPORTED_STATS_FN: str = "$reported"
+SUPPORT_MATRIX_FN: str = "$support_matrix"
+CONFIG_FN: str = "$config"
+
 #
 # BINS
 #
