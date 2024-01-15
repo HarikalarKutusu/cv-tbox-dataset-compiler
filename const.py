@@ -159,8 +159,24 @@ REPORTING_ALL.append("other")
 
 
 #
-# FILENAMES
+# DIRECTORIES / FILENAMES
 #
+DATA_DIRNAME: str = "data"
+RES_DIRNAME: str = "results"
+
+TC_DIRNAME: str = "text-corpus"
+VC_DIRNAME: str = "voice-corpus"
+CD_DIRNAME: str = "clip-durations"
+UPLOAD_DIRNAME: str = "upload"
+UPLOADED_DIRNAME: str = "uploaded"
+TSV_DIRNAME: str = "tsv"
+JSON_DIRNAME: str = "json"
+
+TEXT_CORPUS_FN: str = "$text_corpus"
+TOKENS_FN: str = "$tokens"
+GRAPHEMES_FN: str = "$graphemes"
+PHONEMES_FN: str = "$phonemes"
+
 TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"

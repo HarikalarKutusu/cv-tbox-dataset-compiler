@@ -47,9 +47,9 @@ def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
 
     # Destination voice corpus
-    vc_dir_base: str = os.path.join(HERE, "data", "voice-corpus")
+    vc_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
     # Destination clip durations
-    cd_dir_base: str = os.path.join(HERE, "data", "clip-durations")
+    cd_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME)
     # CV Release directory name
     cv_dir_name: str = ""
 

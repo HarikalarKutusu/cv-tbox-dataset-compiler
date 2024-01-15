@@ -69,13 +69,13 @@ def handle_locale(lc: str) -> None:
     # print(f'\033[FProcessing locale {cnt}/{len(lc_list)} : {lc}')
     # print(f"Processing locale: {lc}")
 
-    tc_base_dir: str = os.path.join(HERE, "data", "text-corpus")
+    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
 
     src_path: str = os.path.join(conf.CV_REPO, lc)
-    dst_file: str = os.path.join(tc_base_dir, lc, "$text_corpus.tsv")
-    dst_tokens_file: str = os.path.join(tc_base_dir, lc, "$tokens.tsv")
-    dst_graphemes_file: str = os.path.join(tc_base_dir, lc, "$graphemes.tsv")
-    dst_phonemes_file: str = os.path.join(tc_base_dir, lc, "$phonemes.tsv")
+    dst_file: str = os.path.join(tc_base_dir, lc, f"{c.TEXT_CORPUS_FN}.tsv")
+    dst_tokens_file: str = os.path.join(tc_base_dir, lc, f"{c.TOKENS_FN}.tsv")
+    dst_graphemes_file: str = os.path.join(tc_base_dir, lc, f"{c.GRAPHEMES_FN}.tsv")
+    dst_phonemes_file: str = os.path.join(tc_base_dir, lc, f"{c.PHONEMES_FN}.tsv")
 
     # cvu
     # do we have them?
@@ -175,7 +175,7 @@ def main() -> None:
     print("=== Text-Corpora Compilation Process for cv-tbox-dataset-compiler ===")
     start_time: datetime = datetime.now()
 
-    tc_base_dir: str = os.path.join(HERE, "data", "text-corpus")
+    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
 
     # Get a list of available language codes
     lc_paths: list[str] = glob.glob(os.path.join(conf.CV_REPO, "*"), recursive=False)

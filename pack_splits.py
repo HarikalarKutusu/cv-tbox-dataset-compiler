@@ -28,9 +28,9 @@ import psutil
 
 # This package
 import const as c
+import conf
 from lib import get_locales
 
-import conf
 
 #
 # Constants
@@ -53,14 +53,14 @@ def handle_ds(dspath: str) -> None:
     corpus: str = plist[-2]
     ver: str = corpus.split("-")[2]
     lc: str = plist[-1]
-    dest_dir1: str = os.path.join(HERE, "data", "results", "dl", lc)
-    dest_dir2: str = os.path.join(HERE, "data", "results", "uploaded", lc)
-    os.makedirs(dest_dir1, exist_ok=True)
+    upload_dir: str = os.path.join(conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOAD_DIRNAME, lc)
+    uploaded_dir: str = os.path.join(conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOADED_DIRNAME, lc)
+    os.makedirs(upload_dir, exist_ok=True)
     print(f"Compressing Dataset Splits for {corpus} - {lc}", flush=True)
     for algo in c.ALGORITHMS:
         if os.path.isdir(os.path.join(dspath, algo)):  # check if algo exists at source
-            tarpath1: str = os.path.join(dest_dir1, f"{lc}_{ver}_{algo}")
-            tarpath2: str = os.path.join(dest_dir2, f"{lc}_{ver}_{algo}")
+            tarpath1: str = os.path.join(upload_dir, f"{lc}_{ver}_{algo}")
+            tarpath2: str = os.path.join(uploaded_dir, f"{lc}_{ver}_{algo}")
             # Skip existing?
             if (
                 not os.path.isfile(tarpath1 + ".tar.xz")
@@ -80,7 +80,7 @@ def main() -> None:
 
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
-        os.path.join(HERE, "data", "voice-corpus", "**", c.ALGORITHMS[0]), recursive=True
+        os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]), recursive=True
     )
     for inx, dspath in enumerate(dspaths):
         dspaths[inx] = os.path.split(dspath)[0]  # get rid of the final part
