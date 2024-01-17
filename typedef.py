@@ -72,6 +72,7 @@ class TextCorpusRec:
 class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     """Record definition for text-corpus statistics"""
 
+    ver: str = ""  # cv version code (internal format nn.n, see const.py)
     lc: str = ""  # cv language code
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
