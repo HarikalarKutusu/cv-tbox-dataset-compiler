@@ -1,6 +1,6 @@
 # Actual data, but keep structure
 data
-.clonecache/*
+.cache
 !**/.gitkeep
 # !data/*/.*
 # !data/*/*/.*
