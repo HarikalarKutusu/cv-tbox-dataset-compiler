@@ -68,18 +68,11 @@ def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
     tc_file: str = os.path.join(tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
 
     if not os.path.isfile(tc_file):
-        # print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
+        if conf.VERBOSE:
+            print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
         return TextCorpusStatsRec(lc=lc)
 
     tokens_file: str = os.path.join(tc_dir, f"{c.TOKENS_FN}.tsv")
-
-    # if conf.VERBOSE:
-    #     print(f"Processing text-corpus for locale: {lc}")
-    # else:
-    #     print("\033[F" + " " * 80)
-    #     print(f"\033[FProcessing text-corpus for locale: {lc}")
-
-    # TEXT CORPUS
 
     # "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
     df: pd.DataFrame = df_read(tc_file)
@@ -199,11 +192,6 @@ def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
         # Source
         vc_dir: str = os.path.join(cv_dir, lc)
         rep_file: str = os.path.join(vc_dir, "reported.tsv")
-        # if conf.VERBOSE:
-        #     print(f"Handling reported.tsv in v{ver} - {lc}")
-        # else:
-        #     print("\033[F" + " " * 80)
-        #     print(f"\033[FHandling reported.tsv in v{ver} - {lc}")
         if not os.path.isfile(rep_file):  # skip process if no such file
             continue
         if os.path.getsize(rep_file) == 0:  # there can be empty files :/
@@ -214,7 +202,6 @@ def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
             continue
 
         # Now we have a file with some records in it...
-
         df = df.drop(["sentence", "locale"], axis=1).reset_index(drop=True)
 
         reported_total: int = df.shape[0]
@@ -405,8 +392,6 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         #
         # === START ===
         #
-        # if conf.DEBUG:
-        #     print("ver=", ver, "lc=", lc, "algorithm=", algorithm, "split=", split)
 
         # Read in DataFrames
         if split != "clips":
@@ -670,12 +655,6 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     # extract version info
     ver: str = cv_dir_name.split("-")[2]
 
-    # if conf.VERBOSE:
-    #     print(f"Processing version {ver} - {lc}")
-    # else:
-    #     print("\033[F" + " " * 80)
-    #     print(f"\033[FProcessing version {ver} - {lc}")
-
     # Source directories
     cd_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME, lc)
 
@@ -696,8 +675,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     ).set_index("clip")
     if os.path.isfile(cd_file):
         df_clip_durations = df_read(cd_file).set_index("clip")
-    # else:
-    #     print(f"WARNING: No duration data for {lc}\n")
+    elif conf.VERBOSE:
+        print(f"WARNING: No duration data for {lc}\n")
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
     res: list[SplitStatsRec] = []  # Init the result list
@@ -784,7 +763,7 @@ def main() -> None:
     #
     def main_text_corpora() -> None:
         """Handle all text corpora"""
-        print("\n=== Start Text Corpora Analysis ===\n")
+        print("\n=== Start Text Corpora Analysis ===")
 
         # First get list of languages with text corpora
         tc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
@@ -807,7 +786,7 @@ def main() -> None:
             else 1,
         )
         print(
-            f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
+            f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}..."
         )
         results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
@@ -870,14 +849,14 @@ def main() -> None:
     #
     def main_reported() -> None:
         """Handle all reported sentences"""
-        print("\n=== Start Reported Analysis ===\n")
+        print("\n=== Start Reported Analysis ===")
         vers_to_process: list[str] = (
             conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS.copy()
         )
         vers_to_process.reverse()  # start with largest (latest) to maximize core usage
 
         print(
-            f">>> Processing {len(vers_to_process)} versions in {used_proc_count} processes (maxtasksperchild=1)...\n"
+            f"Processing {len(vers_to_process)} versions in {used_proc_count} processes (maxtasksperchild=1)..."
         )
         results: list[ReportedStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
@@ -925,7 +904,7 @@ def main() -> None:
     #
     def main_splits() -> None:
         """Handle all splits"""
-        print("\n=== Start Dataset/Split Analysis ===\n")
+        print("\n=== Start Dataset/Split Analysis ===")
 
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
         vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
@@ -936,14 +915,12 @@ def main() -> None:
                 glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
             )
         ]
-        # print(f">>> We have {len(src_datasets)} datasets total...\n")
 
         # skip existing?
         ds_paths: list[str] = []
         if conf.FORCE_CREATE_SPLIT_STATS:
             ds_paths = src_datasets
         else:
-            # print(">>> Check existing dataset statistics to not re-create...\n")
             tsv_path: str = os.path.join(
                 HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
             )
@@ -968,7 +945,7 @@ def main() -> None:
             else 1,
         )
         print(
-            f"Processing {cnt_to_process} locales in {used_proc_count} processes with chunk_size {chunk_size}...\n"
+            f"Processing {cnt_to_process} locales in {used_proc_count} processes with chunk_size {chunk_size}..."
         )
 
         # now process each dataset
@@ -981,15 +958,7 @@ def main() -> None:
                     results.extend(res)
                     pbar.update()
 
-        # with mp.Pool(used_proc_count) as pool:
-        #     results = pool.map(handle_dataset_splits, ds_paths)
-
-        # done, first flatten them
-        # flattened: list[SplitStatsRec] = []
-        # for res in results:
-        #     flattened += res
-
-        print(f">>> Processed {len(results)} splits...\n")
+        print(f">>> Processed {len(results)} splits...")
 
     #
     # SUPPORT MATRIX
@@ -998,7 +967,7 @@ def main() -> None:
         """Handle support matrix"""
         nonlocal num_datasets, num_splits, num_algorithms
 
-        print("\n=== Build Support Matrix ===\n")
+        print("\n=== Build Support Matrix ===")
 
         # Scan files once again (we could have run it partial)
         all_tsv_paths: list[str] = sorted(
@@ -1055,7 +1024,7 @@ def main() -> None:
                 df_support_matrix.at[lc, ver2vercol(ver)] = algos
 
         # Write out
-        print(">>> Save Support Matrix")
+        print(">>> Saving Support Matrix...")
         df_write(
             df_support_matrix,
             os.path.join(
@@ -1103,7 +1072,7 @@ def main() -> None:
         )
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
         # Write out
-        print("\n=== Save Configuration ===\n")
+        print("\n=== Save Configuration ===")
         df_write(
             df,
             os.path.join(
@@ -1123,7 +1092,7 @@ def main() -> None:
     #
     used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
     print(
-        f"=== Statistics Compilation Process for cv-tbox-dataset-analyzer ({used_proc_count} processes)==="
+        f"=== cv-tbox-dataset-analyzer - Final Statistics Compilation (using {used_proc_count} processes)==="
     )
     start_time: datetime = datetime.now()
 
