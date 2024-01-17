@@ -161,6 +161,7 @@ REPORTING_ALL.append("other")
 #
 # DIRECTORIES / FILENAMES
 #
+CACHE_DIRNAME: str = ".cache"
 DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
