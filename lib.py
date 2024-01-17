@@ -23,6 +23,7 @@ import conf
 def init_directories(basedir: str) -> None:
     """Creates data directory structures"""
     all_locales: list[str] = get_locales(c.CV_VERSIONS[-1])
+    os.makedirs(os.path.join(basedir, c.CACHE_DIRNAME), exist_ok=True)
     data_dir: str = os.path.join(basedir, c.DATA_DIRNAME)
     for lc in all_locales:
         os.makedirs(os.path.join(data_dir, c.CD_DIRNAME, lc), exist_ok=True)
@@ -40,6 +41,15 @@ def init_directories(basedir: str) -> None:
                 os.path.join(data_dir, c.VC_DIRNAME, ds_dir),
                 exist_ok=True,
             )
+    # create .gitkeep
+    open(os.path.join(data_dir, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.CD_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.RES_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.RES_DIRNAME, c.TSV_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.TC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(data_dir, c.VC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(os.path.join(basedir, c.CACHE_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
 
 
 #
