@@ -52,6 +52,7 @@ if not HERE in sys.path:
 
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+MAX_BATCH_SIZE: int = 5
 ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
 
@@ -680,7 +681,9 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 
     # Create destinations if thet do not exist
     tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc)
-    json_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc)
+    json_path: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc
+    )
 
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize
@@ -798,7 +801,7 @@ def main() -> None:
         # Now multi-process each lc
         num_locales: int = len(lc_to_process)
         chunk_size: int = min(
-            10,
+            MAX_BATCH_SIZE,
             num_locales // used_proc_count + 0
             if num_locales % used_proc_count == 0
             else 1,
@@ -812,6 +815,9 @@ def main() -> None:
                 for res in pool.imap_unordered(
                     handle_text_corpus, lc_to_process, chunksize=chunk_size
                 ):
+                    res.ver = c.CV_VERSIONS[
+                        -1
+                    ]  # [TODO] We will generate these per version
                     results.append(res)
                     pbar.update()
 
@@ -838,7 +844,12 @@ def main() -> None:
             df_write(
                 df_lc,
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc, f"{c.TEXT_CORPUS_STATS_FN}.tsv"
+                    HERE,
+                    c.DATA_DIRNAME,
+                    c.RES_DIRNAME,
+                    c.TSV_DIRNAME,
+                    lc,
+                    f"{c.TEXT_CORPUS_STATS_FN}.tsv",
                 ),
             )
             df_lc.to_json(
@@ -888,12 +899,22 @@ def main() -> None:
             df_write(
                 df_lc,
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc, f"{c.REPORTED_STATS_FN}.tsv"
+                    HERE,
+                    c.DATA_DIRNAME,
+                    c.RES_DIRNAME,
+                    c.TSV_DIRNAME,
+                    lc,
+                    f"{c.REPORTED_STATS_FN}.tsv",
                 ),
             )
             df_lc.to_json(
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc, f"{c.REPORTED_STATS_FN}.json"
+                    HERE,
+                    c.DATA_DIRNAME,
+                    c.RES_DIRNAME,
+                    c.JSON_DIRNAME,
+                    lc,
+                    f"{c.REPORTED_STATS_FN}.json",
                 ),
                 orient="table",
                 index=False,
@@ -923,8 +944,12 @@ def main() -> None:
             ds_paths = src_datasets
         else:
             # print(">>> Check existing dataset statistics to not re-create...\n")
-            tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
-            json_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME)
+            tsv_path: str = os.path.join(
+                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
+            )
+            json_path: str = os.path.join(
+                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
+            )
 
             for p in src_datasets:
                 lc: str = os.path.split(p)[1]
@@ -937,7 +962,7 @@ def main() -> None:
 
         cnt_to_process: int = len(ds_paths)
         chunk_size: int = min(
-            10,
+            MAX_BATCH_SIZE,
             cnt_to_process // used_proc_count + 0
             if cnt_to_process % used_proc_count == 0
             else 1,
@@ -950,10 +975,12 @@ def main() -> None:
         results: list[SplitStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=cnt_to_process, desc="") as pbar:
-                for res in pool.imap_unordered(handle_dataset_splits, ds_paths, chunksize=chunk_size):
+                for res in pool.imap_unordered(
+                    handle_dataset_splits, ds_paths, chunksize=chunk_size
+                ):
                     results.extend(res)
                     pbar.update()
-        
+
         # with mp.Pool(used_proc_count) as pool:
         #     results = pool.map(handle_dataset_splits, ds_paths)
 
@@ -976,7 +1003,9 @@ def main() -> None:
         # Scan files once again (we could have run it partial)
         all_tsv_paths: list[str] = sorted(
             glob.glob(
-                os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "**", "*.tsv"),
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "**", "*.tsv"
+                ),
                 recursive=True,
             )
         )
@@ -1029,11 +1058,21 @@ def main() -> None:
         print(">>> Save Support Matrix")
         df_write(
             df_support_matrix,
-            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, f"{c.SUPPORT_MATRIX_FN}.tsv"),
+            os.path.join(
+                HERE,
+                c.DATA_DIRNAME,
+                c.RES_DIRNAME,
+                c.TSV_DIRNAME,
+                f"{c.SUPPORT_MATRIX_FN}.tsv",
+            ),
         )
         df_support_matrix.to_json(
             os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, f"{c.SUPPORT_MATRIX_FN}.json"
+                HERE,
+                c.DATA_DIRNAME,
+                c.RES_DIRNAME,
+                c.JSON_DIRNAME,
+                f"{c.SUPPORT_MATRIX_FN}.json",
             ),
             orient="table",
             index=False,
@@ -1065,9 +1104,16 @@ def main() -> None:
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
         # Write out
         print("\n=== Save Configuration ===\n")
-        df_write(df, os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"))
+        df_write(
+            df,
+            os.path.join(
+                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"
+            ),
+        )
         df.to_json(
-            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"),
+            os.path.join(
+                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"
+            ),
             orient="table",
             index=False,
         )
@@ -1083,8 +1129,14 @@ def main() -> None:
 
     # PREPARE DIRECTORY STRUCTURES
     for lc in ALL_LOCALES:
-        os.makedirs(os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc), exist_ok=True)
-        os.makedirs(os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True)
+        os.makedirs(
+            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc),
+            exist_ok=True,
+        )
+        os.makedirs(
+            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc),
+            exist_ok=True,
+        )
 
     # TEXT-CORPORA
     if not conf.SKIP_TEXT_CORPORA:

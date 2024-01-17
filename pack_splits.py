@@ -42,7 +42,7 @@ if not HERE in sys.path:
 
 # Program parameters
 PROC_COUNT: int = int(1.5 * psutil.cpu_count(logical=True))  # OVER usage
-BATCH_SIZE: int = 10
+BATCH_SIZE: int = 5
 ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
 
@@ -53,8 +53,12 @@ def handle_ds(dspath: str) -> None:
     corpus: str = plist[-2]
     ver: str = corpus.split("-")[2]
     lc: str = plist[-1]
-    upload_dir: str = os.path.join(conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOAD_DIRNAME, lc)
-    uploaded_dir: str = os.path.join(conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOADED_DIRNAME, lc)
+    upload_dir: str = os.path.join(
+        conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOAD_DIRNAME, lc
+    )
+    uploaded_dir: str = os.path.join(
+        conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOADED_DIRNAME, lc
+    )
     os.makedirs(upload_dir, exist_ok=True)
     print(f"Compressing Dataset Splits for {corpus} - {lc}", flush=True)
     for algo in c.ALGORITHMS:
@@ -80,7 +84,8 @@ def main() -> None:
 
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
-        os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]), recursive=True
+        os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
+        recursive=True,
     )
     for inx, dspath in enumerate(dspaths):
         dspaths[inx] = os.path.split(dspath)[0]  # get rid of the final part

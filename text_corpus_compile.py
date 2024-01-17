@@ -41,6 +41,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+MAX_BATCH_SIZE: int = 5
 
 cv: cvu.CV = cvu.CV()
 # [TODO] Remove these after the portability PR gets included in the release
@@ -193,14 +194,19 @@ def main() -> None:
 
     # extra line is for progress line
     num_locales: int = len(lc_list)
-    chunk_size: int = min(10, num_locales // PROC_COUNT + 0 if num_locales % PROC_COUNT == 0 else 1)
+    chunk_size: int = min(
+        MAX_BATCH_SIZE,
+        num_locales // PROC_COUNT + 0 if num_locales % PROC_COUNT == 0 else 1,
+    )
     print(
         f"Processing text-corpora for {num_locales} locales in {PROC_COUNT} processes with chunk_size {chunk_size}...\n"
     )
 
     with mp.Pool(PROC_COUNT) as pool:
         with tqdm(total=num_locales, desc="") as pbar:
-            for result in pool.imap_unordered(handle_locale, lc_list, chunksize=chunk_size):
+            for result in pool.imap_unordered(
+                handle_locale, lc_list, chunksize=chunk_size
+            ):
                 pbar.update()
 
     # done
