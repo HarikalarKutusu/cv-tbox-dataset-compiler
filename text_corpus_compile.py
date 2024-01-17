@@ -41,6 +41,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+MAX_BATCH_SIZE: int = 5
 
 cv: cvu.CV = cvu.CV()
 # [TODO] Remove these after the portability PR gets included in the release
@@ -69,13 +70,13 @@ def handle_locale(lc: str) -> None:
     # print(f'\033[FProcessing locale {cnt}/{len(lc_list)} : {lc}')
     # print(f"Processing locale: {lc}")
 
-    tc_base_dir: str = os.path.join(HERE, "data", "text-corpus")
+    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
 
     src_path: str = os.path.join(conf.CV_REPO, lc)
-    dst_file: str = os.path.join(tc_base_dir, lc, "$text_corpus.tsv")
-    dst_tokens_file: str = os.path.join(tc_base_dir, lc, "$tokens.tsv")
-    dst_graphemes_file: str = os.path.join(tc_base_dir, lc, "$graphemes.tsv")
-    dst_phonemes_file: str = os.path.join(tc_base_dir, lc, "$phonemes.tsv")
+    dst_file: str = os.path.join(tc_base_dir, lc, f"{c.TEXT_CORPUS_FN}.tsv")
+    dst_tokens_file: str = os.path.join(tc_base_dir, lc, f"{c.TOKENS_FN}.tsv")
+    dst_graphemes_file: str = os.path.join(tc_base_dir, lc, f"{c.GRAPHEMES_FN}.tsv")
+    dst_phonemes_file: str = os.path.join(tc_base_dir, lc, f"{c.PHONEMES_FN}.tsv")
 
     # cvu
     # do we have them?
@@ -175,7 +176,7 @@ def main() -> None:
     print("=== Text-Corpora Compilation Process for cv-tbox-dataset-compiler ===")
     start_time: datetime = datetime.now()
 
-    tc_base_dir: str = os.path.join(HERE, "data", "text-corpus")
+    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
 
     # Get a list of available language codes
     lc_paths: list[str] = glob.glob(os.path.join(conf.CV_REPO, "*"), recursive=False)
@@ -193,14 +194,19 @@ def main() -> None:
 
     # extra line is for progress line
     num_locales: int = len(lc_list)
-    chunk_size: int = min(10, num_locales // PROC_COUNT + 0 if num_locales % PROC_COUNT == 0 else 1)
+    chunk_size: int = min(
+        MAX_BATCH_SIZE,
+        num_locales // PROC_COUNT + 0 if num_locales % PROC_COUNT == 0 else 1,
+    )
     print(
         f"Processing text-corpora for {num_locales} locales in {PROC_COUNT} processes with chunk_size {chunk_size}...\n"
     )
 
     with mp.Pool(PROC_COUNT) as pool:
         with tqdm(total=num_locales, desc="") as pbar:
-            for result in pool.imap_unordered(handle_locale, lc_list, chunksize=chunk_size):
+            for result in pool.imap_unordered(
+                handle_locale, lc_list, chunksize=chunk_size
+            ):
                 pbar.update()
 
     # done

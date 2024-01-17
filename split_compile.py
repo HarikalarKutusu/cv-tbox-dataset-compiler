@@ -47,9 +47,9 @@ def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
 
     # Destination voice corpus
-    vc_dir_base: str = os.path.join(HERE, "data", "voice-corpus")
+    vc_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
     # Destination clip durations
-    cd_dir_base: str = os.path.join(HERE, "data", "clip-durations")
+    cd_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME)
     # CV Release directory name
     cv_dir_name: str = ""
 
@@ -181,9 +181,14 @@ def main() -> None:
     process_seconds: float = (datetime.now() - g.start_time).total_seconds()
     print("=" * 80)
     print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo}")
-    print(f"Scanned\t\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}")
+    print(
+        f"Scanned\t\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
+    )
     print(f"Skipped\t\t: Algo: {g.skipped_exists}")
-    print(f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ (g.processed_algo - g.skipped_exists))}")
+    print(
+        f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ (g.processed_algo - g.skipped_exists))}"
+    )
+
 
 if __name__ == "__main__":
     main()
