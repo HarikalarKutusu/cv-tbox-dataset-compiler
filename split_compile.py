@@ -20,7 +20,6 @@ import os
 import sys
 import shutil
 import glob
-from datetime import datetime
 
 # External dependencies
 from tqdm import tqdm
@@ -29,7 +28,7 @@ from tqdm import tqdm
 import const as c
 import conf
 from typedef import Globals
-from lib import calc_dataset_prefix, dec3, init_directories
+from lib import calc_dataset_prefix, init_directories, report_results
 
 # Globals
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -173,16 +172,7 @@ def main() -> None:
         # pbar_ver.update()
 
     # done
-    process_seconds: float = (datetime.now() - g.start_time).total_seconds()
-    print("=" * 80)
-    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo}")
-    print(
-        f"Scanned\t\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
-    )
-    print(f"Skipped\t\t: Algo: {g.skipped_exists}")
-    print(
-        f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ (g.processed_algo - g.skipped_exists))}"
-    )
+    report_results(g)
 
 
 if __name__ == "__main__":
