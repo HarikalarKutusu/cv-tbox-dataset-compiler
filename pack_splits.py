@@ -29,7 +29,7 @@ import psutil
 # This package
 import const as c
 import conf
-from lib import get_locales
+from lib import get_locales, init_directories
 
 
 #
@@ -107,4 +107,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    init_directories(HERE)
     main()

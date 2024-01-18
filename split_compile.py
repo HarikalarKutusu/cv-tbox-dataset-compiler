@@ -29,7 +29,7 @@ from tqdm import tqdm
 import const as c
 import conf
 from typedef import Globals
-from lib import calc_dataset_prefix, dec3
+from lib import calc_dataset_prefix, dec3, init_directories
 
 # Globals
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -45,7 +45,6 @@ g: Globals = Globals(
 # MAIN PROCESS
 def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
-
     # Destination voice corpus
     vc_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
     # Destination clip durations
@@ -135,10 +134,6 @@ def main() -> None:
     # Main
     #
 
-    print(
-        "=== Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler ==="
-    )
-
     # Loop all versions
     # pbar_ver = tqdm(c.CV_VERSIONS, desc="Versions", total=g.total_ver, unit=" Version")
     for cv_ver in c.CV_VERSIONS:
@@ -191,4 +186,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    print("=== cv-tbox-dataset-compiler: Data Algorithms/Splits Collection Process ===")
+    init_directories(HERE)
     main()
