@@ -11,6 +11,8 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+from typedef import GitRec
+
 #
 # cv related
 #
@@ -161,7 +163,6 @@ REPORTING_ALL.append("other")
 #
 # DIRECTORIES / FILENAMES
 #
-CACHE_DIRNAME: str = ".cache"
 DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
@@ -182,6 +183,9 @@ TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
+
+CLONES_DIRNAME: str = "clones"
+API_DIRNAME: str = "api"
 
 #
 # BINS
@@ -347,4 +351,15 @@ BINS_REPORTED: list[int] = [
     500,
     1000,
     999999,
+]
+
+
+#
+# CLONING
+#
+
+GITHUB_BASE: str = "https://github.com/"
+CLONES: list[GitRec] = [
+    GitRec(user="common-voice", repo="common-voice", branch="main"),
+    GitRec(user="common-voice", repo="cv-dataset", branch="main"),
 ]
