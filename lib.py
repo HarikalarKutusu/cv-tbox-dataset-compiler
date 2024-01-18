@@ -6,6 +6,7 @@ import sys
 import csv
 import json
 import multiprocessing as mp
+from datetime import datetime
 from typing import Literal, Any
 from urllib.request import urlopen
 
@@ -15,14 +16,13 @@ import pandas as pd
 import psutil
 
 # Module
-from typedef import GitRec
+from typedef import GitRec, Globals
 import const as c
 import conf
 
 #
-# Init
+# Application Specific
 #
-
 
 def init_directories(basedir: str) -> None:
     """Creates data directory structures"""
@@ -30,6 +30,7 @@ def init_directories(basedir: str) -> None:
     if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
         return
 
+    print("Preparing directory structures...")
     all_locales: list[str] = get_locales(c.CV_VERSIONS[-1])
     for lc in all_locales:
         os.makedirs(os.path.join(data_dir, c.CD_DIRNAME, lc), exist_ok=True)
@@ -85,6 +86,20 @@ def init_directories(basedir: str) -> None:
         "a",
         encoding="utf8",
     ).close()
+
+
+def report_results(g: Globals) -> None:
+    """Prints out simpğle report from global counters"""
+    process_seconds: float = (datetime.now() - g.start_time).total_seconds()
+    print("=" * 80)
+    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo}")
+    print(
+        f"Processed\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
+    )
+    print(f"Skipped\t\t: LC: {g.skipped_exists}")
+    print(
+        f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ g.processed_lc) if g.processed_lc > 0 else '-'}"
+    )
 
 
 #
@@ -182,20 +197,23 @@ def git_clone_or_pull_all() -> None:
         pool.map(_git_clone_or_pull, c.CLONES)
 
 
-def git_checkout_date(gitrec: GitRec, checkout_date: str) -> None:
-    """Checkouts a cloned repo at the given date"""
+def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
+    """Checkouts a cloned repo at the given date or main if not given"""
     local_repo_path: str = os.path.join(
         conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, gitrec.repo
     )
     if os.path.isdir(local_repo_path):
         # repo exists, so we can checkout
         if conf.VERBOSE:
-            print(f"CHECKOUT: {local_repo_path} at {checkout_date}")
+            print(f"CHECKOUT: {local_repo_path} @ {checkout_to}")
         repo: Repo = Repo(path=local_repo_path)
-        commit_hash = repo.git.execute(
-            command=f"git rev-list -n 1 --before='{checkout_date}' origin/{gitrec.branch}"
-        )
-        repo.git.execute(command=f"git checkout {commit_hash}")
+        if checkout_to == "main":
+            repo.git.execute(command=f"git checkout main")
+        else:
+            commit_hash = repo.git.execute(
+                command=f"git rev-list -n 1 --before='{checkout_to}' origin/{gitrec.branch}"
+            )
+            repo.git.execute(command=f"git checkout {commit_hash}")
     else:
         print(f"WARNING: Could not find {gitrec.repo}")
 
