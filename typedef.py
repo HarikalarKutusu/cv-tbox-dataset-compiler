@@ -52,6 +52,16 @@ class LanguageRec:
     g_code: str = "" # Glattolog code
 
 #
+# GIT
+#
+@dataclass
+class GitRec:
+    """Record definition for github access"""
+    user: str = ""
+    repo: str = ""
+    branch: str = ""
+
+#
 # Text Corpus
 #
 
