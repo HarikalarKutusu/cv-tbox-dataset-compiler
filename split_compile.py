@@ -49,7 +49,7 @@ def main() -> None:
     # Destination clip durations
     cd_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME)
     # CV Release directory name
-    cv_dir_name: str = ""
+    ver_dir: str = ""
 
     src_dir: str = ""
     dst_dir: str = ""
@@ -67,11 +67,11 @@ def main() -> None:
         g.processed_algo += g.total_algo
 
         # copy splitting algorithm independent files
-        src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name, lc)
-        dst_dir = os.path.join(vc_dir_base, cv_dir_name, lc)
+        src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, lc)
+        dst_dir = os.path.join(vc_dir_base, ver_dir, lc)
         tsv_fpath: str = ""
 
-        if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
+        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "validated.tsv")):
             # os.makedirs(os.path.join(dst_dir, c.ALGORITHMS[0]), exist_ok=True)
             os.makedirs(dst_dir, exist_ok=True)
             for fn in c.EXTENDED_BUCKET_FILES:
@@ -84,8 +84,8 @@ def main() -> None:
         # copy default splits (s1)
 
         # copy to s1
-        dst_dir = os.path.join(vc_dir_base, cv_dir_name, lc, c.ALGORITHMS[0])
-        if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
+        dst_dir = os.path.join(vc_dir_base, ver_dir, lc, c.ALGORITHMS[0])
+        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "train.tsv")):
             os.makedirs(dst_dir, exist_ok=True)
             for fn in c.SPLIT_FILES:
                 tsv_fpath = os.path.join(src_dir, fn)
@@ -98,10 +98,10 @@ def main() -> None:
 
         for algo in c.ALGORITHMS[1:]:
             # check if exists to copy to "algo dir"
-            src_dir = os.path.join(conf.SRC_BASE_DIR, algo, cv_dir_name, lc)
+            src_dir = os.path.join(conf.SRC_BASE_DIR, algo, ver_dir, lc)
             if os.path.isdir(src_dir):
-                dst_dir = os.path.join(vc_dir_base, cv_dir_name, lc, algo)
-                if conf.FORCE_CREATE_SPLIT_STATS or not os.path.isdir(dst_dir):
+                dst_dir = os.path.join(vc_dir_base, ver_dir, lc, algo)
+                if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "train.tsv")):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in c.SPLIT_FILES:
                         tsv_fpath = os.path.join(src_dir, fn)
@@ -112,14 +112,14 @@ def main() -> None:
 
         # clip durations table, the one from the latest version (v15.0+) is valid
         # for all CV versions (not taking deletions into account)
-        if cv_ver == c.CV_VERSIONS[-1]:
+        if ver == c.CV_VERSIONS[-1]:
             dst_dir = os.path.join(cd_dir_base, lc)
             os.makedirs(dst_dir, exist_ok=True)
             # With v15.0, we have the provided "clip_durations.tsv" (duration is in ms)
             cd_file: str = os.path.join(
                 conf.SRC_BASE_DIR,
                 c.ALGORITHMS[0],
-                cv_dir_name,
+                ver_dir,
                 lc,
                 c.CLIP_DURATIONS_FILE,
             )
@@ -127,29 +127,28 @@ def main() -> None:
                 shutil.copy2(cd_file, dst_dir)
             else:
                 # [TODO]: If it is not found, we need to create it.
-                print(f"WARNING: clip_durations.tsv file not found for {cv_ver} - {lc}")
+                print(f"WARNING: clip_durations.tsv file not found for {ver} - {lc}")
 
     #
     # Main
     #
 
     # Loop all versions
-    # pbar_ver = tqdm(c.CV_VERSIONS, desc="Versions", total=g.total_ver, unit=" Version")
-    for cv_ver in c.CV_VERSIONS:
+    for ver in c.CV_VERSIONS:
         # Check if it exists in source (check "s1", if not there, it is nowhere)
-        cv_dir_name = calc_dataset_prefix(cv_ver)
+        ver_dir = calc_dataset_prefix(ver)
         if not os.path.isdir(
-            os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name)
+            os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir)
         ):
             continue  # Does not exist, so skip
 
         # Create destination
-        dst_dir = os.path.join(vc_dir_base, cv_dir_name)
+        dst_dir = os.path.join(vc_dir_base, ver_dir)
         os.makedirs(dst_dir, exist_ok=True)
 
         # Get a  list of available language codes
         lc_paths: list[str] = glob.glob(
-            pathname=os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], cv_dir_name, "*"),
+            pathname=os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, "*"),
             recursive=False,
         )
         lc_list: list[str] = [os.path.split(p)[-1] for p in lc_paths]
@@ -162,7 +161,7 @@ def main() -> None:
         # print(f"Processing {lc_cnt} locales in {cv_dir_name}")
 
         pbar_lc = tqdm(
-            lc_list, desc=("   v" + cv_ver)[-5:], total=lc_cnt, unit=" Locale"
+            lc_list, desc=("   v" + ver)[-5:], total=lc_cnt, unit=" Locale"
         )
         for lc in lc_list:
             handle_locale(lc)

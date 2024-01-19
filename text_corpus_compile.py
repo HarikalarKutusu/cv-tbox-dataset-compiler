@@ -35,7 +35,7 @@ import conf
 from lib import (
     calc_dataset_prefix,
     df_write,
-    get_locales,
+    get_locales_from_cv_dataset,
     git_checkout,
     git_clone_or_pull_all,
     init_directories,
@@ -169,9 +169,9 @@ def handle_version(inx: int, ver: str) -> None:
     # Get the repo at cutoff date ([TODO] Need to compile real cut-off dates)
     cutoff_date: str = c.CV_DATES[inx]
     print(f"=== HANDLE: v{ver} @ {cutoff_date} ===")
-    git_checkout(c.CLONES[0], cutoff_date)
+    git_checkout(c.CV_GITREC, cutoff_date)
 
-    lc_list: list[str] = get_locales(ver)
+    lc_list: list[str] = get_locales_from_cv_dataset(ver)
     total_locales: int = len(lc_list)
 
     # Filter out already processed
@@ -190,13 +190,14 @@ def handle_version(inx: int, ver: str) -> None:
         num_locales // PROC_COUNT + (0 if num_locales % PROC_COUNT == 0 else 1),
     )
     print(
-        f"Total: {total_locales} Existing: {total_locales-num_locales} Remaining: {num_locales} Procs: {PROC_COUNT}  chunk_size: {chunk_size}..."
+        f"Total: {total_locales} Existing: {total_locales-num_locales} Remaining: {num_locales} "
+        + f"Procs: {PROC_COUNT}  chunk_size: {chunk_size}..."
     )
 
     if num_locales > 0:
         with mp.Pool(PROC_COUNT) as pool:
             with tqdm(total=num_locales, desc="") as pbar:
-                for res in pool.imap_unordered(
+                for _ in pool.imap_unordered(
                     handle_locale, ver_lc_list, chunksize=chunk_size
                 ):
                     pbar.update()
@@ -212,7 +213,7 @@ def main() -> None:
     """Main function feeding the multi-processing pool"""
 
     # Make sure clones are current
-    git_checkout(c.CLONES[0])
+    git_checkout(c.CV_GITREC)
     git_clone_or_pull_all()
 
     # Main loop for all versions
@@ -220,7 +221,7 @@ def main() -> None:
         handle_version(inx, ver)
 
     # done, revert to main and report
-    git_checkout(c.CLONES[0])
+    git_checkout(c.CV_GITREC)
     report_results(g)
 
 
