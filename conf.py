@@ -10,10 +10,9 @@ SRC_BASE_DIR: str = os.path.join(
     "C:", os.sep, "GITREPO", "_HK_GITHUB", "common-voice-diversity-check", "experiments"
 )
 
-# Point to your common voice clone
-CV_REPO: str = os.path.join(
-    "C:", os.sep, "GITREPO", "_AI_VOICE", "_CV", "common-voice", "server", "data"
-)
+# This is where cache of API calls and clones are kept, common to cv-tbox repors
+CV_TBOX_CACHE: str = os.path.join("C:", os.sep, "GITREPO", "_HK_GITHUB", "cv-tbox-cache")
+
 
 # This is where your compressed splits will go (under "upload" and "uploaded") - so that we can upload it to Google Drive
 COMPRESSED_RESULTS_BASE_DIR: str = os.path.join(
@@ -21,12 +20,14 @@ COMPRESSED_RESULTS_BASE_DIR: str = os.path.join(
 )
 
 # Regenerate the data or skip existing?
-SKIP_VOICE_CORPORA: bool = False
 SKIP_TEXT_CORPORA: bool = False
 SKIP_REPORTED: bool = False
+SKIP_VOICE_CORPORA: bool = False
 
 # Should we re-create old version even if they exist?
-FORCE_CREATE_SPLIT_STATS: bool = False
+FORCE_CREATE_TC_STATS: bool = False
+FORCE_CREATE_VC_STATS: bool = False
+FORCE_CREATE_REPORTED_STATS: bool = False
 # Should we re-create the compressed .tar files even if they exist?
 FORCE_CREATE_COMPRESSED: bool = False
 

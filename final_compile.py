@@ -21,6 +21,7 @@ import sys
 import glob
 from datetime import datetime, timedelta
 import multiprocessing as mp
+from typing import Any
 
 # External dependencies
 import numpy as np
@@ -31,51 +32,73 @@ from tqdm import tqdm
 # Module
 import const as c
 import conf
-from typedef import ConfigRec, TextCorpusStatsRec, ReportedStatsRec, SplitStatsRec
+from typedef import (
+    Globals,
+    ConfigRec,
+    TextCorpusStatsRec,
+    ReportedStatsRec,
+    SplitStatsRec,
+)
 from lib import (
     df_read,
     df_write,
+    init_directories,
     list2str,
     arr2str,
     dec3,
     calc_dataset_prefix,
-    get_locales,
+    get_locales_from_cv_dataset,
+    report_results,
 )
+
+# Globals
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
 
-#
-# Constants
-#
-
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 MAX_BATCH_SIZE: int = 5
-ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
+ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
 
+g: Globals = Globals(
+    total_ver=len(c.CV_VERSIONS),
+    total_algo=len(c.ALGORITHMS),
+)
+g_tc: Globals = Globals(total_ver=len(c.CV_VERSIONS))
+g_rep: Globals = Globals(total_ver=len(c.CV_VERSIONS))
+g_vc: Globals = Globals(
+    total_ver=len(c.CV_VERSIONS),
+    total_algo=len(c.ALGORITHMS),
+)
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
 ########################################################
 
 
-def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
+def handle_text_corpus(ver_lc: str) -> TextCorpusStatsRec:
     """Multi-Process text-corpus for a single locale"""
 
-    tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
-    tc_file: str = os.path.join(tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
+    ver: str = ver_lc.split("|")[0]
+    lc: str = ver_lc.split("|")[1]
 
+    ver_dir: str = calc_dataset_prefix(ver)
+
+    tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, ver_dir, lc)
+    tc_file: str = os.path.join(tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     if not os.path.isfile(tc_file):
         if conf.VERBOSE:
-            print(f"WARN: Skipping no-text-corpus-file locale: {lc}")
-        return TextCorpusStatsRec(lc=lc)
-
-    tokens_file: str = os.path.join(tc_dir, f"{c.TOKENS_FN}.tsv")
+            print(f"WARN: Skipping no-text-corpus-file locale: {ver} - {lc}")
+        return TextCorpusStatsRec(ver=ver, lc=lc)
 
     # "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
     df: pd.DataFrame = df_read(tc_file)
+    if df.shape[0] == 0:
+        if conf.VERBOSE:
+            print(f"WARN: Skipping locale with empty text-corpus: {ver} - {lc}")
+        return TextCorpusStatsRec(ver=ver, lc=lc)
 
     # basic measures
     sentence_cnt: int = df.shape[0]
@@ -117,6 +140,7 @@ def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
         word_freq = hist[0].tolist()
 
     # TOKENS
+    tokens_file: str = os.path.join(tc_dir, f"{c.TOKENS_FN}.tsv")
     tokens_total: int = 0
     tokens_mean: float = 0.0
     tokens_median: float = 0.0
@@ -137,7 +161,22 @@ def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
         hist = np.histogram(arr, bins=c.BINS_TOKENS)
         token_freq = hist[0].tolist()
 
+    # GRAPHEMES
+    graphemes_file: str = os.path.join(tc_dir, f"{c.GRAPHEMES_FN}.tsv")
+    graphemes_arr: list[list[Any]] = []
+    if os.path.isfile(graphemes_file):
+        df: pd.DataFrame = df_read(graphemes_file)
+        graphemes_arr = df.values.tolist()
+
+    # PHONEMES
+    phonemes_file: str = os.path.join(tc_dir, f"{c.PHONEMES_FN}.tsv")
+    phonemes_arr: list[list[Any]] = []
+    if os.path.isfile(phonemes_file):
+        df: pd.DataFrame = df_read(phonemes_file)
+        phonemes_arr = df.values.tolist()
+
     res: TextCorpusStatsRec = TextCorpusStatsRec(
+        ver=ver,
         lc=lc,
         s_cnt=sentence_cnt,
         uq_s=unique_sentences,
@@ -159,7 +198,10 @@ def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
         t_med=dec3(tokens_median),
         t_std=dec3(tokens_std),
         t_freq=list2str(token_freq),
+        g_freq=arr2str(graphemes_arr) if graphemes_arr else "",
+        p_freq=arr2str(phonemes_arr) if phonemes_arr else "",
     )
+
     return res
 
 
@@ -168,91 +210,72 @@ def handle_text_corpus(lc: str) -> TextCorpusStatsRec:
 ########################################################
 
 
-def handle_reported(cv_ver: str) -> "list[ReportedStatsRec]":
+def handle_reported(ver_lc: str) -> ReportedStatsRec:
     """Process text-corpus for a single locale"""
 
-    # Fins idx
-    cv_idx: int = c.CV_VERSIONS.index(cv_ver)
-    # Calc CV_DIR
-    ver: str = c.CV_VERSIONS[cv_idx]
-    cv_dir_name: str = calc_dataset_prefix(ver)
+    ver: str = ver_lc.split("|")[0]
+    lc: str = ver_lc.split("|")[1]
+
+    ver_dir: str = calc_dataset_prefix(ver)
+
     # Calc voice-corpus directory
-    cv_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, cv_dir_name)
+    rep_file: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv")
 
-    # Get a list of available language codes
-    lc_paths: list[str] = sorted(glob.glob(os.path.join(cv_dir, "*"), recursive=False))
-    lc_list: list[str] = []
-    for lc_path in lc_paths:
-        if os.path.isdir(lc_path):  # ignore files
-            lc_list.append(os.path.split(lc_path)[1])
+    # skip process if no such file or there can be empty files :/
+    if not os.path.isfile(rep_file) or os.path.getsize(rep_file) == 0: 
+        return ReportedStatsRec(ver=ver, lc=lc)
+    # read file in - Columns: sentence sentence_id locale reason
+    df: pd.DataFrame = df_read(rep_file)
+    if df.shape[0] == 0:  # skip those without records
+        return ReportedStatsRec(ver=ver, lc=lc)
 
-    lc_to_process: list[str] = conf.DEBUG_CV_LC if conf.DEBUG else lc_list
-    res_all: list[ReportedStatsRec] = []
-    for lc in lc_to_process:
-        # Source
-        vc_dir: str = os.path.join(cv_dir, lc)
-        rep_file: str = os.path.join(vc_dir, "reported.tsv")
-        if not os.path.isfile(rep_file):  # skip process if no such file
-            continue
-        if os.path.getsize(rep_file) == 0:  # there can be empty files :/
-            continue
-        # read file in - Columns: sentence sentence_id locale reason
-        df: pd.DataFrame = df_read(rep_file)
-        if df.shape[0] == 0:  # skip those without records
-            continue
+    # Now we have a file with some records in it...
+    df = df.drop(["sentence", "locale"], axis=1).reset_index(drop=True)
 
-        # Now we have a file with some records in it...
-        df = df.drop(["sentence", "locale"], axis=1).reset_index(drop=True)
+    reported_total: int = df.shape[0]
+    reported_sentences: int = len(df["sentence_id"].unique().tolist())
 
-        reported_total: int = df.shape[0]
-        reported_sentences: int = len(df["sentence_id"].unique().tolist())
+    # get a distribution of reasons/sentence & stats
+    rep_counts: pd.DataFrame = (
+        df["sentence_id"].value_counts().dropna().to_frame().reset_index()
+    )
+    # make others 'other'
+    df.loc[~df["reason"].isin(c.REPORTING_BASE)] = "other"
 
-        # get a distribution of reasons/sentence & stats
-        rep_counts: pd.DataFrame = (
-            df["sentence_id"].value_counts().dropna().to_frame().reset_index()
-        )
-        # make others 'other'
-        df.loc[~df["reason"].isin(c.REPORTING_BASE)] = "other"
+    # Get statistics
+    ser: pd.Series = rep_counts["count"]
+    # sys.exit(0)
+    rep_mean: float = ser.mean()
+    rep_median: float = ser.median()
+    rep_std: float = ser.std(ddof=0)
+    # Calc report-per-sentence distribution
+    arr: np.ndarray = np.fromiter(
+        rep_counts["count"].dropna().apply(int).reset_index(drop=True).to_list(),
+        int,
+    )
+    hist = np.histogram(arr, bins=c.BINS_REPORTED)
+    rep_freq = hist[0].tolist()
 
-        # Get statistics
-        ser: pd.Series = rep_counts["count"]
-        # sys.exit(0)
-        rep_mean: float = ser.mean()
-        rep_median: float = ser.median()
-        rep_std: float = ser.std(ddof=0)
-        # Calc report-per-sentence distribution
-        arr: np.ndarray = np.fromiter(
-            rep_counts["count"].dropna().apply(int).reset_index(drop=True).to_list(),
-            int,
-        )
-        hist = np.histogram(arr, bins=c.BINS_REPORTED)
-        rep_freq = hist[0].tolist()
+    # Get reason counts
+    reason_counts: pd.DataFrame = (
+        df["reason"].value_counts().dropna().to_frame().reset_index()
+    )
+    reason_counts.set_index(keys="reason", inplace=True)
+    reason_counts = reason_counts.reindex(index=c.REPORTING_ALL, fill_value=0)
+    reason_freq = reason_counts["count"].to_numpy(int).tolist()
 
-        # Get reason counts
-        reason_counts: pd.DataFrame = (
-            df["reason"].value_counts().dropna().to_frame().reset_index()
-        )
-        reason_counts.set_index(keys="reason", inplace=True)
-        reason_counts = reason_counts.reindex(index=c.REPORTING_ALL, fill_value=0)
-        reason_freq = reason_counts["count"].to_numpy(int).tolist()
-
-        res: ReportedStatsRec = ReportedStatsRec(
-            ver=ver,
-            lc=lc,
-            rep_sum=reported_total,
-            rep_sen=reported_sentences,
-            rep_avg=dec3(rep_mean),
-            rep_med=dec3(rep_median),
-            rep_std=dec3(rep_std),
-            rep_freq=list2str(rep_freq),
-            rea_freq=list2str(reason_freq),
-        )
-
-        res_all.append(res)
-        # end of a single version-locale
-    # end of a single version / all locales
-
-    return res_all  # Return combined results for one version
+    res: ReportedStatsRec = ReportedStatsRec(
+        ver=ver,
+        lc=lc,
+        rep_sum=reported_total,
+        rep_sen=reported_sentences,
+        rep_avg=dec3(rep_mean),
+        rep_med=dec3(rep_median),
+        rep_std=dec3(rep_std),
+        rep_freq=list2str(rep_freq),
+        rea_freq=list2str(reason_freq),
+    )
+    return res
 
 
 ########################################################
@@ -750,9 +773,10 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 def main() -> None:
     """Compile all data by calculating stats"""
 
-    num_datasets: int = 0
-    num_algorithms: int = 0
-    num_splits: int = 0
+    dst_json_base: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
+    )
+    dst_tsv_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
 
     def ver2vercol(ver: str) -> str:
         """Converts a data version in format '11.0' to column/variable name format 'v11_0'"""
@@ -765,40 +789,79 @@ def main() -> None:
         """Handle all text corpora"""
         print("\n=== Start Text Corpora Analysis ===")
 
-        # First get list of languages with text corpora
         tc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
-        lc_paths: list[str] = sorted(
-            glob.glob(os.path.join(tc_base, "*"), recursive=False)
+        combined_tsv_file: str = os.path.join(
+            dst_tsv_base, f"{c.TEXT_CORPUS_STATS_FN}.tsv"
         )
-        lc_list: list[str] = []
-        for lc_path in lc_paths:
-            if os.path.isdir(lc_path):  # ignore files
-                lc_list.append(os.path.split(lc_path)[1])
+        # Get joined TSV
+        combined_df: pd.DataFrame = pd.DataFrame(columns=c.COLS_TC_STATS)
+        if os.path.isfile(combined_tsv_file):
+            combined_df = df_read(combined_tsv_file).reset_index(drop=True)
+        combined_df = combined_df[["ver", "lc"]]
+        combined_ver_lc: list[str] = [
+            "|".join([row[0], row[1]]) for row in combined_df.values.tolist()
+        ]
+        del combined_df
+        combined_df = pd.DataFrame()
 
-        lc_to_process: list[str] = conf.DEBUG_CV_LC if conf.DEBUG else lc_list
+        ver_lc_list: list[str] = []  # final
+        # For each version
+        for ver in c.CV_VERSIONS:
+            ver_dir: str = calc_dataset_prefix(ver)
 
-        # Now multi-process each lc
-        num_locales: int = len(lc_to_process)
+            # get all possible
+            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            g_tc.total_lc += len(lc_list)
+
+            # remove already calculated ones
+            if conf.FORCE_CREATE_TC_STATS:
+                # if forced, use all
+                ver_lc_list.extend([f"{ver}|{lc}" for lc in lc_list])
+                g_tc.processed_lc += len(lc_list)
+                g_tc.processed_ver += 1
+            else:
+                ver_lc_new: list[str] = []
+                for lc in lc_list:
+                    ver_lc: str = f"{ver}|{lc}"
+                    tc_tsv: str = os.path.join(
+                        tc_base,
+                        ver_dir,
+                        lc,
+                        f"{c.TEXT_CORPUS_FN}.tsv",
+                    )
+                    if not ver_lc in combined_ver_lc and os.path.isfile(tc_tsv):
+                        ver_lc_new.append(ver_lc)
+                num_to_process: int = len(ver_lc_new)
+                ver_lc_list.extend(ver_lc_new)
+                g_tc.processed_lc += num_to_process
+                g_tc.skipped_exists += len(lc_list) - num_to_process
+                g_tc.processed_ver += 1 if num_to_process > 0 else 0
+
+        # Now multi-process each record
+        num_items: int = len(ver_lc_list)
+        if num_items == 0:
+            print("Nothing to process...")
+            return
+
         chunk_size: int = min(
             MAX_BATCH_SIZE,
-            num_locales // used_proc_count + 0
-            if num_locales % used_proc_count == 0
-            else 1,
+            num_items // used_proc_count
+            + (0 if num_items % used_proc_count == 0 else 1),
         )
         print(
-            f"Processing {num_locales} locales in {used_proc_count} processes with chunk_size {chunk_size}..."
+            f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} Remaining: {g_tc.processed_lc} "
+            + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
-            with tqdm(total=num_locales, desc="") as pbar:
+            with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
-                    handle_text_corpus, lc_to_process, chunksize=chunk_size
+                    handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
-                    res.ver = c.CV_VERSIONS[
-                        -1
-                    ]  # [TODO] We will generate these per version
                     results.append(res)
                     pbar.update()
+                    if res.s_cnt == 0:
+                        g.skipped_nodata += 1
 
         # Create result DF
         # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=c.COLS_TEXT_CORPUS)
@@ -806,10 +869,8 @@ def main() -> None:
         df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
         df.sort_values(["lc", "ver"], inplace=True)
 
-        # # Write out combined ([TODO] Remove this)
-        # df_write(
-        #     df, os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, f"{c.TEXT_CORPUS_STATS_FN}.tsv")
-        # )
+        # Write out combined (TSV only to use later)
+        df_write(df, os.path.join(dst_tsv_base, f"{c.TEXT_CORPUS_STATS_FN}.tsv"))
         # df.to_json(
         #     os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, f"{c.TEXT_CORPUS_STATS_FN}.json"),
         #     orient="table",
@@ -821,28 +882,15 @@ def main() -> None:
             # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
             df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
             df_write(
-                df_lc,
-                os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
-                    c.RES_DIRNAME,
-                    c.TSV_DIRNAME,
-                    lc,
-                    f"{c.TEXT_CORPUS_STATS_FN}.tsv",
-                ),
+                df_lc, os.path.join(dst_tsv_base, lc, f"{c.TEXT_CORPUS_STATS_FN}.tsv")
             )
             df_lc.to_json(
-                os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
-                    c.RES_DIRNAME,
-                    c.JSON_DIRNAME,
-                    lc,
-                    f"{c.TEXT_CORPUS_STATS_FN}.json",
-                ),
+                os.path.join(dst_json_base, lc, f"{c.TEXT_CORPUS_STATS_FN}.json"),
                 orient="table",
                 index=False,
             )
+        # report
+        report_results(g_tc)
 
     #
     # REPORTED SENTENCES
@@ -850,27 +898,89 @@ def main() -> None:
     def main_reported() -> None:
         """Handle all reported sentences"""
         print("\n=== Start Reported Analysis ===")
-        vers_to_process: list[str] = (
-            conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS.copy()
-        )
-        vers_to_process.reverse()  # start with largest (latest) to maximize core usage
 
+        vc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        combined_tsv_file: str = os.path.join(
+            dst_tsv_base, f"{c.REPORTED_STATS_FN}.tsv"
+        )
+        # Get joined TSV
+        combined_df: pd.DataFrame = pd.DataFrame(columns=c.COLS_REPORTED_STATS)
+        if os.path.isfile(combined_tsv_file):
+            combined_df = df_read(combined_tsv_file).reset_index(drop=True)
+        combined_df = combined_df[["ver", "lc"]]
+        combined_ver_lc: list[str] = [
+            "|".join([row[0], row[1]]) for row in combined_df.values.tolist()
+        ]
+        del combined_df
+        combined_df = pd.DataFrame()
+
+        ver_lc_list: list[str] = []  # final
+        # For each version
+        for ver in c.CV_VERSIONS:
+            ver_dir: str = calc_dataset_prefix(ver)
+
+            # get all possible
+            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            g_rep.total_lc += len(lc_list)
+
+            # remove already calculated ones
+            if conf.FORCE_CREATE_REPORTED_STATS:
+                # if forced, use all
+                ver_lc_list.extend([f"{ver}|{lc}" for lc in lc_list])
+                g_rep.processed_lc += len(lc_list)
+                g_rep.processed_ver += 1
+            else:
+                ver_lc_new: list[str] = []
+                for lc in lc_list:
+                    ver_lc: str = f"{ver}|{lc}"
+                    rep_tsv: str = os.path.join(
+                        vc_base,
+                        ver_dir,
+                        lc,
+                        "reported.tsv",
+                    )
+                    if not ver_lc in combined_ver_lc and os.path.isfile(rep_tsv):
+                        ver_lc_new.append(ver_lc)
+                num_to_process: int = len(ver_lc_new)
+                ver_lc_list.extend(ver_lc_new)
+                g_rep.processed_lc += num_to_process
+                g_rep.skipped_exists += len(lc_list) - num_to_process
+                g_rep.processed_ver += 1 if num_to_process > 0 else 0
+
+
+        # Now multi-process each record
+        num_items: int = len(ver_lc_list)
+        if num_items == 0:
+            print("Nothing to process...")
+            return
+
+        chunk_size: int = min(
+            MAX_BATCH_SIZE,
+            num_items // used_proc_count
+            + (0 if num_items % used_proc_count == 0 else 1),
+        )
         print(
-            f"Processing {len(vers_to_process)} versions in {used_proc_count} processes (maxtasksperchild=1)..."
+            f"Total: {g_rep.total_lc} Existing: {g_rep.skipped_exists} Remaining: {g_rep.processed_lc} "
+            + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
-            with tqdm(total=len(vers_to_process), desc="") as pbar:
-                for res in pool.imap_unordered(handle_reported, vers_to_process):
-                    results.extend(res)
+            with tqdm(total=num_items, desc="") as pbar:
+                for res in pool.imap_unordered(
+                    handle_reported, ver_lc_list, chunksize=chunk_size
+                ):
+                    results.append(res)
                     pbar.update()
-        # with mp.Pool(processes=used_proc_count, maxtasksperchild=1) as pool:
-        #     results = pool.map(handle_reported, vers_to_process)
+                    if res.rep_sum == 0:
+                        g.skipped_nodata += 1
 
         # Sort and write-out
         print(">>> Finished... Now saving...")
         df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
         df.sort_values(["lc", "ver"], inplace=True)
+
+        # Write out combined (TSV only to use later)
+        df_write(df, os.path.join(dst_tsv_base, f"{c.REPORTED_STATS_FN}.tsv"))
         # Write out per locale
         for lc in ALL_LOCALES:
             # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
@@ -878,26 +988,22 @@ def main() -> None:
             df_write(
                 df_lc,
                 os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
-                    c.RES_DIRNAME,
-                    c.TSV_DIRNAME,
+                    dst_tsv_base,
                     lc,
                     f"{c.REPORTED_STATS_FN}.tsv",
                 ),
             )
             df_lc.to_json(
                 os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
-                    c.RES_DIRNAME,
-                    c.JSON_DIRNAME,
+                    dst_json_base,
                     lc,
                     f"{c.REPORTED_STATS_FN}.json",
                 ),
                 orient="table",
                 index=False,
             )
+        # report
+        report_results(g_rep)
 
     #
     # SPLITS
@@ -918,7 +1024,7 @@ def main() -> None:
 
         # skip existing?
         ds_paths: list[str] = []
-        if conf.FORCE_CREATE_SPLIT_STATS:
+        if conf.FORCE_CREATE_VC_STATS:
             ds_paths = src_datasets
         else:
             tsv_path: str = os.path.join(
@@ -940,9 +1046,8 @@ def main() -> None:
         cnt_to_process: int = len(ds_paths)
         chunk_size: int = min(
             MAX_BATCH_SIZE,
-            cnt_to_process // used_proc_count + 0
-            if cnt_to_process % used_proc_count == 0
-            else 1,
+            cnt_to_process // used_proc_count
+            + (0 if cnt_to_process % used_proc_count == 0 else 1),
         )
         print(
             f"Processing {cnt_to_process} locales in {used_proc_count} processes with chunk_size {chunk_size}..."
@@ -965,7 +1070,6 @@ def main() -> None:
     #
     def main_support_matrix() -> None:
         """Handle support matrix"""
-        nonlocal num_datasets, num_splits, num_algorithms
 
         print("\n=== Build Support Matrix ===")
 
@@ -986,8 +1090,8 @@ def main() -> None:
             ):  # ignore system files (starts with $)
                 df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
 
-        num_splits = df.shape[0]
-        num_datasets = df[df["sp"] == "validated"].shape[0]
+        g.total_splits = df.shape[0]
+        g.total_lc = df[df["sp"] == "validated"].shape[0]
 
         df = df[["ver", "lc", "alg"]].drop_duplicates()
         df = (
@@ -995,11 +1099,7 @@ def main() -> None:
             .sort_values(["lc", "ver", "alg"])
             .reset_index(drop=True)
         )
-        num_algorithms = df.shape[0]
-
-        print(
-            f"Read in - Datasets: {num_datasets}, Algorithms: {num_algorithms}, Splits: {num_splits}"
-        )
+        g.total_algo = df.shape[0]
 
         # Prepare Support Matrix DataFrame
         rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
@@ -1046,6 +1146,8 @@ def main() -> None:
             orient="table",
             index=False,
         )
+        # report
+        report_results(g)
 
     #
     # CONFIG
@@ -1091,21 +1193,7 @@ def main() -> None:
     # MAIN
     #
     used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
-    print(
-        f"=== cv-tbox-dataset-analyzer - Final Statistics Compilation (using {used_proc_count} processes)==="
-    )
     start_time: datetime = datetime.now()
-
-    # PREPARE DIRECTORY STRUCTURES
-    for lc in ALL_LOCALES:
-        os.makedirs(
-            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc),
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc),
-            exist_ok=True,
-        )
 
     # TEXT-CORPORA
     if not conf.SKIP_TEXT_CORPORA:
@@ -1128,16 +1216,12 @@ def main() -> None:
     main_config()
 
     # FINALIZE
-    finish_time: datetime = datetime.now()
-    process_timedelta: timedelta = finish_time - start_time
-    process_seconds: float = process_timedelta.total_seconds()
-    print(
-        f"Finished compiling statistics for {num_datasets} datasets, {num_algorithms} algorithms, {num_splits} splits"
-    )
-    print(
-        f"Duration {str(process_timedelta)} sec, avg={process_seconds/num_datasets} secs/dataset."
-    )
+    process_seconds: float = (datetime.now() - start_time).total_seconds()
+    print("Finished compiling statistics!")
+    print(f"Duration {dec3(process_seconds)} sec, avg={dec3(process_seconds/g.total_lc)} secs/dataset.")
 
 
 if __name__ == "__main__":
+    print("=== cv-tbox-dataset-analyzer - Final Statistics Compilation ===")
+    init_directories(HERE)
     main()

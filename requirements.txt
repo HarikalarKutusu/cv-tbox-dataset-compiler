@@ -1,4 +1,5 @@
 pandas
 psutil
 tqdm
+gitpython
 git+https://github.com/ftyers/commonvoice-utils.git@main

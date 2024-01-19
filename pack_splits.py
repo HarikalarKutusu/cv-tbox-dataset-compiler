@@ -29,7 +29,7 @@ import psutil
 # This package
 import const as c
 import conf
-from lib import get_locales
+from lib import get_locales_from_cv_dataset, init_directories
 
 
 #
@@ -43,7 +43,7 @@ if not HERE in sys.path:
 # Program parameters
 PROC_COUNT: int = int(1.5 * psutil.cpu_count(logical=True))  # OVER usage
 BATCH_SIZE: int = 5
-ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
+ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
 
 
 def handle_ds(dspath: str) -> None:
@@ -107,4 +107,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    init_directories(HERE)
     main()

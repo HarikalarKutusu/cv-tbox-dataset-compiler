@@ -27,12 +27,14 @@ class Globals:  # pylint: disable=too-many-instance-attributes
     total_ver: int = 0  # total count of versions
     total_lc: int = 0  # total count of languages in all versions
     total_algo: int = 0  # total count of algorithms
+    total_splits: int = 0  # total count of algorithms
 
     processed_ver: int = 0  # counter for corpora processed
     processed_lc: int = 0  # counter for corpora processed
     processed_algo: int = 0  # counter for corpora processed
 
-    skipped_exists: int = 0  # skipped befcause the destination already exists
+    skipped_exists: int = 0  # skipped because the destination already exists
+    skipped_nodata: int = 0  # skipped because there is no data
 
     start_time: datetime = datetime.now()
 
@@ -50,6 +52,16 @@ class LanguageRec:
     w_url: str = "" # Wikipedia English URL
     g_url: str = "" # Glattolog URL
     g_code: str = "" # Glattolog code
+
+#
+# GIT
+#
+@dataclass
+class GitRec:
+    """Record definition for github access"""
+    user: str = ""
+    repo: str = ""
+    branch: str = ""
 
 #
 # Text Corpus
@@ -97,6 +109,9 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_med: float = 0.0  # median
     t_std: float = 0.0  # standard deviation
     t_freq: str = ""  # string encoded frequency distribution
+    # graphemes & phonemes
+    g_freq: str = "" # string encoded frequency distribution
+    p_freq: str = "" # string encoded frequency distribution
 
 
 #

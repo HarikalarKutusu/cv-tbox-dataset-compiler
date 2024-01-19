@@ -11,6 +11,8 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
+from typedef import GitRec
+
 #
 # cv related
 #
@@ -136,13 +138,44 @@ COLS_TOKENS: list[str] = ["token", "count"]
 COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
 COLS_PHONEMES: list[str] = ["phoneme", "count"]
 
-# COL_TC_STATS: list[str] = [
-#     "lc", "s_cnt", "uq_s", "uq_n", "has_val", "val",
-#     "c_total", "c_mean", "c_median", "c_freq",
-#     "w_total", "w_mean", "w_median", "w_freq",
-#     "t_total", "t_mean", "t_median", "t_freq"
-# ]
+COLS_TC_STATS: list[str] = [
+    "ver",
+    "lc",
+    "s_cnt",
+    "uq_s",
+    "uq_n",
+    "has_val",
+    "val",
+    "c_sum",
+    "c_avg",
+    "c_med",
+    "c_std",
+    "c_freq",
+    "w_sum",
+    "w_avg",
+    "w_med",
+    "w_std",
+    "w_freq",
+    "t_sum",
+    "t_avg",
+    "t_med",
+    "t_std",
+    "t_freq",
+    "g_freq",
+    "p_freq",
+]
 
+COLS_REPORTED_STATS: list[str] = [
+    "ver",
+    "lc",
+    "rep_sum",
+    "rep_sen",
+    "rep_avg",
+    "rep_med",
+    "rep_std",
+    "rep_freq",
+    "rea_freq",
+]
 
 #
 # REPORTED SENTENCES
@@ -161,7 +194,6 @@ REPORTING_ALL.append("other")
 #
 # DIRECTORIES / FILENAMES
 #
-CACHE_DIRNAME: str = ".cache"
 DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
@@ -182,6 +214,9 @@ TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
+
+CLONES_DIRNAME: str = "clones"
+API_DIRNAME: str = "api"
 
 #
 # BINS
@@ -348,3 +383,15 @@ BINS_REPORTED: list[int] = [
     1000,
     999999,
 ]
+
+
+#
+# CLONING
+#
+
+GITHUB_BASE: str = "https://github.com/"
+CV_GITREC: GitRec = GitRec(user="common-voice", repo="common-voice", branch="main")
+CV_DATASET_GITREC: GitRec = GitRec(
+    user="common-voice", repo="cv-dataset", branch="main"
+)
+CLONES: list[GitRec] = [CV_GITREC, CV_DATASET_GITREC]
