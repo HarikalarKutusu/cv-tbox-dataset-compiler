@@ -138,13 +138,44 @@ COLS_TOKENS: list[str] = ["token", "count"]
 COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
 COLS_PHONEMES: list[str] = ["phoneme", "count"]
 
-# COL_TC_STATS: list[str] = [
-#     "lc", "s_cnt", "uq_s", "uq_n", "has_val", "val",
-#     "c_total", "c_mean", "c_median", "c_freq",
-#     "w_total", "w_mean", "w_median", "w_freq",
-#     "t_total", "t_mean", "t_median", "t_freq"
-# ]
+COLS_TC_STATS: list[str] = [
+    "ver",
+    "lc",
+    "s_cnt",
+    "uq_s",
+    "uq_n",
+    "has_val",
+    "val",
+    "c_sum",
+    "c_avg",
+    "c_med",
+    "c_std",
+    "c_freq",
+    "w_sum",
+    "w_avg",
+    "w_med",
+    "w_std",
+    "w_freq",
+    "t_sum",
+    "t_avg",
+    "t_med",
+    "t_std",
+    "t_freq",
+    "g_freq",
+    "p_freq",
+]
 
+COLS_REPORTED_STATS: list[str] = [
+    "ver",
+    "lc",
+    "rep_sum",
+    "rep_sen",
+    "rep_avg",
+    "rep_med",
+    "rep_std",
+    "rep_freq",
+    "rea_freq",
+]
 
 #
 # REPORTED SENTENCES
@@ -359,7 +390,8 @@ BINS_REPORTED: list[int] = [
 #
 
 GITHUB_BASE: str = "https://github.com/"
-CLONES: list[GitRec] = [
-    GitRec(user="common-voice", repo="common-voice", branch="main"),
-    GitRec(user="common-voice", repo="cv-dataset", branch="main"),
-]
+CV_GITREC: GitRec = GitRec(user="common-voice", repo="common-voice", branch="main")
+CV_DATASET_GITREC: GitRec = GitRec(
+    user="common-voice", repo="cv-dataset", branch="main"
+)
+CLONES: list[GitRec] = [CV_GITREC, CV_DATASET_GITREC]
