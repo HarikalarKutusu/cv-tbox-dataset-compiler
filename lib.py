@@ -24,6 +24,7 @@ import conf
 # Application Specific
 #
 
+
 def init_directories(basedir: str) -> None:
     """Creates data directory structures"""
     data_dir: str = os.path.join(basedir, c.DATA_DIRNAME)
@@ -31,7 +32,7 @@ def init_directories(basedir: str) -> None:
         return
 
     print("Preparing directory structures...")
-    all_locales: list[str] = get_locales(c.CV_VERSIONS[-1])
+    all_locales: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
     for lc in all_locales:
         os.makedirs(os.path.join(data_dir, c.CD_DIRNAME, lc), exist_ok=True)
         os.makedirs(
@@ -41,7 +42,7 @@ def init_directories(basedir: str) -> None:
             os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True
         )
     for ver in c.CV_VERSIONS:
-        ver_lc: list[str] = get_locales(ver)
+        ver_lc: list[str] = get_locales_from_cv_dataset(ver)
         for lc in ver_lc:
             ds_dir: str = os.path.join(calc_dataset_prefix(ver), lc)
             os.makedirs(
@@ -92,11 +93,11 @@ def report_results(g: Globals) -> None:
     """Prints out simpğle report from global counters"""
     process_seconds: float = (datetime.now() - g.start_time).total_seconds()
     print("=" * 80)
-    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo}")
+    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo} Splits: {g.total_splits}")
     print(
         f"Processed\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
     )
-    print(f"Skipped\t\t: LC: {g.skipped_exists}")
+    print(f"Skipped\t\t: Exists: {g.skipped_exists} No Data: {g.skipped_nodata}")
     print(
         f"Duration(s)\t: Total: {dec3(process_seconds)} Avg: {dec3(process_seconds/ g.processed_lc) if g.processed_lc > 0 else '-'}"
     )
@@ -208,7 +209,7 @@ def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
             print(f"CHECKOUT: {local_repo_path} @ {checkout_to}")
         repo: Repo = Repo(path=local_repo_path)
         if checkout_to == "main":
-            repo.git.execute(command=f"git checkout main")
+            repo.git.execute(command="git checkout main")
         else:
             commit_hash = repo.git.execute(
                 command=f"git rev-list -n 1 --before='{checkout_to}' origin/{gitrec.branch}"
@@ -258,7 +259,7 @@ def get_from_cv_api(url: str) -> Any:
     return json.loads(res.read())
 
 
-def get_locales(ver: str) -> list[str]:
+def get_locales_from_api(ver: str) -> list[str]:
     """Get data from API 'datasets' endpoint"""
     jdict: Any = get_from_cv_api(
         f"{c.CV_DATASET_BASE_URL}/{calc_dataset_prefix(ver)}.json"
@@ -267,6 +268,27 @@ def get_locales(ver: str) -> list[str]:
     locales: list[str] = []
     for loc, _data in jlocales.items():
         locales.append(loc)
+    return sorted(locales)
+
+
+def get_from_cv_dataset_clone(p: str) -> Any:
+    """Get data from cloned CV DATASET"""
+    with open(p, mode="r", encoding="utf8") as fd:
+        s: str = fd.read()
+    return json.loads(s)
+
+
+def get_locales_from_cv_dataset(ver: str) -> list[str]:
+    """Get data from API 'datasets' endpoint"""
+    p: str = os.path.join(
+        conf.CV_TBOX_CACHE,
+        c.CLONES_DIRNAME,
+        c.CV_DATASET_GITREC.repo,
+        "datasets",
+        f"{calc_dataset_prefix(ver)}.json",
+    )
+    jdict: Any = get_from_cv_dataset_clone(p)
+    locales: list[str] = [item[0] for item in jdict["locales"].items()]
     return sorted(locales)
 
 
