@@ -19,7 +19,7 @@
 import os
 import sys
 import glob
-from datetime import datetime, timedelta
+from datetime import datetime
 import multiprocessing as mp
 from typing import Any
 
@@ -219,10 +219,12 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
     ver_dir: str = calc_dataset_prefix(ver)
 
     # Calc voice-corpus directory
-    rep_file: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv")
+    rep_file: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
+    )
 
     # skip process if no such file or there can be empty files :/
-    if not os.path.isfile(rep_file) or os.path.getsize(rep_file) == 0: 
+    if not os.path.isfile(rep_file) or os.path.getsize(rep_file) == 0:
         return ReportedStatsRec(ver=ver, lc=lc)
     # read file in - Columns: sentence sentence_id locale reason
     df: pd.DataFrame = df_read(rep_file)
@@ -947,7 +949,6 @@ def main() -> None:
                 g_rep.skipped_exists += len(lc_list) - num_to_process
                 g_rep.processed_ver += 1 if num_to_process > 0 else 0
 
-
         # Now multi-process each record
         num_items: int = len(ver_lc_list)
         if num_items == 0:
@@ -1218,7 +1219,9 @@ def main() -> None:
     # FINALIZE
     process_seconds: float = (datetime.now() - start_time).total_seconds()
     print("Finished compiling statistics!")
-    print(f"Duration {dec3(process_seconds)} sec, avg={dec3(process_seconds/g.total_lc)} secs/dataset.")
+    print(
+        f"Duration {dec3(process_seconds)} sec, avg={dec3(process_seconds/g.total_lc)} secs/dataset."
+    )
 
 
 if __name__ == "__main__":
