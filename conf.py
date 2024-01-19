@@ -20,12 +20,14 @@ COMPRESSED_RESULTS_BASE_DIR: str = os.path.join(
 )
 
 # Regenerate the data or skip existing?
-SKIP_VOICE_CORPORA: bool = False
 SKIP_TEXT_CORPORA: bool = False
 SKIP_REPORTED: bool = False
+SKIP_VOICE_CORPORA: bool = False
 
 # Should we re-create old version even if they exist?
-FORCE_CREATE_SPLIT_STATS: bool = False
+FORCE_CREATE_TC_STATS: bool = False
+FORCE_CREATE_VC_STATS: bool = False
+FORCE_CREATE_REPORTED_STATS: bool = False
 # Should we re-create the compressed .tar files even if they exist?
 FORCE_CREATE_COMPRESSED: bool = False
 
