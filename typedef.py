@@ -43,15 +43,18 @@ class Globals:  # pylint: disable=too-many-instance-attributes
 # Language
 #
 
+
 @dataclass
 class LanguageRec:
     """Record definition for the language"""
+
     lc: str = ""  # cv language code
-    n_name: str = "" # Native name
-    e_name: str = "" # Name in English
-    w_url: str = "" # Wikipedia English URL
-    g_url: str = "" # Glattolog URL
-    g_code: str = "" # Glattolog code
+    n_name: str = ""  # Native name
+    e_name: str = ""  # Name in English
+    w_url: str = ""  # Wikipedia English URL
+    g_url: str = ""  # Glattolog URL
+    g_code: str = ""  # Glattolog code
+
 
 #
 # GIT
@@ -59,9 +62,11 @@ class LanguageRec:
 @dataclass
 class GitRec:
     """Record definition for github access"""
+
     user: str = ""
     repo: str = ""
     branch: str = ""
+
 
 #
 # Text Corpus
@@ -74,10 +79,6 @@ class TextCorpusRec:
 
     file: str = ""  # filename in cv repo
     sentence: str = ""  # original sentence
-    normalized: str = ""  # normalized sentence
-    chars: int = 0  # number of characters (graphemes)
-    words: int = 0  # number of words (words > 0 also indicates that the language has validator in commonvoice-utils)
-    valid: int = 1  # is it a valid sentence according to commonvoice-utils? 1=valid
 
 
 @dataclass
@@ -86,11 +87,13 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
 
     ver: str = ""  # cv version code (internal format nn.n, see const.py)
     lc: str = ""  # cv language code
+    algo: str = ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
+    sp: str = ""  # Source of the text-corpus (Empty if TC from server/data, else the bucket/split name)
+    has_val: int = 0  # 1 if commonvoice-utils has validator for it
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
     uq_n: int = 0  # unique nomilized sentence count
-    has_val: int = 0  # 1 if commonvoice-utils has validator for it
-    val: int = 0
+    val: int = 0  # How many of the sentences are validated with commonvoice-utils validator - if exists?
     # character statistics
     c_sum: int = 0  # total count
     c_avg: float = 0.0  # average (mean)
@@ -110,8 +113,8 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_std: float = 0.0  # standard deviation
     t_freq: str = ""  # string encoded frequency distribution
     # graphemes & phonemes
-    g_freq: str = "" # string encoded frequency distribution
-    p_freq: str = "" # string encoded frequency distribution
+    g_freq: str = ""  # string encoded frequency distribution
+    p_freq: str = ""  # string encoded frequency distribution
 
 
 #

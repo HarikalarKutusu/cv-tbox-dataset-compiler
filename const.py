@@ -112,12 +112,9 @@ SEP_ROW: str = "|"
 SEP_COL: str = "#"
 SEP_ALGO: str = "|"
 
+#
 # COLUMNS FOR DATAFRAMES
-COLS_TEXT_CORPUS: list[str] = [
-    "file",
-    "sentence",
-    "chars",
-]
+#
 
 # COLS_SPLIT_STATS: list[str] = [
 #     'file',
@@ -125,26 +122,26 @@ COLS_TEXT_CORPUS: list[str] = [
 #     'chars',
 # ]
 
+
+#
+# COLUMNS FOR TEXT-CORPUS RELATED
+#
+
+
 COLS_TEXT_CORPUS: list[str] = [
     "file",
     "sentence",
-    "normalized",
-    "chars",
-    "words",
-    "valid",
 ]
-
-COLS_TOKENS: list[str] = ["token", "count"]
-COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
-COLS_PHONEMES: list[str] = ["phoneme", "count"]
 
 COLS_TC_STATS: list[str] = [
     "ver",
     "lc",
+    "algo",
+    "sp",
+    "has_val",
     "s_cnt",
     "uq_s",
     "uq_n",
-    "has_val",
     "val",
     "c_sum",
     "c_avg",
@@ -165,6 +162,14 @@ COLS_TC_STATS: list[str] = [
     "p_freq",
 ]
 
+COLS_TOKENS: list[str] = ["token", "count"]
+COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
+COLS_PHONEMES: list[str] = ["phoneme", "count"]
+
+
+#
+# REPORTED SENTENCES
+#
 COLS_REPORTED_STATS: list[str] = [
     "ver",
     "lc",
@@ -177,9 +182,7 @@ COLS_REPORTED_STATS: list[str] = [
     "rea_freq",
 ]
 
-#
-# REPORTED SENTENCES
-#
+
 REPORTING_BASE: list[str] = [
     "offensive-language",
     "grammar-or-spelling",
