@@ -19,15 +19,16 @@
 import os
 import sys
 import glob
-from datetime import datetime
 import multiprocessing as mp
-from typing import Any
+from collections import Counter
+from datetime import datetime
 
 # External dependencies
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import psutil
-from tqdm import tqdm
+import cvutils as cvu
 
 # Module
 import const as c
@@ -60,7 +61,14 @@ if not HERE in sys.path:
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 MAX_BATCH_SIZE: int = 5
+
 ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
+
+cv: cvu.CV = cvu.CV()
+VALIDATORS: list[str] = cv.validators()
+PHONEMISERS: list[str] = cv.phonemisers()
+# ALPHABETS: list[str] = [str(p).split(os.sep)[-2] for p in cv.alphabets()]
+# SEGMENTERS: list[str] = [str(p).split(os.sep)[-2] for p in cv.segmenters()]
 
 g: Globals = Globals(
     total_ver=len(c.CV_VERSIONS),
@@ -78,131 +86,243 @@ g_vc: Globals = Globals(
 ########################################################
 
 
-def handle_text_corpus(ver_lc: str) -> TextCorpusStatsRec:
+def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
     """Multi-Process text-corpus for a single locale"""
 
     ver: str = ver_lc.split("|")[0]
     lc: str = ver_lc.split("|")[1]
-
     ver_dir: str = calc_dataset_prefix(ver)
 
     tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, ver_dir, lc)
     tc_file: str = os.path.join(tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
-    if not os.path.isfile(tc_file):
-        if conf.VERBOSE:
-            print(f"WARN: Skipping no-text-corpus-file locale: {ver} - {lc}")
-        return TextCorpusStatsRec(ver=ver, lc=lc)
 
-    # "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
-    df: pd.DataFrame = df_read(tc_file)
-    if df.shape[0] == 0:
-        if conf.VERBOSE:
-            print(f"WARN: Skipping locale with empty text-corpus: {ver} - {lc}")
-        return TextCorpusStatsRec(ver=ver, lc=lc)
-
-    # basic measures
-    sentence_cnt: int = df.shape[0]
-    unique_sentences: int = df["sentence"].dropna().unique().shape[0]
-    unique_normalized: int = df["normalized"].dropna().unique().shape[0]
-    valid: int = df[df["valid"].dropna().astype(int) == 1].shape[0]
-
-    # CHARS
-    ser: pd.Series[int] = df["chars"].dropna()  # pylint: disable=unsubscriptable-object
-    chars_total: int = ser.sum()
-    chars_mean: float = ser.mean()
-    chars_median: float = ser.median()
-    chars_std: float = ser.std(ddof=0)
-    # Calc character length distribution
-    arr: np.ndarray = np.fromiter(ser.apply(int).reset_index(drop=True).to_list(), int)
-    hist = np.histogram(arr, bins=c.BINS_CHARS)
-    character_freq = hist[0].tolist()
-
-    has_val: int = 0
-
-    # WORDS
-    ser: pd.Series[int] = df["words"].dropna()  # pylint: disable=unsubscriptable-object
-    words_total: int = ser.sum()
-    words_mean: float = 0.0
-    words_median: float = 0.0
-    words_std: float = 0.0
-    word_freq: list[int] = []
-    if words_total != 0:
-        has_val = 1
-        words_mean = ser.mean()
-        words_median = ser.median()
-        words_std = ser.std(ddof=0)
-    # Calc word count distribution
-    if has_val == 1:
-        arr: np.ndarray = np.fromiter(
-            ser.apply(int).reset_index(drop=True).to_list(), int
-        )
-        hist = np.histogram(arr, bins=c.BINS_WORDS)
-        word_freq = hist[0].tolist()
-
-    # TOKENS
-    tokens_file: str = os.path.join(tc_dir, f"{c.TOKENS_FN}.tsv")
-    tokens_total: int = 0
-    tokens_mean: float = 0.0
-    tokens_median: float = 0.0
-    tokens_std: float = 0.0
-    token_freq: list[int] = []
-    if has_val == 1:
-        df: pd.DataFrame = df_read(tokens_file)
-        # "token", "count"
-        tokens_total = df.shape[0]
-        ser = df["count"].dropna()
-        tokens_mean = ser.mean()
-        tokens_median = ser.median()
-        tokens_std = ser.std(ddof=0)
-        # Token/word repeat distribution
-        arr: np.ndarray = np.fromiter(
-            df["count"].dropna().apply(int).reset_index(drop=True).to_list(), int
-        )
-        hist = np.histogram(arr, bins=c.BINS_TOKENS)
-        token_freq = hist[0].tolist()
-
-    # GRAPHEMES
-    graphemes_file: str = os.path.join(tc_dir, f"{c.GRAPHEMES_FN}.tsv")
-    graphemes_arr: list[list[Any]] = []
-    if os.path.isfile(graphemes_file):
-        df: pd.DataFrame = df_read(graphemes_file)
-        graphemes_arr = df.values.tolist()
-
-    # PHONEMES
-    phonemes_file: str = os.path.join(tc_dir, f"{c.PHONEMES_FN}.tsv")
-    phonemes_arr: list[list[Any]] = []
-    if os.path.isfile(phonemes_file):
-        df: pd.DataFrame = df_read(phonemes_file)
-        phonemes_arr = df.values.tolist()
-
-    res: TextCorpusStatsRec = TextCorpusStatsRec(
-        ver=ver,
-        lc=lc,
-        s_cnt=sentence_cnt,
-        uq_s=unique_sentences,
-        uq_n=unique_normalized,
-        has_val=has_val,
-        val=valid,
-        c_sum=chars_total,
-        c_avg=dec3(chars_mean),
-        c_med=dec3(chars_median),
-        c_std=dec3(chars_std),
-        c_freq=list2str(character_freq),
-        w_sum=words_total,
-        w_avg=dec3(words_mean),
-        w_med=dec3(words_median),
-        w_std=dec3(words_std),
-        w_freq=list2str(word_freq),
-        t_sum=tokens_total,
-        t_avg=dec3(tokens_mean),
-        t_med=dec3(tokens_median),
-        t_std=dec3(tokens_std),
-        t_freq=list2str(token_freq),
-        g_freq=arr2str(graphemes_arr) if graphemes_arr else "",
-        p_freq=arr2str(phonemes_arr) if phonemes_arr else "",
+    # cvu - do we have them?
+    validator: cvu.Validator | None = cvu.Validator(lc) if lc in VALIDATORS else None
+    phonemiser: cvu.Phonemiser | None = (
+        cvu.Phonemiser(lc) if lc in PHONEMISERS else None
     )
+    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
 
-    return res
+    results: list[TextCorpusStatsRec] = []
+
+    def handle_df(
+        df: pd.DataFrame, algo: str = "", sp: str = ""
+    ) -> TextCorpusStatsRec | None:
+        """Calculate stats given a dataframe containing only sentences"""
+
+        if df.shape[0] == 0:
+            if conf.VERBOSE:
+                print(f"WARN: Skipping empty data for: {ver} - {lc} - {algo} - {sp}")
+            return None
+
+        # prep result record with default
+        res: TextCorpusStatsRec = TextCorpusStatsRec(
+            ver=ver,
+            lc=lc,
+            algo=algo,
+            sp=sp,
+            has_val=lc in VALIDATORS,
+            has_phon=lc in PHONEMISERS,
+        )
+
+        # init counters
+        token_counter: Counter = Counter()
+        grapheme_counter: Counter = Counter()
+        phoneme_counter: Counter = Counter()
+
+        # decide on saving
+        do_save: bool = False
+        if conf.SAVE_LEVEL == c.SAVE_LEVEL_DETAILED:
+            do_save = True
+        elif conf.SAVE_LEVEL == c.SAVE_LEVEL_DEFAULT and algo == "" and sp == "":
+            do_save = True
+        elif (
+            conf.SAVE_LEVEL == c.SAVE_LEVEL_DEFAULT
+            and algo == "s1"
+            and sp in ["validated", "train", "dev", "test"]
+        ):
+            do_save = True
+
+        # see: https://github.com/pylint-dev/pylint/issues/3956
+        _ser: pd.Series[int] = pd.Series()  # pylint: disable=unsubscriptable-object
+        _df2: pd.DataFrame = pd.DataFrame()
+
+        # add columns
+        _df: pd.DataFrame = (
+            df.reindex(
+                columns=[
+                    "sentence",
+                    "normalized",  # normalized sentence
+                    "phonemised",  # phonemised sentence
+                    "tokens",  # list of tokens
+                    "char_cnt",  # number of characters (graphemes)
+                    "word_cnt",  # number of words
+                    "valid",  # is it a valid sentence according to commonvoice-utils? 1=valid
+                ]
+            )
+            .copy()
+            .reset_index(drop=True)
+        )
+
+        # pre-calc simpler values
+        # _df["char_cnt"] = [len(s) for s in _df["sentence"].copy().to_numpy().tolist()]
+        _df["char_cnt"] = [
+            len(s) if isinstance(s, str) else 0 for s in _df["sentence"].to_list()
+        ]
+        # _df["char_cnt"] = _df["sentence"].map(len)
+
+        # validator dependent
+        if validator:
+            _df["normalized"] = [
+                validator.validate(s) if isinstance(s, str) else None
+                for s in _df["sentence"].tolist()
+            ]
+            _df["valid"] = [0 if n is None else 1 for n in _df["normalized"].tolist()]
+            _df["tokens"] = [
+                None if s is None else tokeniser.tokenise(s)
+                for s in _df["normalized"].tolist()
+            ]
+            _df["word_cnt"] = [
+                None if ww is None else len(ww) for ww in _df["tokens"].tolist()
+            ]
+            _ = [token_counter.update(ww) for ww in _df["tokens"].dropna().tolist()]
+
+            # word_cnt stats
+            _ser = _df["word_cnt"].dropna()
+            res.w_sum = _ser.sum()
+            res.w_avg = _ser.mean()
+            res.w_med = _ser.median()
+            res.w_std = _ser.std(ddof=0)
+            # Calc word count distribution
+            _arr: np.ndarray = np.fromiter(
+                _ser.apply(int).reset_index(drop=True).to_list(), int
+            )
+            _hist = np.histogram(_arr, bins=c.BINS_WORDS)
+            res.w_freq = _hist[0].tolist()
+
+            # token_cnt stats
+            _df2 = pd.DataFrame(token_counter.most_common(), columns=c.COLS_TOKENS)
+            # "token", "count"
+            res.t_sum = _df2.shape[0]
+            _ser = _df2["count"].dropna()
+            res.t_avg = _ser.mean()
+            res.t_med = _ser.median()
+            res.t_std = _ser.std(ddof=0)
+            # Token/word repeat distribution
+            _arr: np.ndarray = np.fromiter(
+                _df2["count"].dropna().apply(int).reset_index(drop=True).to_list(), int
+            )
+            _hist = np.histogram(_arr, bins=c.BINS_TOKENS)
+            res.t_freq = _hist[0].tolist()
+            if do_save:
+                fn: str = os.path.join(
+                    tc_dir,
+                    f"{c.TOKENS_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
+                        "_.", "."
+                    ),
+                )
+                df_write(_df2, fn)
+
+        # phonemiser dependent
+        if phonemiser:
+            _df["phonemised"] = [
+                phonemiser.phonemise(s) if isinstance(s, str) else None
+                for s in _df["sentence"].tolist()
+                # for w in str(s).split(" ")
+            ]
+            _ = [phoneme_counter.update(p) for p in _df["phonemised"].dropna().tolist()]
+
+            # PHONEMES
+            _df2 = pd.DataFrame(phoneme_counter.most_common(), columns=c.COLS_PHONEMES)
+            _values = _df2.values.tolist()
+            res.p_cnt = len(_values)
+            res.p_freq = arr2str(_values)
+            if do_save:
+                fn: str = os.path.join(
+                    tc_dir,
+                    f"{c.PHONEMES_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
+                        "_.", "."
+                    ),
+                )
+                df_write(_df2, fn)
+
+        # simpler values which are independent
+        res.s_cnt = _df.shape[0]
+        res.val = _df["valid"].dropna().astype(int).sum()
+        res.uq_s = _df["sentence"].dropna().unique().shape[0]
+        res.uq_n = _df["normalized"].dropna().unique().shape[0]
+
+        # char_cnt stats
+        _ser = _df["char_cnt"].dropna()
+        res.c_sum = _ser.sum()
+        res.c_avg = _ser.mean()
+        res.c_med = _ser.median()
+        res.c_std = _ser.std(ddof=0)
+        # Calc character length distribution
+        _arr: np.ndarray = np.fromiter(
+            _ser.apply(int).reset_index(drop=True).to_list(), int
+        )
+        _hist = np.histogram(_arr, bins=c.BINS_CHARS)
+        res.c_freq = _hist[0].tolist()
+
+        # GRAPHEMES
+        _ = [grapheme_counter.update(s) for s in _df["sentence"].dropna().tolist()]
+        _df2 = pd.DataFrame(grapheme_counter.most_common(), columns=c.COLS_GRAPHEMES)
+        _values = _df2.values.tolist()
+        res.p_cnt = len(_values)
+        res.g_freq = arr2str(_df2.values.tolist())
+        if do_save:
+            fn: str = os.path.join(
+                tc_dir,
+                f"{c.GRAPHEMES_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
+                    "_.", "."
+                ),
+            )
+            df_write(_df2, fn)
+        # return result
+        return res
+
+    def handle_tc_global() -> None:
+        """Calculate stats using the whole text corpus from server/data"""
+        if not os.path.isfile(tc_file):
+            if conf.VERBOSE:
+                print(f"WARN: No text-corpus file for: {ver} - {lc}")
+            return
+
+        # "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
+        # df: pd.DataFrame = df_read(tc_file).reset_index(drop=True)[["sentence"]]
+        # df = df[["sentence"]]
+        res: TextCorpusStatsRec | None = handle_df(
+            df_read(tc_file).reset_index(drop=True)[["sentence"]]
+        )
+        if res is not None:
+            results.append(res)
+
+    def handle_tc_split(sp: str, algo: str = "") -> None:
+        """Calculate stats using sentence data in a bucket/split"""
+        fn: str = os.path.join(conf.SRC_BASE_DIR, algo, ver_dir, lc, f"{sp}.tsv")
+        if not os.path.isfile(fn):
+            if conf.VERBOSE:
+                print(f"WARN: No such split file for: {ver} - {lc} - {algo} - {sp}")
+            return
+        # df: pd.DataFrame = df_read(tc_file).reset_index(drop=True)
+        # df = df[["sentence"]]
+        res: TextCorpusStatsRec | None = handle_df(
+            df_read(fn).reset_index(drop=True)[["sentence"]], algo=algo, sp=sp
+        )
+        if res is not None:
+            results.append(res)
+
+    # main
+    handle_tc_global()
+    for sp in ["validated", "invalidated", "other"]:
+        handle_tc_split(sp, c.ALGORITHMS[0])
+
+    for algo in c.ALGORITHMS:
+        for sp in ["train", "dev", "test"]:
+            handle_tc_split(sp, algo)
+    # done
+    return results
 
 
 ########################################################
@@ -789,6 +909,7 @@ def main() -> None:
     #
     def main_text_corpora() -> None:
         """Handle all text corpora"""
+        nonlocal used_proc_count
         print("\n=== Start Text Corpora Analysis ===")
 
         tc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
@@ -801,7 +922,7 @@ def main() -> None:
             combined_df = df_read(combined_tsv_file).reset_index(drop=True)
         combined_df = combined_df[["ver", "lc"]]
         combined_ver_lc: list[str] = [
-            "|".join([row[0], row[1]]) for row in combined_df.values.tolist()
+            "|".join([row[0], row[1], row[2]]) for row in combined_df.values.tolist()
         ]
         del combined_df
         combined_df = pd.DataFrame()
@@ -831,12 +952,15 @@ def main() -> None:
                         lc,
                         f"{c.TEXT_CORPUS_FN}.tsv",
                     )
-                    if not ver_lc in combined_ver_lc and os.path.isfile(tc_tsv):
+                    if ver_lc in combined_ver_lc:
+                        g_tc.skipped_exists += 1
+                    elif not os.path.isfile(tc_tsv):
+                        g_tc.skipped_nodata += 1
+                    else:
                         ver_lc_new.append(ver_lc)
                 num_to_process: int = len(ver_lc_new)
                 ver_lc_list.extend(ver_lc_new)
                 g_tc.processed_lc += num_to_process
-                g_tc.skipped_exists += len(lc_list) - num_to_process
                 g_tc.processed_ver += 1 if num_to_process > 0 else 0
 
         # Now multi-process each record
@@ -851,46 +975,55 @@ def main() -> None:
             + (0 if num_items % used_proc_count == 0 else 1),
         )
         print(
-            f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} Remaining: {g_tc.processed_lc} "
-            + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
+            f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} NoData: {g_tc.skipped_nodata} "
+            + f"Remaining: {g_tc.processed_lc} Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
+
         results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
-                    results.append(res)
+                    results.extend(res)
                     pbar.update()
-                    if res.s_cnt == 0:
-                        g.skipped_nodata += 1
+                    for r in res:
+                        if r.s_cnt == 0:
+                            g_tc.skipped_nodata += 1
 
         # Create result DF
-        # df: pd.DataFrame = pd.DataFrame(tc_stats, columns=c.COLS_TEXT_CORPUS)
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
+        df: pd.DataFrame = pd.DataFrame(results, columns=c.COLS_TC_STATS).reset_index(
+            drop=True
+        )
         df.sort_values(["lc", "ver"], inplace=True)
-
-        # Write out combined (TSV only to use later)
+        # Write out combined (TSV only to use later for above existence checks)
         df_write(df, os.path.join(dst_tsv_base, f"{c.TEXT_CORPUS_STATS_FN}.tsv"))
-        # df.to_json(
-        #     os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, f"{c.TEXT_CORPUS_STATS_FN}.json"),
-        #     orient="table",
-        #     index=False,
-        # )
 
-        # Write out per locale
-        for lc in ALL_LOCALES:
-            # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
-            df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
-            df_write(
-                df_lc, os.path.join(dst_tsv_base, lc, f"{c.TEXT_CORPUS_STATS_FN}.tsv")
-            )
-            df_lc.to_json(
-                os.path.join(dst_json_base, lc, f"{c.TEXT_CORPUS_STATS_FN}.json"),
-                orient="table",
-                index=False,
-            )
+        # Write out under locale dir (data/results/<lc>/<lc>_<ver>_tc_stats.json|tsv)
+        df2: pd.DataFrame = pd.DataFrame()
+        for ver in c.CV_VERSIONS:
+            for lc in ALL_LOCALES:
+                # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
+                df2 = df[(df["ver"] == ver) & (df["lc"] == lc)]  # pylint: disable=E1136
+                if df2.shape[0] > 0:
+                    df_write(
+                        df2,
+                        os.path.join(
+                            dst_tsv_base,
+                            lc,
+                            f"${lc}_{ver}_{c.TEXT_CORPUS_STATS_FN}.tsv",
+                        ),
+                    )
+                    df2.to_json(
+                        os.path.join(
+                            dst_json_base,
+                            lc,
+                            f"${lc}_{ver}_{c.TEXT_CORPUS_STATS_FN}.json",
+                        ),
+                        orient="table",
+                        index=False,
+                    )
         # report
         report_results(g_tc)
 
