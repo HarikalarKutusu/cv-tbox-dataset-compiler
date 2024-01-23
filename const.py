@@ -139,6 +139,7 @@ COLS_TC_STATS: list[str] = [
     "algo",
     "sp",
     "has_val",
+    "has_phon",
     "s_cnt",
     "uq_s",
     "uq_n",
@@ -158,7 +159,9 @@ COLS_TC_STATS: list[str] = [
     "t_med",
     "t_std",
     "t_freq",
+    "q_cnt",
     "g_freq",
+    "p_cnt",
     "p_freq",
 ]
 
@@ -213,13 +216,21 @@ TOKENS_FN: str = "$tokens"
 GRAPHEMES_FN: str = "$graphemes"
 PHONEMES_FN: str = "$phonemes"
 
-TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
+TEXT_CORPUS_STATS_FN: str = "tc_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
 
 CLONES_DIRNAME: str = "clones"
 API_DIRNAME: str = "api"
+
+#
+# SAVE LEVELS
+#
+
+SAVE_LEVEL_NONE = 0  # do not save detailed text corpora analysis under data/text-corpus
+SAVE_LEVEL_DEFAULT = 1  # save only the following: text-corpus & validated/train/dev/test analysis results for s1 algorithm
+SAVE_LEVEL_DETAILED = 2  # save every calculated result for all algorithms
 
 #
 # BINS

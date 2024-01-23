@@ -90,6 +90,8 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     algo: str = ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
     sp: str = ""  # Source of the text-corpus (Empty if TC from server/data, else the bucket/split name)
     has_val: int = 0  # 1 if commonvoice-utils has validator for it
+    has_phon: int = 0  # 1 if commonvoice-utils has phonemiser for it
+    # sentence statistics
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
     uq_n: int = 0  # unique nomilized sentence count
@@ -113,7 +115,9 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_std: float = 0.0  # standard deviation
     t_freq: str = ""  # string encoded frequency distribution
     # graphemes & phonemes
+    q_cnt: int = 0  # count of different graphemes
     g_freq: str = ""  # string encoded frequency distribution
+    p_cnt: int = 0  # count of different phonemes
     p_freq: str = ""  # string encoded frequency distribution
 
 
