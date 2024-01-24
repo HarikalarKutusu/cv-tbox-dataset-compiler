@@ -115,7 +115,7 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_std: float = 0.0  # standard deviation
     t_freq: str = ""  # string encoded frequency distribution
     # graphemes & phonemes
-    q_cnt: int = 0  # count of different graphemes
+    g_cnt: int = 0  # count of different graphemes
     g_freq: str = ""  # string encoded frequency distribution
     p_cnt: int = 0  # count of different phonemes
     p_freq: str = ""  # string encoded frequency distribution
