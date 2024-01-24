@@ -269,7 +269,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         _ = [grapheme_counter.update(s) for s in _df["sentence"].dropna().tolist()]
         _df2 = pd.DataFrame(grapheme_counter.most_common(), columns=c.COLS_GRAPHEMES)
         _values = _df2.values.tolist()
-        res.p_cnt = len(_values)
+        res.g_cnt = len(_values)
         res.g_freq = arr2str(_df2.values.tolist())
         if do_save:
             fn: str = os.path.join(
