@@ -89,8 +89,8 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     lc: str = ""  # cv language code
     algo: str = ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
     sp: str = ""  # Source of the text-corpus (Empty if TC from server/data, else the bucket/split name)
-    has_val: int = 0  # 1 if commonvoice-utils has validator for it
-    has_phon: int = 0  # 1 if commonvoice-utils has phonemiser for it
+    has_val: bool = False  # if commonvoice-utils has validator for it
+    has_phon: bool = False  # if commonvoice-utils has phonemiser for it
     # sentence statistics
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
@@ -101,24 +101,24 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     c_avg: float = 0.0  # average (mean)
     c_med: float = 0.0  # median
     c_std: float = 0.0  # standard deviation
-    c_freq: str = ""  # string encoded frequency distribution
+    c_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # word statistics
     w_sum: int = 0  # total count
     w_avg: float = 0.0  # average (mean)
     w_med: float = 0.0  # median
     w_std: float = 0.0  # standard deviation
-    w_freq: str = ""  # string encoded frequency distribution
+    w_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # token statistics
     t_sum: int = 0  # total counts
     t_avg: float = 0.0  # average (mean)
     t_med: float = 0.0  # median
     t_std: float = 0.0  # standard deviation
-    t_freq: str = ""  # string encoded frequency distribution
+    t_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # graphemes & phonemes
     g_cnt: int = 0  # count of different graphemes
-    g_freq: str = ""  # string encoded frequency distribution
+    g_freq: list[list[str | int]] = field(default_factory=lambda: [])  # frequency distribution symbol-count
     p_cnt: int = 0  # count of different phonemes
-    p_freq: str = ""  # string encoded frequency distribution
+    p_freq: list[list[str | int]] = field(default_factory=lambda: [])  # frequency distribution symbol-count
 
 
 #
@@ -137,8 +137,8 @@ class ReportedStatsRec:  # pylint: disable=too-many-instance-attributes
     rep_avg: float = 0.0  # average (mean)
     rep_med: float = 0.0  # median
     rep_std: float = 0.0  # standard deviation
-    rep_freq: str = ""  # string encoded frequency distribution for report per sentence
-    rea_freq: str = ""  # string encoded frequency distribution for reporting reasons
+    rep_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution for report per sentence
+    rea_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution for reporting reasons
 
 
 #
@@ -163,33 +163,33 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     dur_avg: float = 0.0  # average (mean)
     dur_med: float = 0.0  # median
     dur_std: float = 0.0  # standard deviation
-    dur_freq: str = ""  # string encoded frequency distribution
+    dur_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # Recordings per Voice
     v_avg: float = 0.0  # average (mean)
     v_med: float = 0.0  # median
     v_std: float = 0.0  # standard deviation
-    v_freq: str = ""  # string encoded frequency distribution
+    v_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # Recordings per Sentence
     s_avg: float = 0.0  # average (mean)
     s_med: float = 0.0  # median
     s_std: float = 0.0  # standard deviation
-    s_freq: str = ""  # string encoded frequency distribution
+    s_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # Votes (UpVotes, DownVotes)
     uv_sum: int = 0  # total
     uv_avg: float = 0.0  # average (mean)
     uv_med: float = 0.0  # median
     uv_std: float = 0.0  # standard deviation
-    uv_freq: str = ""  # string encoded frequency distribution
+    uv_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     dv_sum: int = 0  # total
     dv_avg: float = 0.0  # average (mean)
     dv_med: float = 0.0  # median
     dv_std: float = 0.0  # standard deviation
-    dv_freq: str = ""  # string encoded frequency distribution
+    dv_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
     # Demographics distribution for recordings
-    dem_table: str = ""
-    dem_uq: str = ""
-    dem_fix_r: str = ""
-    dem_fix_v: str = ""
+    dem_table: list[list[int]] = field(default_factory=lambda: [])
+    dem_uq: list[list[int]] = field(default_factory=lambda: [])
+    dem_fix_r: list[int] = field(default_factory=lambda: [])
+    dem_fix_v: list[int] = field(default_factory=lambda: [])
 
 
 #

@@ -44,8 +44,8 @@ from lib import (
     df_read,
     df_write,
     init_directories,
-    list2str,
-    arr2str,
+    # list2str,
+    # arr2str,
     dec3,
     calc_dataset_prefix,
     get_locales_from_cv_dataset,
@@ -165,11 +165,9 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         )
 
         # pre-calc simpler values
-        # _df["char_cnt"] = [len(s) for s in _df["sentence"].copy().to_numpy().tolist()]
         _df["char_cnt"] = [
             len(s) if isinstance(s, str) else 0 for s in _df["sentence"].to_list()
         ]
-        # _df["char_cnt"] = _df["sentence"].map(len)
 
         # validator dependent
         if validator:
@@ -236,7 +234,8 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             _df2 = pd.DataFrame(phoneme_counter.most_common(), columns=c.COLS_PHONEMES)
             _values = _df2.values.tolist()
             res.p_cnt = len(_values)
-            res.p_freq = arr2str(_values)
+            # res.p_freq = arr2str(_values)
+            res.p_freq = _values
             if do_save:
                 fn: str = os.path.join(
                     tc_dir,
@@ -270,7 +269,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         _df2 = pd.DataFrame(grapheme_counter.most_common(), columns=c.COLS_GRAPHEMES)
         _values = _df2.values.tolist()
         res.g_cnt = len(_values)
-        res.g_freq = arr2str(_df2.values.tolist())
+        res.g_freq = _df2.values.tolist()
         if do_save:
             fn: str = os.path.join(
                 tc_dir,
@@ -288,10 +287,6 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             if conf.VERBOSE:
                 print(f"WARN: No text-corpus file for: {ver} - {lc}")
             return
-
-        # "file", "sentence", "lower", "normalized", "chars", "words", 'valid'
-        # df: pd.DataFrame = df_read(tc_file).reset_index(drop=True)[["sentence"]]
-        # df = df[["sentence"]]
         res: TextCorpusStatsRec | None = handle_df(
             df_read(tc_file).reset_index(drop=True)[["sentence"]]
         )
@@ -305,8 +300,6 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             if conf.VERBOSE:
                 print(f"WARN: No such split file for: {ver} - {lc} - {algo} - {sp}")
             return
-        # df: pd.DataFrame = df_read(tc_file).reset_index(drop=True)
-        # df = df[["sentence"]]
         res: TextCorpusStatsRec | None = handle_df(
             df_read(fn).reset_index(drop=True)[["sentence"]], algo=algo, sp=sp
         )
@@ -394,8 +387,8 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         rep_avg=dec3(rep_mean),
         rep_med=dec3(rep_median),
         rep_std=dec3(rep_std),
-        rep_freq=list2str(rep_freq),
-        rea_freq=list2str(reason_freq),
+        rep_freq=rep_freq,
+        rea_freq=reason_freq,
     )
     return res
 
@@ -422,7 +415,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         nonlocal df_clip_durations
 
         # find_fixes
-        def find_fixes(df_split: pd.DataFrame) -> list[str]:
+        def find_fixes(df_split: pd.DataFrame) -> list[list[int]]:
             """Finds fixable demographic info from the split and returns a string"""
 
             # df is local dataframe which will keep records
@@ -444,8 +437,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             fixes: pd.DataFrame = pd.DataFrame(columns=df.columns).reset_index(
                 drop=True
             )
-            dem_fixes_recs: str = ""
-            dem_fixes_voices: str = ""
+            dem_fixes_recs: list[int] = []
+            dem_fixes_voices: list[int] = []
 
             # get unique voices with multiple demographic values
             df_counts: pd.DataFrame = (
@@ -505,7 +498,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
                     .drop(c.NODATA, axis=0)
                     .drop(c.NODATA, axis=1)
                 )
-                dem_fixes_recs = arr2str(pt.to_numpy(int).tolist())
+                dem_fixes_recs = pt.to_numpy(int).tolist()
 
                 # voices
                 fixes = fixes.drop("p_enum", axis=1).drop_duplicates()
@@ -528,7 +521,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
                     .drop(c.NODATA, axis=0)
                     .drop(c.NODATA, axis=1)
                 )
-                dem_fixes_voices = arr2str(pt.to_numpy(int).tolist())
+                dem_fixes_voices = pt.to_numpy(int).tolist()
 
             return [dem_fixes_recs, dem_fixes_voices]
 
@@ -739,7 +732,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 
         # Create a table for all demographic info corrections (based on recordings)
         # Correctable ones are: clients with both blank and a single gender (or age) specified
-        dem_fixes_list: list[str] = find_fixes(df_orig)
+        dem_fixes_list: list[list[int]] = find_fixes(df_orig)
 
         res: SplitStatsRec = SplitStatsRec(
             ver=ver,
@@ -755,31 +748,31 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             dur_avg=dec3(duration_mean),
             dur_med=dec3(duration_median),
             dur_std=dec3(duration_std),
-            dur_freq=list2str(duration_freq),
+            dur_freq=duration_freq,
             # Recordings per Voice
             v_avg=dec3(voice_mean),
             v_med=dec3(voice_median),
             v_std=dec3(voice_std),
-            v_freq=list2str(voice_freq),
+            v_freq=voice_freq,
             # Recordings per Sentence
             s_avg=dec3(sentence_mean),
             s_med=dec3(sentence_median),
             s_std=dec3(sentence_std),
-            s_freq=list2str(sentence_freq),
+            s_freq=sentence_freq,
             # Votes
             uv_sum=up_votes_sum,
             uv_avg=dec3(up_votes_mean),
             uv_med=dec3(up_votes_median),
             uv_std=dec3(up_votes_std),
-            uv_freq=list2str(up_votes_freq),
+            uv_freq=up_votes_freq,
             dv_sum=down_votes_sum,
             dv_avg=dec3(down_votes_mean),
             dv_med=dec3(down_votes_median),
             dv_std=dec3(down_votes_std),
-            dv_freq=list2str(down_votes_freq),
+            dv_freq=down_votes_freq,
             # Demographics distribution for recordings
-            dem_table=arr2str(_pt_dem.to_numpy(int).tolist()),
-            dem_uq=arr2str(_pt_uqdem.to_numpy(int).tolist()),
+            dem_table=_pt_dem.to_numpy(int).tolist(),
+            dem_uq=_pt_uqdem.to_numpy(int).tolist(),
             dem_fix_r=dem_fixes_list[0],
             dem_fix_v=dem_fixes_list[1],
         )
@@ -910,11 +903,24 @@ def main() -> None:
     def main_text_corpora() -> None:
         """Handle all text corpora"""
         nonlocal used_proc_count
+
+        results: list[TextCorpusStatsRec] = []
+
+        def save_results() -> pd.DataFrame:
+            """Temporarily or finally save the returned results"""
+            df: pd.DataFrame = pd.DataFrame(
+                results, columns=c.COLS_TC_STATS
+            ).reset_index(drop=True)
+            df.sort_values(["lc", "ver"], inplace=True)
+            # Write out combined (TSV only to use later for above existence checks)
+            df_write(df, os.path.join(dst_tsv_base, f"${c.TEXT_CORPUS_STATS_FN}.tsv"))
+            return df
+
         print("\n=== Start Text Corpora Analysis ===")
 
         tc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
         combined_tsv_file: str = os.path.join(
-            dst_tsv_base, f"{c.TEXT_CORPUS_STATS_FN}.tsv"
+            dst_tsv_base, f"${c.TEXT_CORPUS_STATS_FN}.tsv"
         )
         # Get joined TSV
         combined_df: pd.DataFrame = pd.DataFrame(columns=c.COLS_TC_STATS)
@@ -928,8 +934,11 @@ def main() -> None:
         combined_df = pd.DataFrame()
 
         ver_lc_list: list[str] = []  # final
+        # start with newer, thus larger / longer versions' data
+        versions: list[str] = c.CV_VERSIONS.copy()
+        versions.reverse()
         # For each version
-        for ver in c.CV_VERSIONS:
+        for ver in versions:
             ver_dir: str = calc_dataset_prefix(ver)
 
             # get all possible
@@ -979,13 +988,13 @@ def main() -> None:
             + f"Remaining: {g_tc.processed_lc} Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
 
-        results: list[TextCorpusStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
                     results.extend(res)
+                    save_results()  # temporary saving, discard return
                     pbar.update()
                     for r in res:
                         if r.s_cnt == 0:
@@ -993,12 +1002,7 @@ def main() -> None:
 
         # Create result DF
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(results, columns=c.COLS_TC_STATS).reset_index(
-            drop=True
-        )
-        df.sort_values(["lc", "ver"], inplace=True)
-        # Write out combined (TSV only to use later for above existence checks)
-        df_write(df, os.path.join(dst_tsv_base, f"{c.TEXT_CORPUS_STATS_FN}.tsv"))
+        df: pd.DataFrame = save_results() # final save
 
         # Write out under locale dir (data/results/<lc>/<lc>_<ver>_tc_stats.json|tsv)
         df2: pd.DataFrame = pd.DataFrame()
@@ -1177,7 +1181,13 @@ def main() -> None:
                     ds_paths.append(p)
         # finish filter out existing
 
+        results: list[SplitStatsRec] = []
         cnt_to_process: int = len(ds_paths)
+
+        if cnt_to_process == 0:
+            print("Nothing to process")
+            return
+
         chunk_size: int = min(
             MAX_BATCH_SIZE,
             cnt_to_process // used_proc_count
@@ -1188,7 +1198,6 @@ def main() -> None:
         )
 
         # now process each dataset
-        results: list[SplitStatsRec] = []
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=cnt_to_process, desc="") as pbar:
                 for res in pool.imap_unordered(
