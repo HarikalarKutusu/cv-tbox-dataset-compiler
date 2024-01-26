@@ -188,9 +188,9 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             # word_cnt stats
             _ser = _df["word_cnt"].dropna()
             res.w_sum = _ser.sum()
-            res.w_avg = _ser.mean()
+            res.w_avg = dec3(_ser.mean())
             res.w_med = _ser.median()
-            res.w_std = _ser.std(ddof=0)
+            res.w_std = dec3(_ser.std(ddof=0))
             # Calc word count distribution
             _arr: np.ndarray = np.fromiter(
                 _ser.apply(int).reset_index(drop=True).to_list(), int
@@ -203,9 +203,9 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             # "token", "count"
             res.t_sum = _df2.shape[0]
             _ser = _df2["count"].dropna()
-            res.t_avg = _ser.mean()
+            res.t_avg = dec3(_ser.mean())
             res.t_med = _ser.median()
-            res.t_std = _ser.std(ddof=0)
+            res.t_std = dec3(_ser.std(ddof=0))
             # Token/word repeat distribution
             _arr: np.ndarray = np.fromiter(
                 _df2["count"].dropna().apply(int).reset_index(drop=True).to_list(), int
@@ -254,9 +254,9 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         # char_cnt stats
         _ser = _df["char_cnt"].dropna()
         res.c_sum = _ser.sum()
-        res.c_avg = _ser.mean()
+        res.c_avg = dec3(_ser.mean())
         res.c_med = _ser.median()
-        res.c_std = _ser.std(ddof=0)
+        res.c_std = dec3(_ser.std(ddof=0))
         # Calc character length distribution
         _arr: np.ndarray = np.fromiter(
             _ser.apply(int).reset_index(drop=True).to_list(), int
@@ -746,28 +746,28 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             # Duration
             dur_total=dec3(duration_total),
             dur_avg=dec3(duration_mean),
-            dur_med=dec3(duration_median),
+            dur_med=duration_median,
             dur_std=dec3(duration_std),
             dur_freq=duration_freq,
             # Recordings per Voice
             v_avg=dec3(voice_mean),
-            v_med=dec3(voice_median),
+            v_med=voice_median,
             v_std=dec3(voice_std),
             v_freq=voice_freq,
             # Recordings per Sentence
             s_avg=dec3(sentence_mean),
-            s_med=dec3(sentence_median),
+            s_med=sentence_median,
             s_std=dec3(sentence_std),
             s_freq=sentence_freq,
             # Votes
             uv_sum=up_votes_sum,
             uv_avg=dec3(up_votes_mean),
-            uv_med=dec3(up_votes_median),
+            uv_med=up_votes_median,
             uv_std=dec3(up_votes_std),
             uv_freq=up_votes_freq,
             dv_sum=down_votes_sum,
             dv_avg=dec3(down_votes_mean),
-            dv_med=dec3(down_votes_median),
+            dv_med=down_votes_median,
             dv_std=dec3(down_votes_std),
             dv_freq=down_votes_freq,
             # Demographics distribution for recordings
@@ -928,7 +928,7 @@ def main() -> None:
             combined_df = df_read(combined_tsv_file).reset_index(drop=True)
         combined_df = combined_df[["ver", "lc"]]
         combined_ver_lc: list[str] = [
-            "|".join([row[0], row[1], row[2]]) for row in combined_df.values.tolist()
+            "|".join(row) for row in combined_df.values.tolist()
         ]
         del combined_df
         combined_df = pd.DataFrame()
