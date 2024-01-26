@@ -112,12 +112,9 @@ SEP_ROW: str = "|"
 SEP_COL: str = "#"
 SEP_ALGO: str = "|"
 
+#
 # COLUMNS FOR DATAFRAMES
-COLS_TEXT_CORPUS: list[str] = [
-    "file",
-    "sentence",
-    "chars",
-]
+#
 
 # COLS_SPLIT_STATS: list[str] = [
 #     'file',
@@ -125,26 +122,27 @@ COLS_TEXT_CORPUS: list[str] = [
 #     'chars',
 # ]
 
+
+#
+# COLUMNS FOR TEXT-CORPUS RELATED
+#
+
+
 COLS_TEXT_CORPUS: list[str] = [
     "file",
     "sentence",
-    "normalized",
-    "chars",
-    "words",
-    "valid",
 ]
-
-COLS_TOKENS: list[str] = ["token", "count"]
-COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
-COLS_PHONEMES: list[str] = ["phoneme", "count"]
 
 COLS_TC_STATS: list[str] = [
     "ver",
     "lc",
+    "algo",
+    "sp",
+    "has_val",
+    "has_phon",
     "s_cnt",
     "uq_s",
     "uq_n",
-    "has_val",
     "val",
     "c_sum",
     "c_avg",
@@ -161,10 +159,20 @@ COLS_TC_STATS: list[str] = [
     "t_med",
     "t_std",
     "t_freq",
+    "g_cnt",
     "g_freq",
+    "p_cnt",
     "p_freq",
 ]
 
+COLS_TOKENS: list[str] = ["token", "count"]
+COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
+COLS_PHONEMES: list[str] = ["phoneme", "count"]
+
+
+#
+# REPORTED SENTENCES
+#
 COLS_REPORTED_STATS: list[str] = [
     "ver",
     "lc",
@@ -177,9 +185,7 @@ COLS_REPORTED_STATS: list[str] = [
     "rea_freq",
 ]
 
-#
-# REPORTED SENTENCES
-#
+
 REPORTING_BASE: list[str] = [
     "offensive-language",
     "grammar-or-spelling",
@@ -210,13 +216,21 @@ TOKENS_FN: str = "$tokens"
 GRAPHEMES_FN: str = "$graphemes"
 PHONEMES_FN: str = "$phonemes"
 
-TEXT_CORPUS_STATS_FN: str = "$text_corpus_stats"
+TEXT_CORPUS_STATS_FN: str = "tc_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
 
 CLONES_DIRNAME: str = "clones"
 API_DIRNAME: str = "api"
+
+#
+# SAVE LEVELS
+#
+
+SAVE_LEVEL_NONE = 0  # do not save detailed text corpora analysis under data/text-corpus
+SAVE_LEVEL_DEFAULT = 1  # save only the following: text-corpus & validated/train/dev/test analysis results for s1 algorithm
+SAVE_LEVEL_DETAILED = 2  # save every calculated result for all algorithms
 
 #
 # BINS

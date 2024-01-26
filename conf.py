@@ -1,6 +1,7 @@
 """Config file for cv-tbox Dataset Compiler"""
 
 import os
+import const as c
 
 # Your local configuration
 # Modify the values to point to respective directories in your system
@@ -34,6 +35,7 @@ FORCE_CREATE_COMPRESSED: bool = False
 # Program parameters
 VERBOSE: bool = False
 FAIL_ON_NOT_FOUND: bool = True
+SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 
 # Debug & Limiters
 DEBUG: bool = False
