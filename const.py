@@ -159,7 +159,7 @@ COLS_TC_STATS: list[str] = [
     "t_med",
     "t_std",
     "t_freq",
-    "q_cnt",
+    "g_cnt",
     "g_freq",
     "p_cnt",
     "p_freq",
