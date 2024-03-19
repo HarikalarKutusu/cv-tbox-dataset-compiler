@@ -1,4 +1,5 @@
 """Constants for cv-tbox Dataset Compiler"""
+
 ###########################################################################
 # const.py
 #
@@ -40,7 +41,7 @@ CV_VERSIONS: list[str] = [
     "14.0",
     "15.0",
     "16.1",
-    # "17.0",
+    "17.0",
     # "18.0",
     # "19.0",
     # "20.0",
@@ -62,7 +63,7 @@ CV_DATES: list[str] = [
     "2023-06-23",
     "2023-09-08",
     "2023-12-06",
-    # "2024-03-00",
+    "2024-03-15",
     # "2024-06-00",
     # "2024-09-00",
     # "2024-12-00",
@@ -80,6 +81,25 @@ SPLIT_FILES: list[str] = ["train.tsv", "dev.tsv", "test.tsv"]
 
 NODATA: str = "nodata"  # .isna cases replaced with this
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
+# new gender definitions
+CV_GENDERS_EXTENDED: list[str] = [
+    "male_masculine",
+    "female_feminine",
+    "intersex",
+    "transgender",
+    "non-binary",
+    "do_not_wish_to_say",
+    NODATA,
+]
+# backmapping of new genders for backwards compatibility
+CV_GENDERS_MAPPING: dict = {
+    "male_masculine": "male",
+    "female_feminine": "female",
+    "intersex": "other",
+    "transgender": "other",
+    "non-binary": "other",
+    "do_not_wish_to_say": "other",
+}
 CV_AGES: list[str] = [
     "teens",
     "twenties",
@@ -236,7 +256,26 @@ SAVE_LEVEL_DETAILED = 2  # save every calculated result for all algorithms
 # BINS
 #
 
-BINS_DURATION: list[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 999999]
+BINS_DURATION: list[int] = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    20,
+    999999,
+]
 BINS_VOICES: list[int] = [
     0,
     1,
@@ -294,6 +333,11 @@ BINS_CHARS: list[int] = [
     130,
     140,
     150,
+    160,
+    170,
+    180,
+    190,
+    200,
     999999,
 ]
 BINS_WORDS: list[int] = [
@@ -318,6 +362,11 @@ BINS_WORDS: list[int] = [
     18,
     19,
     20,
+    21,
+    22,
+    23,
+    24,
+    25,
     999999,
 ]
 BINS_TOKENS: list[int] = [
