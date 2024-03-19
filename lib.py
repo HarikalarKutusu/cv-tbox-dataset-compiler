@@ -93,7 +93,9 @@ def report_results(g: Globals) -> None:
     """Prints out simpğle report from global counters"""
     process_seconds: float = (datetime.now() - g.start_time).total_seconds()
     print("=" * 80)
-    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo} Splits: {g.total_splits}")
+    print(
+        f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo} Splits: {g.total_splits}"
+    )
     print(
         f"Processed\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
     )
@@ -315,3 +317,12 @@ def arr2str(arr: list[list[Any]]) -> str:
 def dec3(x: float) -> float:
     """Make to 3 decimals"""
     return round(1000 * x) / 1000
+
+
+#
+# Gender back-mapping
+#
+def gender_backmapping(df: pd.DataFrame) -> pd.DataFrame:
+    """Backmap new genders back to older ones for backward compatibility"""
+    df["gender"] = df["gender"].replace(c.CV_GENDERS_MAPPING)
+    return df
