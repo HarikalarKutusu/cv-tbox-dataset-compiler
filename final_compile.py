@@ -43,6 +43,7 @@ from typedef import (
 from lib import (
     df_read,
     df_write,
+    gender_backmapping,
     init_directories,
     # list2str,
     # arr2str,
@@ -556,6 +557,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 
         # Replace NA with NODATA
         df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
+        # backmap genders
+        df = gender_backmapping(df)
         # add lowercase sentence column
         df["sentence_lower"] = df["sentence"].str.lower()
 
