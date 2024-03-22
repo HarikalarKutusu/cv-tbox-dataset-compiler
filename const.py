@@ -76,8 +76,12 @@ EXTENDED_BUCKET_FILES: list[str] = [
     "other.tsv",
     "reported.tsv",
 ]
+
 TRAINING_SPLITS: list[str] = ["train", "dev", "test"]
 SPLIT_FILES: list[str] = ["train.tsv", "dev.tsv", "test.tsv"]
+
+TC_BUCKETS: list[str] = ["validated_sentences", "unvalidated_sentences"]
+TC_BUCKET_FILES: list[str] = ["validated_sentences.tsv", "unvalidated_sentences.tsv"]
 
 NODATA: str = "nodata"  # .isna cases replaced with this
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
@@ -147,6 +151,21 @@ SEP_ALGO: str = "|"
 # COLUMNS FOR TEXT-CORPUS RELATED
 #
 
+COLS_TC_UNVALIDATED: list[str] = [
+    "sentence_id",
+    "sentence",
+    "sentence_domain",
+    "source",
+]
+
+COLS_TC_VALIDATED: list[str] = [
+    "sentence_id",
+    "sentence",
+    "sentence_domain",
+    "source",
+    "is_used",
+    "clips_count",
+]
 
 COLS_TEXT_CORPUS: list[str] = [
     "file",
