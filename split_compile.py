@@ -70,11 +70,14 @@ def main() -> None:
         src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, lc)
         dst_dir = os.path.join(vc_dir_base, ver_dir, lc)
         tsv_fpath: str = ""
+        
+        files_to_copy: list[str] = c.EXTENDED_BUCKET_FILES.copy()
+        files_to_copy.extend(c.TC_BUCKET_FILES)
 
         if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "validated.tsv")):
             # os.makedirs(os.path.join(dst_dir, c.ALGORITHMS[0]), exist_ok=True)
             os.makedirs(dst_dir, exist_ok=True)
-            for fn in c.EXTENDED_BUCKET_FILES:
+            for fn in files_to_copy:
                 tsv_fpath = os.path.join(src_dir, fn)
                 if os.path.isfile(tsv_fpath):
                     shutil.copy2(tsv_fpath, dst_dir)
