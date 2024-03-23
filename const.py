@@ -80,10 +80,8 @@ EXTENDED_BUCKET_FILES: list[str] = [
 TRAINING_SPLITS: list[str] = ["train", "dev", "test"]
 SPLIT_FILES: list[str] = ["train.tsv", "dev.tsv", "test.tsv"]
 
-TC_BUCKETS: list[str] = ["validated_sentences", "unvalidated_sentences"]
-TC_BUCKET_FILES: list[str] = ["validated_sentences.tsv", "unvalidated_sentences.tsv"]
-
 NODATA: str = "nodata"  # .isna cases replaced with this
+
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
 # new gender definitions
 CV_GENDERS_EXTENDED: list[str] = [
@@ -104,6 +102,7 @@ CV_GENDERS_MAPPING: dict = {
     "non-binary": "other",
     "do_not_wish_to_say": "other",
 }
+
 CV_AGES: list[str] = [
     "teens",
     "twenties",
@@ -117,39 +116,35 @@ CV_AGES: list[str] = [
     NODATA,
 ]
 
-# COLUMNS FOR DATAFRAMES
+# Domains
+CV_DOMAINS: list[str] = [
+    "general",
+    "agriculture",
+    "automotive",
+    "finance",
+    "food_service_retail",
+    "healthcare",
+    "history_law_government",
+    "media_entertainment",
+    "nature_environment",
+    "news_current_affairs",
+    "technology_robotics",
+    "language_fundamentals",
+]
+
+# CLIP DURATIONS
 CLIP_DURATIONS_FILE: str = "clip_durations.tsv"
 COLS_CLIP_DURATIONS: list[str] = [
     "clip",
     "duration[ms]",
 ]
 
-
 #
-# cv-tbox related
+# TEXT-CORPUS RELATED
 #
-
-ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
-
-# SEPARATORS
-SEP_ROW: str = "|"
-SEP_COL: str = "#"
-SEP_ALGO: str = "|"
-
-#
-# COLUMNS FOR DATAFRAMES
-#
-
-# COLS_SPLIT_STATS: list[str] = [
-#     'file',
-#     'sentence',
-#     'chars',
-# ]
-
-
-#
-# COLUMNS FOR TEXT-CORPUS RELATED
-#
+TC_BUCKETS: list[str] = ["validated_sentences", "unvalidated_sentences"]
+TC_BUCKET_FILES: list[str] = ["validated_sentences.tsv", "unvalidated_sentences.tsv"]
+TC_VALIDATED_FILE: str = TC_BUCKET_FILES[0]
 
 COLS_TC_UNVALIDATED: list[str] = [
     "sentence_id",
@@ -168,8 +163,18 @@ COLS_TC_VALIDATED: list[str] = [
 ]
 
 COLS_TEXT_CORPUS: list[str] = [
-    "file",
+    "sentence_id",
     "sentence",
+    "sentence_domain",
+    "source",
+    "is_used",
+    "clips_count",
+    "normalized",  # normalized sentence
+    "phonemised",  # phonemised sentence
+    "tokens",  # list of tokens
+    "char_cnt",  # number of characters (graphemes)
+    "word_cnt",  # number of words
+    "valid",  # is it a valid sentence according to commonvoice-utils? 1=valid
 ]
 
 COLS_TC_STATS: list[str] = [
@@ -235,6 +240,16 @@ REPORTING_BASE: list[str] = [
 REPORTING_ALL: list[str] = REPORTING_BASE.copy()
 REPORTING_ALL.append("other")
 
+#
+# cv-tbox related
+#
+
+ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
+
+# SEPARATORS
+SEP_ROW: str = "|"
+SEP_COL: str = "#"
+SEP_ALGO: str = "|"
 
 #
 # DIRECTORIES / FILENAMES
@@ -243,6 +258,7 @@ DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
 TC_DIRNAME: str = "text-corpus"
+TC_ANALYSIS_DIRNAME: str = "text-analysis"
 VC_DIRNAME: str = "voice-corpus"
 CD_DIRNAME: str = "clip-durations"
 UPLOAD_DIRNAME: str = "upload"

@@ -72,15 +72,6 @@ class GitRec:
 # Text Corpus
 #
 
-
-@dataclass
-class TextCorpusRec:
-    """Record definition for combined text-corpora"""
-
-    file: str = ""  # filename in cv repo
-    sentence: str = ""  # original sentence
-
-
 @dataclass
 class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     """Record definition for text-corpus statistics"""
