@@ -3,7 +3,7 @@
 ###########################################################################
 # text_corpus_compile.py
 #
-# From cloned Common Voice Repo, get all text corpus files for all locales.
+# From validated_sentences.tsv (after Common Voice v17.0), create/cache some pre-calculated measures
 # Combine them and add some pre calculations.
 #
 # Use:
@@ -18,19 +18,20 @@
 # Standard Lib
 import sys
 import os
-import glob
 import multiprocessing as mp
 
 # External dependencies
 from tqdm import tqdm
 import pandas as pd
 import psutil
+import cvutils as cvu
 
 # Module
 import const as c
 import conf
 from lib import (
     calc_dataset_prefix,
+    df_read,
     df_write,
     get_locales_from_cv_dataset,
     git_checkout,
@@ -38,7 +39,7 @@ from lib import (
     init_directories,
     report_results,
 )
-from typedef import TextCorpusRec, Globals
+from typedef import Globals
 
 
 # Globals
@@ -49,6 +50,12 @@ if not HERE in sys.path:
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 MAX_BATCH_SIZE: int = 5
 
+cv: cvu.CV = cvu.CV()
+VALIDATORS: list[str] = cv.validators()
+PHONEMISERS: list[str] = cv.phonemisers()
+# ALPHABETS: list[str] = [str(p).split(os.sep)[-2] for p in cv.alphabets()]
+# SEGMENTERS: list[str] = [str(p).split(os.sep)[-2] for p in cv.segmenters()]
+
 g: Globals = Globals(
     total_ver=len(c.CV_VERSIONS),
     total_algo=len(c.ALGORITHMS),
@@ -58,62 +65,101 @@ g: Globals = Globals(
 def handle_locale(ver_lc: str) -> None:
     """Process to handle a single locale"""
 
-    ver_dir: str = ver_lc.split("|")[0]
+    def handle_preprocess(df_base: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
+        """Get whole data and only process the unprocessed ones, returns the full result"""
+        # if not forced, only work on new tsentences
+        base_ids: list[str] = []
+        if not conf.FORCE_CREATE_TC_STATS:
+            base_ids = df_base["sentence_id"].to_list()
+            df_new = df_new[~df_new["sentence_id"].isin(base_ids)]
+
+        # pre-calc simpler values
+        df_new["char_cnt"] = [
+            len(s) if isinstance(s, str) else 0 for s in df_new["sentence"].to_list()
+        ]
+
+        # validator dependent
+        if validator:
+            df_new["normalized"] = [
+                validator.validate(s) if isinstance(s, str) else None
+                for s in df_new["sentence"].tolist()
+            ]
+            df_new["valid"] = [0 if n is None else 1 for n in df_new["normalized"].tolist()]
+            df_new["tokens"] = [
+                None if s is None else tokeniser.tokenise(s)
+                for s in df_new["normalized"].tolist()
+            ]
+            df_new["word_cnt"] = [
+                None if ww is None else len(ww) for ww in df_new["tokens"].tolist()
+            ]
+
+        # phonemiser dependent
+        if phonemiser:
+            df_new["phonemised"] = [
+                phonemiser.phonemise(s) if isinstance(s, str) else None
+                for s in df_new["sentence"].tolist()
+                # for w in str(s).split(" ")
+            ]
+        # return with newly processed data added
+        return pd.concat([df_base.astype(df_new.dtypes), df_new.astype(df_base.dtypes)])
+
+    # handle_locale MAIN
+    ver: str = ver_lc.split("|")[0]
     lc: str = ver_lc.split("|")[1]
+    ver_dir: str = calc_dataset_prefix(ver)
 
-    src_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, "common-voice", "server", "data", lc
+    # precalc dir and file paths
+    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    os.makedirs(base_tc_dir, exist_ok=True)
+    base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
+    src_tc_val_file: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
     )
-    tc_ver_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, ver_dir)
-    dst_file: str = os.path.join(tc_ver_dir, lc, f"{c.TEXT_CORPUS_FN}.tsv")
 
-    # Create a DataFrame
-    df: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS)
+    # cvu - do we have them?
+    validator: cvu.Validator | None = (
+        cvu.Validator(lc) if lc in VALIDATORS else None
+    )
+    phonemiser: cvu.Phonemiser | None = (
+        cvu.Phonemiser(lc) if lc in PHONEMISERS else None
+    )
+    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
 
-    # get file list
-    files: list[str] = glob.glob(os.path.join(src_path, "*.txt"), recursive=False)
+    # get existing base (already preprocessed) and new validated dataframes
+    df_base: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS)
+    if os.path.isfile(base_tc_file):
+        df_base = df_read(base_tc_file)
+    df_tc_val: pd.DataFrame = df_read(src_tc_val_file)
+    df_tc_val.reindex(columns=c.COLS_TEXT_CORPUS)  # add new columns
 
-    # Process each file
-    lines: list[str] = []
-    for text_file in files:
-        with open(text_file, mode="r", encoding="utf-8") as fp:
-            lines: list[str] = fp.readlines()
-        data: list[TextCorpusRec] = []
-        fn: str = os.path.split(text_file)[1]
-        # Process each line
-        data = [TextCorpusRec(file=fn, sentence=line.strip("\n")) for line in lines]
-        data_df: pd.DataFrame = pd.DataFrame(
-            data, columns=c.COLS_TEXT_CORPUS
-        ).reset_index(drop=True)
-        df = pd.concat([df.loc[:], data_df]).reset_index(drop=True)  # type: ignore
-    # end of files
-
-    # write out to file
-    df_write(df, dst_file)
+    df_write(handle_preprocess(df_base, df_tc_val), base_tc_file)  # write-out result
 
 
-def handle_version(inx: int, ver: str) -> None:
+def handle_last_version() -> None:
     """Handle a CV version"""
 
     # Get the repo at cutoff date ([TODO] Need to compile real cut-off dates)
-    cutoff_date: str = c.CV_DATES[inx]
+    ver: str = c.CV_VERSIONS[-1]
+    cutoff_date: str = c.CV_DATES[-1]
     print(f"=== HANDLE: v{ver} @ {cutoff_date} ===")
-    git_checkout(c.CV_GITREC, cutoff_date)
+    # git_checkout(c.CV_GITREC, cutoff_date)
 
     lc_list: list[str] = get_locales_from_cv_dataset(ver)
     total_locales: int = len(lc_list)
 
     # Filter out already processed
-    ver_dir: str = calc_dataset_prefix(ver)
-    tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, ver_dir)
+    tc_analysis_dir: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.TC_ANALYSIS_DIRNAME, calc_dataset_prefix(ver)
+    )
     ver_lc_list: list[str] = [
-        f"{ver_dir}|{lc}"
+        f"{ver}|{lc}"
         for lc in lc_list
-        if not os.path.isfile(os.path.join(tc_dir, lc, f"{c.TEXT_CORPUS_FN}.tsv"))
+        if not os.path.isdir(os.path.join(tc_analysis_dir, lc))
+        or conf.FORCE_CREATE_TC_STATS
     ]
     num_locales: int = len(ver_lc_list)
 
-    # [TODO] Handle remaining locales in multi-processing
+    # Handle remaining locales in multi-processing
     chunk_size: int = min(
         MAX_BATCH_SIZE,
         num_locales // PROC_COUNT + (0 if num_locales % PROC_COUNT == 0 else 1),
@@ -141,16 +187,23 @@ def handle_version(inx: int, ver: str) -> None:
 def main() -> None:
     """Main function feeding the multi-processing pool"""
 
+    # we don't need the git clones after v17.0
+
     # Make sure clones are current
     git_checkout(c.CV_GITREC)
     git_clone_or_pull_all()
 
-    # Main loop for all versions
-    for inx, ver in enumerate(c.CV_VERSIONS):
-        handle_version(inx, ver)
+    # Main loop for all versions - start from newest to get latest text corpus data
+    # cv_version_reversed: list[str] = c.CV_VERSIONS.copy()
+    # cv_version_reversed.reverse()
+    # for inx, ver in enumerate(cv_version_reversed):
+    #     handle_version(inx, ver)
+
+    # Do it only for last version (after v17.0)
+    handle_last_version()
 
     # done, revert to main and report
-    git_checkout(c.CV_GITREC)
+    # git_checkout(c.CV_GITREC)
     report_results(g)
 
 
