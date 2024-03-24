@@ -240,9 +240,16 @@ def is_version_valid(ver: str) -> Literal[True]:
     return True
 
 
-def calc_dataset_prefix(
-    ver: str,
-) -> str:
+def get_cutoff_date(ver: str) -> str:
+    """Given version, get the cutoff-date of that version"""
+
+    if is_version_valid(ver):
+        inx: int = c.CV_VERSIONS.index(ver)
+        return c.CV_DATES[inx]
+    return ""
+
+
+def calc_dataset_prefix(ver: str) -> str:
     """Build the dataset string from version (valid for > v4)"""
 
     if is_version_valid(ver):
