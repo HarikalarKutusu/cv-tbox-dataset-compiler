@@ -17,7 +17,7 @@ CV_TBOX_CACHE: str = os.path.join("C:", os.sep, "GITREPO", "_HK_GITHUB", "cv-tbo
 
 # This is where your compressed splits will go (under "upload" and "uploaded") - so that we can upload it to Google Drive
 COMPRESSED_RESULTS_BASE_DIR: str = os.path.join(
-    "C:", os.sep, "GITREPO", "_HK_GITHUB", "cv-tbox-dataset-compiler", "data", "results"
+    "N:", os.sep, "GITREPO", "_HK_GITHUB", "cv-tbox-dataset-compiler", "data", "results"
 )
 
 # Regenerate the data or skip existing?
