@@ -41,7 +41,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 # Program parameters
-PROC_COUNT: int = int(1.5 * psutil.cpu_count(logical=True))  # OVER usage
+PROC_COUNT: int = min(60, int(2 * psutil.cpu_count(logical=True)))  # OVER usage
 BATCH_SIZE: int = 5
 ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
 
