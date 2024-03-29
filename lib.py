@@ -1,14 +1,15 @@
 """cv-tbox dataset analyzer - Simple library for helper functions"""
 
 # Standard Lib
+# from ast import literal_eval
+from datetime import datetime
+from typing import Literal, Any
+from urllib.request import urlopen
 import os
 import sys
 import csv
 import json
 import multiprocessing as mp
-from datetime import datetime
-from typing import Literal, Any
-from urllib.request import urlopen
 
 # External dependencies
 from git import Repo
@@ -94,7 +95,7 @@ def init_directories(basedir: str) -> None:
 
 
 def report_results(g: Globals) -> None:
-    """Prints out simpğle report from global counters"""
+    """Prints out simple report from global counters"""
     process_seconds: float = (datetime.now() - g.start_time).total_seconds()
     print("=" * 80)
     print(
@@ -114,7 +115,8 @@ def report_results(g: Globals) -> None:
 #
 
 
-def df_read(fpath: str) -> pd.DataFrame:
+# def df_read(fpath: str, dtypes: defaultdict = defaultdict(str)) -> pd.DataFrame:
+def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
     if not os.path.isfile(fpath):
         print(f"FATAL: File {fpath} cannot be located!")
@@ -125,12 +127,13 @@ def df_read(fpath: str) -> pd.DataFrame:
         fpath,
         sep="\t",
         parse_dates=False,
-        engine="python",
         encoding="utf-8",
         on_bad_lines="skip",
-        quotechar='"',
-        quoting=csv.QUOTE_NONE,
-        dtype={"ver": str},
+        # quotechar='"',
+        # quoting=csv.QUOTE_NONE,
+        engine="pyarrow",
+        dtype_backend="pyarrow",
+        dtype=dtype,
     )
     return df
 
@@ -165,6 +168,9 @@ def df_int_convert(x: pd.Series) -> Any:
     except ValueError as e:  # pylint: disable=W0612
         return x
 
+def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """Controlled concat of two dataframes"""
+    return df1 if df2.shape[0] == 0 else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
 
 #
 # GIT
@@ -319,16 +325,33 @@ def arr2str(arr: list[list[Any]]) -> str:
     """Convert an array (list of lists) into a string"""
     return c.SEP_ROW.join(list2str(x) for x in arr)
 
+# def flatten(arr: list[list[Any]]) -> list[Any]:
+#     """Flattens a list of lists to a single list"""
+#     res: list[Any] = []
+#     for row in arr:
+#         if isinstance(row,list):
+#             res.extend(flatten(row))
+#         else: res.append(row)
+#     return res
 
 #
 # Numbers
 #
 
-
 def dec3(x: float) -> float:
     """Make to 3 decimals"""
     return round(1000 * x) / 1000
 
+#
+# FS
+#
+def sort_by_largest_file(fpaths: list[str]) -> list[str]:
+    """Given a list of file paths, this gets the files sizes, sonts on them decending and returns the sorted file paths"""
+    recs: list[list[str | int]] = []
+    for p in fpaths:
+        recs.append([p, os.path.getsize(p)])
+    recs = sorted(recs, key=(lambda x: x[1]) ,reverse=True)
+    return [str(row[0]) for row in recs]
 
 #
 # Gender back-mapping
