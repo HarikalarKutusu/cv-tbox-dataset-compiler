@@ -256,10 +256,10 @@ def handle_last_version() -> None:
         print(f"Processing: {[x.split(" | ")[1] for x in ver_lc_list]}")
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=num_locales, desc="Locales") as pbar:
-                for res in pool.imap_unordered(
+                for _res in pool.imap_unordered(
                     handle_last_version_locale, ver_lc_list, chunksize=chunk_size
                 ):
-                    pbar.write(f"Finished: {res}")
+                    # pbar.write(f"Finished: {_res}")
                     pbar.update()
 
     g.total_lc += total_locales
@@ -412,14 +412,14 @@ def handle_older_version(ver: str) -> None:
     )
 
     if num_locales > 0:
-        print(f"Processing: {[x.split(" | ")[1] for x in ver_lc_list]}")
+        # print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
         git_checkout(c.CV_GITREC, cutoff_date)
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=num_locales, desc="Locales") as pbar:
-                for res in pool.imap_unordered(
+                for _res in pool.imap_unordered(
                     handle_old_version_locale, ver_lc_list, chunksize=chunk_size
                 ):
-                    pbar.write(f"Finished: {res}")
+                    # pbar.write(f"Finished: {_res}")
                     pbar.update()
 
     g.total_lc += total_locales

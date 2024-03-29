@@ -232,9 +232,14 @@ FIELDS_TC_STATS: dict[str, pd.ArrowDtype] = {
     "t_std": dtype_pa_float32,
     "t_freq": dtype_pa_list_uint64,
     "g_cnt": dtype_pa_uint16,
+    "g_items": dtype_pa_str,  # dtype_pa_list_str,
     "g_freq": dtype_pa_list_uint64,
     "p_cnt": dtype_pa_uint16,
+    "p_items": dtype_pa_str,  # dtype_pa_list_str,
     "p_freq": dtype_pa_list_uint64,
+    "dom_cnt": dtype_pa_uint16,
+    "dom_items": dtype_pa_list_str,
+    "dom_freq": dtype_pa_list_uint64,
 }
 
 FIELDS_TOKENS: dict[str, pd.ArrowDtype] = {
@@ -247,6 +252,10 @@ FIELDS_GRAPHEMES: dict[str, pd.ArrowDtype] = {
 }
 FIELDS_PHONEMES: dict[str, pd.ArrowDtype] = {
     "phoneme": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
+FIELDS_SENTENCE_DOMAINS: dict[str, pd.ArrowDtype] = {
+    "sentence_domain": dtype_pa_str,
     "count": dtype_pa_uint64,
 }
 
@@ -305,6 +314,7 @@ TEXT_CORPUS_FN: str = "$text_corpus"
 TOKENS_FN: str = "$tokens"
 GRAPHEMES_FN: str = "$graphemes"
 PHONEMES_FN: str = "$phonemes"
+DOMAINS_FN: str = "$domains"
 
 TEXT_CORPUS_STATS_FN: str = "tc_stats"
 REPORTED_STATS_FN: str = "$reported"

@@ -168,9 +168,15 @@ def df_int_convert(x: pd.Series) -> Any:
     except ValueError as e:  # pylint: disable=W0612
         return x
 
+
 def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Controlled concat of two dataframes"""
-    return df1 if df2.shape[0] == 0 else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
+    return (
+        df1
+        if df2.shape[0] == 0
+        else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
+    )
+
 
 #
 # GIT
@@ -325,6 +331,7 @@ def arr2str(arr: list[list[Any]]) -> str:
     """Convert an array (list of lists) into a string"""
     return c.SEP_ROW.join(list2str(x) for x in arr)
 
+
 # def flatten(arr: list[list[Any]]) -> list[Any]:
 #     """Flattens a list of lists to a single list"""
 #     res: list[Any] = []
@@ -338,9 +345,11 @@ def arr2str(arr: list[list[Any]]) -> str:
 # Numbers
 #
 
+
 def dec3(x: float) -> float:
     """Make to 3 decimals"""
     return round(1000 * x) / 1000
+
 
 #
 # FS
@@ -350,8 +359,9 @@ def sort_by_largest_file(fpaths: list[str]) -> list[str]:
     recs: list[list[str | int]] = []
     for p in fpaths:
         recs.append([p, os.path.getsize(p)])
-    recs = sorted(recs, key=(lambda x: x[1]) ,reverse=True)
+    recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
     return [str(row[0]) for row in recs]
+
 
 #
 # Gender back-mapping

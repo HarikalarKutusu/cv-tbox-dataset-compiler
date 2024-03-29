@@ -44,6 +44,7 @@ dtype_pa_list_uint64 = pd.ArrowDtype(pa.list_(pa.uint64()))
 # Process
 #
 
+
 @dataclass
 class Globals:  # pylint: disable=too-many-instance-attributes
     """Class to keep globals in one place"""
@@ -136,15 +137,18 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_med: float = 0.0  # median
     t_std: float = 0.0  # standard deviation
     t_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
-    # graphemes & phonemes
-    g_cnt: int = 0  # count of different graphemes
-    g_freq: list[list[str | int]] = field(
-        default_factory=lambda: []
-    )  # frequency distribution symbol-count
-    p_cnt: int = 0  # count of different phonemes
-    p_freq: list[list[str | int]] = field(
-        default_factory=lambda: []
-    )  # frequency distribution symbol-count
+    # graphemes: count, items & frequency distribution
+    g_cnt: int = 0
+    g_items: str = ""  # list[str] = field(default_factory=lambda: [])
+    g_freq: list[int] = field(default_factory=lambda: [])
+    # phonemes: count, items & frequency distribution
+    p_cnt: int = 0
+    p_items: str = ""  # list[str] = field(default_factory=lambda: [])
+    p_freq: list[int] = field(default_factory=lambda: [])
+    # sentence domain statistics
+    dom_cnt: int = 0
+    dom_items: list[str] = field(default_factory=lambda: [])
+    dom_freq: list[int] = field(default_factory=lambda: [])
 
 
 #
