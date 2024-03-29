@@ -12,7 +12,35 @@
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
-from typedef import GitRec
+# Standard Lib
+
+# External dependencies
+import pandas as pd
+
+# Module
+from typedef import (
+    GitRec,
+    dtype_pa_uint8,
+    dtype_pa_uint16,
+    dtype_pa_uint32,
+    dtype_pa_uint64,
+    # dtype_pa_float16,
+    dtype_pa_float32,
+    # dtype_pa_float64,
+    dtype_pa_str,
+    dtype_pa_list_str,
+    # dtype_pa_list_uint8,
+    # dtype_pa_list_uint16,
+    # dtype_pa_list_uint32,
+    dtype_pa_list_uint64,
+)
+
+
+#
+# Pandans 2 settings
+#
+pd.options.mode.copy_on_write = True
+
 
 #
 # cv related
@@ -134,10 +162,10 @@ CV_DOMAINS: list[str] = [
 
 # CLIP DURATIONS
 CLIP_DURATIONS_FILE: str = "clip_durations.tsv"
-COLS_CLIP_DURATIONS: list[str] = [
-    "clip",
-    "duration[ms]",
-]
+FIELDS_CLIP_DURATIONS: dict[str, pd.ArrowDtype] = {
+    "clip": dtype_pa_str,
+    "duration[ms]": dtype_pa_uint32,
+}
 
 #
 # TEXT-CORPUS RELATED
@@ -146,89 +174,96 @@ TC_BUCKETS: list[str] = ["validated_sentences", "unvalidated_sentences"]
 TC_BUCKET_FILES: list[str] = ["validated_sentences.tsv", "unvalidated_sentences.tsv"]
 TC_VALIDATED_FILE: str = TC_BUCKET_FILES[0]
 
-COLS_TC_UNVALIDATED: list[str] = [
-    "sentence_id",
-    "sentence",
-    "sentence_domain",
-    "source",
-]
+FIELDS_TC_UNVALIDATED: dict[str, pd.ArrowDtype] = {
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "sentence_domain": dtype_pa_str,
+    "source": dtype_pa_str,
+}
 
-COLS_TC_VALIDATED: list[str] = [
-    "sentence_id",
-    "sentence",
-    "sentence_domain",
-    "source",
-    "is_used",
-    "clips_count",
-]
+FIELDS_TC_VALIDATED: dict[str, pd.ArrowDtype] = {
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "sentence_domain": dtype_pa_str,
+    "source": dtype_pa_str,
+    "is_used": dtype_pa_uint8,
+    "clips_count": dtype_pa_uint16,
+}
 
-COLS_TEXT_CORPUS: list[str] = [
-    "sentence_id",
-    "sentence",
-    "sentence_domain",
-    "source",
-    "is_used",
-    "clips_count",
-    "normalized",  # normalized sentence
-    "phonemised",  # phonemised sentence
-    "tokens",  # list of tokens
-    "char_cnt",  # number of characters (graphemes)
-    "word_cnt",  # number of words
-    "valid",  # is it a valid sentence according to commonvoice-utils? 1=valid
-]
+FIELDS_TEXT_CORPUS: dict[str, pd.ArrowDtype] = {
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "sentence_domain": dtype_pa_str,
+    "source": dtype_pa_str,
+    "is_used": dtype_pa_uint8,
+    "clips_count": dtype_pa_uint8,
+    "normalized": dtype_pa_str,
+    "phonemised": dtype_pa_str,
+    "tokens": dtype_pa_list_str,
+    "char_cnt": dtype_pa_uint16,
+    "word_cnt": dtype_pa_uint8,
+    "valid": dtype_pa_uint8,
+}
 
-COLS_TC_STATS: list[str] = [
-    "ver",
-    "lc",
-    "algo",
-    "sp",
-    "has_val",
-    "has_phon",
-    "s_cnt",
-    "uq_s",
-    "uq_n",
-    "val",
-    "c_sum",
-    "c_avg",
-    "c_med",
-    "c_std",
-    "c_freq",
-    "w_sum",
-    "w_avg",
-    "w_med",
-    "w_std",
-    "w_freq",
-    "t_sum",
-    "t_avg",
-    "t_med",
-    "t_std",
-    "t_freq",
-    "g_cnt",
-    "g_freq",
-    "p_cnt",
-    "p_freq",
-]
+FIELDS_TC_STATS: dict[str, pd.ArrowDtype] = {
+    "ver": dtype_pa_str,
+    "lc": dtype_pa_str,
+    "algo": dtype_pa_str,
+    "sp": dtype_pa_str,
+    "has_val": dtype_pa_uint8,
+    "has_phon": dtype_pa_uint8,
+    "s_cnt": dtype_pa_uint32,
+    "uq_s": dtype_pa_uint32,
+    "uq_n": dtype_pa_uint32,
+    "val": dtype_pa_uint8,
+    "c_sum": dtype_pa_uint32,
+    "c_avg": dtype_pa_float32,
+    "c_med": dtype_pa_float32,
+    "c_std": dtype_pa_float32,
+    "c_freq": dtype_pa_list_uint64,
+    "w_sum": dtype_pa_uint32,
+    "w_avg": dtype_pa_float32,
+    "w_med": dtype_pa_float32,
+    "w_std": dtype_pa_float32,
+    "w_freq": dtype_pa_list_uint64,
+    "t_sum": dtype_pa_uint32,
+    "t_avg": dtype_pa_float32,
+    "t_med": dtype_pa_float32,
+    "t_std": dtype_pa_float32,
+    "t_freq": dtype_pa_list_uint64,
+    "g_cnt": dtype_pa_uint16,
+    "g_freq": dtype_pa_list_uint64,
+    "p_cnt": dtype_pa_uint16,
+    "p_freq": dtype_pa_list_uint64,
+}
 
-COLS_TOKENS: list[str] = ["token", "count"]
-COLS_GRAPHEMES: list[str] = ["grapheme", "count"]
-COLS_PHONEMES: list[str] = ["phoneme", "count"]
-
+FIELDS_TOKENS: dict[str, pd.ArrowDtype] = {
+    "token": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
+FIELDS_GRAPHEMES: dict[str, pd.ArrowDtype] = {
+    "grapheme": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
+FIELDS_PHONEMES: dict[str, pd.ArrowDtype] = {
+    "phoneme": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
 
 #
 # REPORTED SENTENCES
 #
-COLS_REPORTED_STATS: list[str] = [
-    "ver",
-    "lc",
-    "rep_sum",
-    "rep_sen",
-    "rep_avg",
-    "rep_med",
-    "rep_std",
-    "rep_freq",
-    "rea_freq",
-]
-
+FIELDS_REPORTED_STATS: dict[str, pd.ArrowDtype] = {
+    "ver": dtype_pa_str,
+    "lc": dtype_pa_str,
+    "rep_sum": dtype_pa_uint32,
+    "rep_sen": dtype_pa_uint32,
+    "rep_avg": dtype_pa_float32,
+    "rep_med": dtype_pa_float32,
+    "rep_std": dtype_pa_float32,
+    "rep_freq": dtype_pa_list_uint64,
+    "rea_freq": dtype_pa_list_uint64,
+}
 
 REPORTING_BASE: list[str] = [
     "offensive-language",
