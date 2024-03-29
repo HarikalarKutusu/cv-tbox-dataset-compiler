@@ -34,7 +34,7 @@ disable=raw-checker-failed,
         use-symbolic-message-instead,
         use-implicit-booleaness-not-comparison-to-string,
         use-implicit-booleaness-not-comparison-to-zero,
-        too_many_lines,
+        too-many-lines,
         # added
         # missing-module-docstring,
         # logging-fstring-interpolation,
