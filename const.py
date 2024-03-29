@@ -110,6 +110,23 @@ SPLIT_FILES: list[str] = ["train.tsv", "dev.tsv", "test.tsv"]
 
 NODATA: str = "nodata"  # .isna cases replaced with this
 
+FIELDS_BUCKETS_SPLITS: dict[str, pd.ArrowDtype] = {
+    "client_id": dtype_pa_str,
+    "path": dtype_pa_str,
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "sentence_domain": dtype_pa_str,
+    "up_votes": dtype_pa_uint16,
+    "down_votes": dtype_pa_uint16,
+    "age": dtype_pa_str,
+    "gender": dtype_pa_str,
+    "accents": dtype_pa_str,
+    "variant": dtype_pa_str,
+    "locale": dtype_pa_str,
+    "segment": dtype_pa_str,
+}
+
+
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
 # new gender definitions
 CV_GENDERS_EXTENDED: list[str] = [
