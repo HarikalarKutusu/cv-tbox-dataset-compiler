@@ -473,115 +473,115 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         nonlocal df_clip_durations
 
         # find_fixes
-        def find_fixes(df_split: pd.DataFrame) -> list[list[int]]:
-            """Finds fixable demographic info from the split and returns a string"""
+        # def find_fixes(df_split: pd.DataFrame) -> list[list[int]]:
+        #     """Finds fixable demographic info from the split and returns a string"""
 
-            # df is local dataframe which will keep records
-            # only necessary columns with some additional columns
-            df: pd.DataFrame = df_split.copy().reset_index(drop=True)
-            df["v_enum"], _ = pd.factorize(
-                df["client_id"]
-            )  # add an enumaration column for client_id's, more memory efficient
-            df["p_enum"], _ = pd.factorize(
-                df["path"]
-            )  # add an enumaration column for recordings, more memory efficient
-            df = (
-                df[["v_enum", "age", "gender", "p_enum"]]
-                .fillna(c.NODATA)
-                .reset_index(drop=True)
-            )
+        #     # df is local dataframe which will keep records
+        #     # only necessary columns with some additional columns
+        #     df: pd.DataFrame = df_split.copy().reset_index(drop=True)
+        #     df["v_enum"], _ = pd.factorize(
+        #         df["client_id"]
+        #     )  # add an enumaration column for client_id's, more memory efficient
+        #     df["p_enum"], _ = pd.factorize(
+        #         df["path"]
+        #     )  # add an enumaration column for recordings, more memory efficient
+        #     df = (
+        #         df[["v_enum", "age", "gender", "p_enum"]]
+        #         .fillna(c.NODATA)
+        #         .reset_index(drop=True)
+        #     )
 
-            # prepare empty results
-            fixes: pd.DataFrame = pd.DataFrame(columns=df.columns).reset_index(
-                drop=True
-            )
-            dem_fixes_recs: list[int] = []
-            dem_fixes_voices: list[int] = []
+        #     # prepare empty results
+        #     fixes: pd.DataFrame = pd.DataFrame(columns=df.columns).reset_index(
+        #         drop=True
+        #     )
+        #     dem_fixes_recs: list[int] = []
+        #     dem_fixes_voices: list[int] = []
 
-            # get unique voices with multiple demographic values
-            df_counts: pd.DataFrame = (
-                df[["v_enum", "age", "gender"]]
-                .drop_duplicates()
-                .copy()
-                .groupby("v_enum")
-                .agg({"age": "count", "gender": "count"})
-            )
-            df_counts.reset_index(inplace=True)
-            df_counts = df_counts[
-                (df_counts["age"].astype(int) == 2)
-                | (df_counts["gender"].astype(int) == 2)
-            ]  # reduce that to only processible ones
-            v_processable: list[int] = df_counts["v_enum"].unique().tolist()
+        #     # get unique voices with multiple demographic values
+        #     df_counts: pd.DataFrame = (
+        #         df[["v_enum", "age", "gender"]]
+        #         .drop_duplicates()
+        #         .copy()
+        #         .groupby("v_enum")
+        #         .agg({"age": "count", "gender": "count"})
+        #     )
+        #     df_counts.reset_index(inplace=True)
+        #     df_counts = df_counts[
+        #         (df_counts["age"].astype(int) == 2)
+        #         | (df_counts["gender"].astype(int) == 2)
+        #     ]  # reduce that to only processible ones
+        #     v_processable: list[int] = df_counts["v_enum"].unique().tolist()
 
-            # now, work only on problem voices & records.
-            # For each voice, get related records and decide
-            for v in v_processable:
-                recs: pd.DataFrame = df[df["v_enum"] == v].copy()
-                recs_blanks: pd.DataFrame = recs[
-                    (recs["gender"] == c.NODATA) | (recs["age"] == c.NODATA)
-                ].copy()  # get full blanks
-                # gender
-                recs_w_gender: pd.DataFrame = recs[~(recs["gender"] == c.NODATA)].copy()
-                if recs_w_gender.shape[0] > 0:
-                    val: str = recs_w_gender["gender"].tolist()[0]
-                    recs_blanks.loc[:, "gender"] = val
-                # age
-                recs_w_age: pd.DataFrame = recs[~(recs["age"] == c.NODATA)].copy()
-                if recs_w_age.shape[0] > 0:
-                    val: str = recs_w_age["age"].tolist()[0]
-                    recs_blanks.loc[:, "age"] = val
-                # now we can add them to the result fixed list
-                fixes = pd.concat([fixes.loc[:], recs_blanks]).reset_index(drop=True)
+        #     # now, work only on problem voices & records.
+        #     # For each voice, get related records and decide
+        #     for v in v_processable:
+        #         recs: pd.DataFrame = df[df["v_enum"] == v].copy()
+        #         recs_blanks: pd.DataFrame = recs[
+        #             (recs["gender"] == c.NODATA) | (recs["age"] == c.NODATA)
+        #         ].copy()  # get full blanks
+        #         # gender
+        #         recs_w_gender: pd.DataFrame = recs[~(recs["gender"] == c.NODATA)].copy()
+        #         if recs_w_gender.shape[0] > 0:
+        #             val: str = recs_w_gender["gender"].tolist()[0]
+        #             recs_blanks.loc[:, "gender"] = val
+        #         # age
+        #         recs_w_age: pd.DataFrame = recs[~(recs["age"] == c.NODATA)].copy()
+        #         if recs_w_age.shape[0] > 0:
+        #             val: str = recs_w_age["age"].tolist()[0]
+        #             recs_blanks.loc[:, "age"] = val
+        #         # now we can add them to the result fixed list
+        #         fixes = pd.concat([fixes.loc[:], recs_blanks]).reset_index(drop=True)
 
-            # Here, we have a df maybe with records of possible changes
-            if fixes.shape[0] > 0:
-                # records
-                pt: pd.DataFrame = pd.pivot_table(
-                    fixes,
-                    values="p_enum",
-                    index=["age"],
-                    columns=["gender"],
-                    aggfunc="count",
-                    fill_value=0,
-                    dropna=False,
-                    margins=False,
-                )
-                # get only value parts : nodata is just negative sum of these, and TOTAL will be 0,
-                # so we drop them for file size and leave computation to the client
-                pt = (
-                    pt.reindex(c.CV_AGES, axis=0)
-                    .reindex(c.CV_GENDERS, axis=1)
-                    .fillna(value=0)
-                    .astype(int)
-                    .drop(c.NODATA, axis=0)
-                    .drop(c.NODATA, axis=1)
-                )
-                dem_fixes_recs = pt.to_numpy(int).tolist()
+        #     # Here, we have a df maybe with records of possible changes
+        #     if fixes.shape[0] > 0:
+        #         # records
+        #         pt: pd.DataFrame = pd.pivot_table(
+        #             fixes,
+        #             values="p_enum",
+        #             index=["age"],
+        #             columns=["gender"],
+        #             aggfunc="count",
+        #             fill_value=0,
+        #             dropna=False,
+        #             margins=False,
+        #         )
+        #         # get only value parts : nodata is just negative sum of these, and TOTAL will be 0,
+        #         # so we drop them for file size and leave computation to the client
+        #         pt = (
+        #             pt.reindex(c.CV_AGES, axis=0)
+        #             .reindex(c.CV_GENDERS, axis=1)
+        #             .fillna(value=0)
+        #             .astype(int)
+        #             .drop(c.NODATA, axis=0)
+        #             .drop(c.NODATA, axis=1)
+        #         )
+        #         dem_fixes_recs = pt.to_numpy(int).tolist()
 
-                # voices
-                fixes = fixes.drop("p_enum", axis=1).drop_duplicates()
-                pt: pd.DataFrame = pd.pivot_table(
-                    fixes,
-                    values="v_enum",
-                    index=["age"],
-                    columns=["gender"],
-                    aggfunc="count",
-                    fill_value=0,
-                    dropna=False,
-                    margins=False,
-                )
-                # get only value parts : nodata is just -sum of these, sum will be 0
-                pt = (
-                    pt.reindex(c.CV_AGES, axis=0)
-                    .reindex(c.CV_GENDERS, axis=1)
-                    .fillna(value=0)
-                    .astype(int)
-                    .drop(c.NODATA, axis=0)
-                    .drop(c.NODATA, axis=1)
-                )
-                dem_fixes_voices = pt.to_numpy(int).tolist()
+        #         # voices
+        #         fixes = fixes.drop("p_enum", axis=1).drop_duplicates()
+        #         pt: pd.DataFrame = pd.pivot_table(
+        #             fixes,
+        #             values="v_enum",
+        #             index=["age"],
+        #             columns=["gender"],
+        #             aggfunc="count",
+        #             fill_value=0,
+        #             dropna=False,
+        #             margins=False,
+        #         )
+        #         # get only value parts : nodata is just -sum of these, sum will be 0
+        #         pt = (
+        #             pt.reindex(c.CV_AGES, axis=0)
+        #             .reindex(c.CV_GENDERS, axis=1)
+        #             .fillna(value=0)
+        #             .astype(int)
+        #             .drop(c.NODATA, axis=0)
+        #             .drop(c.NODATA, axis=1)
+        #         )
+        #         dem_fixes_voices = pt.to_numpy(int).tolist()
 
-            return [dem_fixes_recs, dem_fixes_voices]
+        #     return [dem_fixes_recs, dem_fixes_voices]
 
         # END - find_fixes
 
@@ -590,35 +590,65 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         #
 
         # Read in DataFrames
-        if split != "clips":
-            df_orig: pd.DataFrame = df_read(fpath)
-        else:  # build "clips" from val+inval+other
-            # we passed validated here, first read it.
-            df_orig: pd.DataFrame = df_read(fpath)
+        df_orig: pd.DataFrame = df_read(fpath)
+        if split == "clips":  # build "clips" from val+inval+other
+            # we already have validated (passed as param for clips)
             # add invalidated
-            df2: pd.DataFrame = df_read(fpath.replace("validated", "invalidated"))
-            if df2.shape[0] > 0:
-                df_orig = pd.concat([df_orig, df2])
-            # df_orig = pd.concat([df_orig.astype(df2.dtypes), df2.astype(df_orig.dtypes)])
-            # df_orig = pd.concat([df_orig.loc[:], df2])
-            # df_orig = pd.concat([df_orig.loc[:].astype(df2.dtypes), df2.astype(df_orig.dtypes)])
+            _df: pd.DataFrame = df_read(fpath.replace("validated", "invalidated"))
+            if _df.shape[0] > 0:
+                df_orig = pd.concat([df_orig, _df]) if df_orig.shape[0] > 0 else _df
             # add other
-            df2: pd.DataFrame = df_read(fpath.replace("validated", "other"))
-            if df2.shape[0] > 0:
-                df_orig = pd.concat([df_orig, df2])
-            # df_orig = pd.concat([df_orig.astype(df2.dtypes), df2.astype(df_orig.dtypes)])
-            # df_orig = pd.concat([df_orig.loc[:], df2])
-
-        # default result values
-        res: SplitStatsRec = SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
+            _df = df_read(fpath.replace("validated", "other"))
+            if _df.shape[0] > 0:
+                df_orig = pd.concat([df_orig, _df]) if df_orig.shape[0] > 0 else _df
 
         # Do nothing, if there is no data
         if df_orig.shape[0] == 0:
-            return res
+            return SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
 
-        # Replace NA with NODATA
+        # [TODO] Move these to split_compile: Make all confirm to current style?
+        # Normalize data to the latest version's columns w,th typing
+        # Replace NA with NODATA with some typing and conditionals
         # df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
-        df: pd.DataFrame = df_orig.replace(float("nan"), c.NODATA)
+        df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_BUCKETS_SPLITS)
+        # these should exist
+        df["client_id"] = df_orig["client_id"]
+        df["path"] = df_orig["path"]
+        df["sentence"] = df_orig["sentence"]
+        df["up_votes"] = df_orig["up_votes"]
+        df["down_votes"] = df_orig["down_votes"]
+        # these exist, but can be NaN
+        df["age"] = df_orig["age"].astype(dtype_pa_str).fillna(c.NODATA)
+        df["gender"] = df_orig["gender"].astype(dtype_pa_str).fillna(c.NODATA)
+        # These might not exist in older versions, so we fill them
+        df["locale"] = df_orig["locale"] if "locale" in df_orig.columns else lc
+        df["variant"] = (
+            df_orig["variant"].astype(dtype_pa_str).fillna(c.NODATA)
+            if "variant" in df_orig.columns
+            else c.NODATA
+        )
+        df["segment"] = (
+            df_orig["segment"].astype(dtype_pa_str).fillna(c.NODATA)
+            if "segment" in df_orig.columns
+            else c.NODATA
+        )
+        df["sentence_domain"] = (
+            df_orig["sentence_domain"].astype(dtype_pa_str).fillna(c.NODATA)
+            if "sentence_domain" in df_orig.columns
+            else c.NODATA
+        )
+        # The "accent" column renamed to "accents" along the way
+        if "accent" in df_orig.columns:
+            df["accents"] = df_orig["accent"].astype(dtype_pa_str).fillna(c.NODATA)
+        if "accents" in df_orig.columns:
+            df["accents"] = df_orig["accents"].astype(dtype_pa_str).fillna(c.NODATA)
+        # [TODO] this needs special consideration (back-lookup) but has quirks for now
+        df["sentence_id"] = (
+            df_orig["sentence_id"].astype(dtype_pa_str).fillna(c.NODATA)
+            if "sentence_id" in df_orig.columns
+            else c.NODATA
+        )
+
         # backmap genders
         df = gender_backmapping(df)
         # add lowercase sentence column
@@ -797,7 +827,8 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 
         # Create a table for all demographic info corrections (based on recordings)
         # Correctable ones are: clients with both blank and a single gender (or age) specified
-        dem_fixes_list: list[list[int]] = find_fixes(df_orig)
+        # dem_fixes_list: list[list[int]] = find_fixes(df_orig)
+        dem_fixes_list: list[list[int]] = [[], []]
 
         res: SplitStatsRec = SplitStatsRec(
             ver=ver,
@@ -1242,17 +1273,19 @@ def main() -> None:
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
         vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
         # get path part
-        src_datasets: list[str] = [
+        pp: list[str] = [
             os.path.split(p)[0]
             for p in sorted(
                 glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
             )
         ]
+        # sort by largest first
+        pp = sort_by_largest_file(pp)
 
         # skip existing?
         ds_paths: list[str] = []
         if conf.FORCE_CREATE_VC_STATS:
-            ds_paths = src_datasets
+            ds_paths = pp
         else:
             tsv_path: str = os.path.join(
                 HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
@@ -1261,7 +1294,7 @@ def main() -> None:
                 HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
             )
 
-            for p in src_datasets:
+            for p in pp:
                 lc: str = os.path.split(p)[1]
                 ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
                 tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
