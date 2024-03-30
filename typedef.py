@@ -1,4 +1,5 @@
 """Type Definitions for cv-tbox Dataset Compiler"""
+
 ###########################################################################
 # typedef.py
 #
@@ -14,6 +15,30 @@
 # Standard Lib
 from dataclasses import dataclass, field
 from datetime import datetime
+
+import pyarrow as pa
+import pandas as pd
+
+#
+# Pandas / ArrowDType definitions to use Arrow backend
+# See: https://pandas.pydata.org/docs/user_guide/pyarrow.html#data-structure-integration
+#
+dtype_pa_uint8 = pd.ArrowDtype(pa.uint8())
+dtype_pa_uint16 = pd.ArrowDtype(pa.uint16())
+dtype_pa_uint32 = pd.ArrowDtype(pa.uint32())
+dtype_pa_uint64 = pd.ArrowDtype(pa.uint64())
+
+dtype_pa_float16 = pd.ArrowDtype(pa.float16())
+dtype_pa_float32 = pd.ArrowDtype(pa.float32())
+dtype_pa_float64 = pd.ArrowDtype(pa.float64())
+
+dtype_pa_str = pd.ArrowDtype(pa.string())
+
+dtype_pa_list_str = pd.ArrowDtype(pa.list_(pa.string()))
+dtype_pa_list_uint8 = pd.ArrowDtype(pa.list_(pa.uint8()))
+dtype_pa_list_uint16 = pd.ArrowDtype(pa.list_(pa.uint16()))
+dtype_pa_list_uint32 = pd.ArrowDtype(pa.list_(pa.uint32()))
+dtype_pa_list_uint64 = pd.ArrowDtype(pa.list_(pa.uint64()))
 
 #
 # Process
@@ -74,28 +99,26 @@ class GitRec:
 
 
 @dataclass
-class TextCorpusRec:
-    """Record definition for combined text-corpora"""
-
-    file: str = ""  # filename in cv repo
-    sentence: str = ""  # original sentence
-
-
-@dataclass
 class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     """Record definition for text-corpus statistics"""
 
     ver: str = ""  # cv version code (internal format nn.n, see const.py)
     lc: str = ""  # cv language code
-    algo: str = ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
-    sp: str = ""  # Source of the text-corpus (Empty if TC from server/data, else the bucket/split name)
+    algo: str = (
+        ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
+    )
+    sp: str = (
+        ""  # Source of the text-corpus (Empty if TC from server/data, else the bucket/split name)
+    )
     has_val: bool = False  # if commonvoice-utils has validator for it
     has_phon: bool = False  # if commonvoice-utils has phonemiser for it
     # sentence statistics
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
     uq_n: int = 0  # unique nomilized sentence count
-    val: int = 0  # How many of the sentences are validated with commonvoice-utils validator - if exists?
+    val: int = (
+        0  # How many of the sentences are validated with commonvoice-utils validator - if exists?
+    )
     # character statistics
     c_sum: int = 0  # total count
     c_avg: float = 0.0  # average (mean)
@@ -114,11 +137,18 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     t_med: float = 0.0  # median
     t_std: float = 0.0  # standard deviation
     t_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
-    # graphemes & phonemes
-    g_cnt: int = 0  # count of different graphemes
-    g_freq: list[list[str | int]] = field(default_factory=lambda: [])  # frequency distribution symbol-count
-    p_cnt: int = 0  # count of different phonemes
-    p_freq: list[list[str | int]] = field(default_factory=lambda: [])  # frequency distribution symbol-count
+    # graphemes: count, items & frequency distribution
+    g_cnt: int = 0
+    g_items: str = ""  # list[str] = field(default_factory=lambda: [])
+    g_freq: list[int] = field(default_factory=lambda: [])
+    # phonemes: count, items & frequency distribution
+    p_cnt: int = 0
+    p_items: str = ""  # list[str] = field(default_factory=lambda: [])
+    p_freq: list[int] = field(default_factory=lambda: [])
+    # sentence domain statistics
+    dom_cnt: int = 0
+    dom_items: list[str] = field(default_factory=lambda: [])
+    dom_freq: list[int] = field(default_factory=lambda: [])
 
 
 #
@@ -137,8 +167,12 @@ class ReportedStatsRec:  # pylint: disable=too-many-instance-attributes
     rep_avg: float = 0.0  # average (mean)
     rep_med: float = 0.0  # median
     rep_std: float = 0.0  # standard deviation
-    rep_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution for report per sentence
-    rea_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution for reporting reasons
+    rep_freq: list[int] = field(
+        default_factory=lambda: []
+    )  # frequency distribution for report per sentence
+    rea_freq: list[int] = field(
+        default_factory=lambda: []
+    )  # frequency distribution for reporting reasons
 
 
 #

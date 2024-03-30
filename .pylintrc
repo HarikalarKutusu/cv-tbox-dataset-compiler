@@ -16,7 +16,7 @@ bad-names=foo,
 [EXCEPTIONS]
 
 [FORMAT]
-max-line-length=130
+max-line-length=150
 
 [IMPORTS]
 
@@ -34,6 +34,7 @@ disable=raw-checker-failed,
         use-symbolic-message-instead,
         use-implicit-booleaness-not-comparison-to-string,
         use-implicit-booleaness-not-comparison-to-zero,
+        too-many-lines,
         # added
         # missing-module-docstring,
         # logging-fstring-interpolation,

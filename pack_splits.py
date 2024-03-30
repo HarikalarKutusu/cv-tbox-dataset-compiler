@@ -41,7 +41,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 # Program parameters
-PROC_COUNT: int = int(1.5 * psutil.cpu_count(logical=True))  # OVER usage
+PROC_COUNT: int = min(60, int(2 * psutil.cpu_count(logical=True)))  # OVER usage
 BATCH_SIZE: int = 5
 ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
 
@@ -60,7 +60,6 @@ def handle_ds(dspath: str) -> None:
         conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOADED_DIRNAME, lc
     )
     os.makedirs(upload_dir, exist_ok=True)
-    print(f"Compressing Dataset Splits for {corpus} - {lc}", flush=True)
     for algo in c.ALGORITHMS:
         if os.path.isdir(os.path.join(dspath, algo)):  # check if algo exists at source
             tarpath1: str = os.path.join(upload_dir, f"{lc}_{ver}_{algo}")
@@ -70,6 +69,7 @@ def handle_ds(dspath: str) -> None:
                 not os.path.isfile(tarpath2 + ".tar.xz")
                 and not os.path.isfile(tarpath1 + ".tar.xz")
             ) or conf.FORCE_CREATE_COMPRESSED:
+                print(f"Compressing Dataset Splits for {corpus} - {lc}", flush=True)
                 shutil.make_archive(
                     base_name=tarpath1, format="xztar", root_dir=dspath, base_dir=algo
                 )

@@ -1,14 +1,15 @@
 """cv-tbox dataset analyzer - Simple library for helper functions"""
 
 # Standard Lib
+# from ast import literal_eval
+from datetime import datetime
+from typing import Literal, Any
+from urllib.request import urlopen
 import os
 import sys
 import csv
 import json
 import multiprocessing as mp
-from datetime import datetime
-from typing import Literal, Any
-from urllib.request import urlopen
 
 # External dependencies
 from git import Repo
@@ -28,13 +29,14 @@ import conf
 def init_directories(basedir: str) -> None:
     """Creates data directory structures"""
     data_dir: str = os.path.join(basedir, c.DATA_DIRNAME)
-    if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
-        return
+    # if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
+    #     return
 
     print("Preparing directory structures...")
     all_locales: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
     for lc in all_locales:
         os.makedirs(os.path.join(data_dir, c.CD_DIRNAME, lc), exist_ok=True)
+        os.makedirs(os.path.join(data_dir, c.TC_DIRNAME, lc), exist_ok=True)
         os.makedirs(
             os.path.join(data_dir, c.RES_DIRNAME, c.TSV_DIRNAME, lc), exist_ok=True
         )
@@ -43,14 +45,14 @@ def init_directories(basedir: str) -> None:
         )
     for ver in c.CV_VERSIONS:
         ver_lc: list[str] = get_locales_from_cv_dataset(ver)
+        ds_prefix: str = calc_dataset_prefix(ver)
+        os.makedirs(
+            os.path.join(data_dir, c.TC_ANALYSIS_DIRNAME, ds_prefix),
+            exist_ok=True,
+        )
         for lc in ver_lc:
-            ds_dir: str = os.path.join(calc_dataset_prefix(ver), lc)
             os.makedirs(
-                os.path.join(data_dir, c.TC_DIRNAME, ds_dir),
-                exist_ok=True,
-            )
-            os.makedirs(
-                os.path.join(data_dir, c.VC_DIRNAME, ds_dir),
+                os.path.join(data_dir, c.VC_DIRNAME, ds_prefix, lc),
                 exist_ok=True,
             )
     # create .gitkeep
@@ -70,6 +72,9 @@ def init_directories(basedir: str) -> None:
         encoding="utf8",
     ).close()
     open(os.path.join(data_dir, c.TC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
+    open(
+        os.path.join(data_dir, c.TC_ANALYSIS_DIRNAME, ".gitkeep"), "a", encoding="utf8"
+    ).close()
     open(os.path.join(data_dir, c.VC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
 
     # outside common cache
@@ -90,10 +95,12 @@ def init_directories(basedir: str) -> None:
 
 
 def report_results(g: Globals) -> None:
-    """Prints out simpğle report from global counters"""
+    """Prints out simple report from global counters"""
     process_seconds: float = (datetime.now() - g.start_time).total_seconds()
     print("=" * 80)
-    print(f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo} Splits: {g.total_splits}")
+    print(
+        f"Total\t\t: Ver: {g.total_ver} LC: {g.total_lc} Algo: {g.total_algo} Splits: {g.total_splits}"
+    )
     print(
         f"Processed\t: Ver: {g.processed_ver} LC: {g.processed_lc} Algo: {g.processed_algo}"
     )
@@ -108,25 +115,30 @@ def report_results(g: Globals) -> None:
 #
 
 
-def df_read(fpath: str) -> pd.DataFrame:
+# def df_read(fpath: str, dtypes: defaultdict = defaultdict(str)) -> pd.DataFrame:
+def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
+    _df: pd.DataFrame = pd.DataFrame()
     if not os.path.isfile(fpath):
         print(f"FATAL: File {fpath} cannot be located!")
         if conf.FAIL_ON_NOT_FOUND:
             sys.exit(1)
+        return _df
 
-    df: pd.DataFrame = pd.read_csv(
+    _df = pd.read_csv(
         fpath,
         sep="\t",
         parse_dates=False,
-        engine="python",
         encoding="utf-8",
-        on_bad_lines="skip",
+        # on_bad_lines="skip",
+        on_bad_lines="warn",
         quotechar='"',
         quoting=csv.QUOTE_NONE,
-        dtype={"ver": str},
+        engine="python", #"pyarrow"
+        dtype_backend="pyarrow",
+        dtype=dtype,
     )
-    return df
+    return _df
 
 
 def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
@@ -158,6 +170,15 @@ def df_int_convert(x: pd.Series) -> Any:
         return x.astype(int)
     except ValueError as e:  # pylint: disable=W0612
         return x
+
+
+def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """Controlled concat of two dataframes"""
+    return (
+        df1
+        if df2.shape[0] == 0
+        else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
+    )
 
 
 #
@@ -234,9 +255,16 @@ def is_version_valid(ver: str) -> Literal[True]:
     return True
 
 
-def calc_dataset_prefix(
-    ver: str,
-) -> str:
+def get_cutoff_date(ver: str) -> str:
+    """Given version, get the cutoff-date of that version"""
+
+    if is_version_valid(ver):
+        inx: int = c.CV_VERSIONS.index(ver)
+        return c.CV_DATES[inx]
+    return ""
+
+
+def calc_dataset_prefix(ver: str) -> str:
     """Build the dataset string from version (valid for > v4)"""
 
     if is_version_valid(ver):
@@ -307,6 +335,15 @@ def arr2str(arr: list[list[Any]]) -> str:
     return c.SEP_ROW.join(list2str(x) for x in arr)
 
 
+# def flatten(arr: list[list[Any]]) -> list[Any]:
+#     """Flattens a list of lists to a single list"""
+#     res: list[Any] = []
+#     for row in arr:
+#         if isinstance(row,list):
+#             res.extend(flatten(row))
+#         else: res.append(row)
+#     return res
+
 #
 # Numbers
 #
@@ -315,3 +352,24 @@ def arr2str(arr: list[list[Any]]) -> str:
 def dec3(x: float) -> float:
     """Make to 3 decimals"""
     return round(1000 * x) / 1000
+
+
+#
+# FS
+#
+def sort_by_largest_file(fpaths: list[str]) -> list[str]:
+    """Given a list of file paths, this gets the files sizes, sonts on them decending and returns the sorted file paths"""
+    recs: list[list[str | int]] = []
+    for p in fpaths:
+        recs.append([p, os.path.getsize(p)])
+    recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
+    return [str(row[0]) for row in recs]
+
+
+#
+# Gender back-mapping
+#
+def gender_backmapping(df: pd.DataFrame) -> pd.DataFrame:
+    """Backmap new genders back to older ones for backward compatibility"""
+    df["gender"] = df["gender"].replace(c.CV_GENDERS_MAPPING)
+    return df

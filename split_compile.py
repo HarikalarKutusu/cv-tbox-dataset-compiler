@@ -71,10 +71,15 @@ def main() -> None:
         dst_dir = os.path.join(vc_dir_base, ver_dir, lc)
         tsv_fpath: str = ""
 
-        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "validated.tsv")):
+        files_to_copy: list[str] = c.EXTENDED_BUCKET_FILES.copy()
+        files_to_copy.extend(c.TC_BUCKET_FILES)
+
+        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
+            os.path.join(dst_dir, "validated.tsv")
+        ):
             # os.makedirs(os.path.join(dst_dir, c.ALGORITHMS[0]), exist_ok=True)
             os.makedirs(dst_dir, exist_ok=True)
-            for fn in c.EXTENDED_BUCKET_FILES:
+            for fn in files_to_copy:
                 tsv_fpath = os.path.join(src_dir, fn)
                 if os.path.isfile(tsv_fpath):
                     shutil.copy2(tsv_fpath, dst_dir)
@@ -85,7 +90,9 @@ def main() -> None:
 
         # copy to s1
         dst_dir = os.path.join(vc_dir_base, ver_dir, lc, c.ALGORITHMS[0])
-        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "train.tsv")):
+        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
+            os.path.join(dst_dir, "train.tsv")
+        ):
             os.makedirs(dst_dir, exist_ok=True)
             for fn in c.SPLIT_FILES:
                 tsv_fpath = os.path.join(src_dir, fn)
@@ -101,7 +108,9 @@ def main() -> None:
             src_dir = os.path.join(conf.SRC_BASE_DIR, algo, ver_dir, lc)
             if os.path.isdir(src_dir):
                 dst_dir = os.path.join(vc_dir_base, ver_dir, lc, algo)
-                if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(os.path.join(dst_dir, "train.tsv")):
+                if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
+                    os.path.join(dst_dir, "train.tsv")
+                ):
                     os.makedirs(dst_dir, exist_ok=True)
                     for fn in c.SPLIT_FILES:
                         tsv_fpath = os.path.join(src_dir, fn)
@@ -137,9 +146,7 @@ def main() -> None:
     for ver in c.CV_VERSIONS:
         # Check if it exists in source (check "s1", if not there, it is nowhere)
         ver_dir = calc_dataset_prefix(ver)
-        if not os.path.isdir(
-            os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir)
-        ):
+        if not os.path.isdir(os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir)):
             continue  # Does not exist, so skip
 
         # Create destination
@@ -160,9 +167,7 @@ def main() -> None:
         # print("=" * 80)
         # print(f"Processing {lc_cnt} locales in {cv_dir_name}")
 
-        pbar_lc = tqdm(
-            lc_list, desc=("   v" + ver)[-5:], total=lc_cnt, unit=" Locale"
-        )
+        pbar_lc = tqdm(lc_list, desc=("   v" + ver)[-5:], total=lc_cnt, unit=" Locale")
         for lc in lc_list:
             handle_locale(lc)
             pbar_lc.update()
