@@ -118,24 +118,27 @@ def report_results(g: Globals) -> None:
 # def df_read(fpath: str, dtypes: defaultdict = defaultdict(str)) -> pd.DataFrame:
 def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
+    _df: pd.DataFrame = pd.DataFrame()
     if not os.path.isfile(fpath):
         print(f"FATAL: File {fpath} cannot be located!")
         if conf.FAIL_ON_NOT_FOUND:
             sys.exit(1)
+        return _df
 
-    df: pd.DataFrame = pd.read_csv(
+    _df = pd.read_csv(
         fpath,
         sep="\t",
         parse_dates=False,
         encoding="utf-8",
-        on_bad_lines="skip",
-        # quotechar='"',
-        # quoting=csv.QUOTE_NONE,
-        engine="pyarrow",
+        # on_bad_lines="skip",
+        on_bad_lines="warn",
+        quotechar='"',
+        quoting=csv.QUOTE_NONE,
+        engine="python", #"pyarrow"
         dtype_backend="pyarrow",
         dtype=dtype,
     )
-    return df
+    return _df
 
 
 def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
