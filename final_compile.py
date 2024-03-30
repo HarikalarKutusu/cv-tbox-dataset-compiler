@@ -1350,15 +1350,16 @@ def main() -> None:
 
         df: pd.DataFrame = pd.DataFrame().reset_index(drop=True)
         for tsv_path in all_tsv_paths:
-            if (
-                os.path.split(tsv_path)[1][0] != "$"
-            ):  # ignore system files (starts with $)
+            # ignore system files (they start with $)
+            if os.path.split(tsv_path)[1][0] != "$":
                 df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
 
         g.total_splits = df.shape[0]
         g.total_lc = df[df["sp"] == "validated"].shape[0]
 
         df = df[["ver", "lc", "alg"]].drop_duplicates()
+        df["ver"] = df["ver"].astype(str)
+
         df = (
             df[~df["alg"].isnull()]
             .sort_values(["lc", "ver", "alg"])
@@ -1369,13 +1370,13 @@ def main() -> None:
         # Prepare Support Matrix DataFrame
         rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
         rev_versions.reverse()
-        for inx, ver in enumerate(rev_versions):
-            rev_versions[inx] = ver2vercol(ver)
-        cols_support_matrix: list[str] = ["lc", "lang"]
-        cols_support_matrix.extend(rev_versions)
+
+        cols_support_matrix: list[str] = ["lc", "lang"] + [ver2vercol(v) for v in rev_versions]
+
         df_support_matrix: pd.DataFrame = pd.DataFrame(
-            index=ALL_LOCALES,
             columns=cols_support_matrix,
+            dtype=dtype_pa_str,
+            index=ALL_LOCALES,
         )
         df_support_matrix["lc"] = ALL_LOCALES
 
@@ -1385,8 +1386,7 @@ def main() -> None:
                 algo_list: list[str] = (
                     df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
                 )
-                algos: str = c.SEP_ALGO.join(algo_list)
-                df_support_matrix.at[lc, ver2vercol(ver)] = algos
+                df_support_matrix.at[lc, ver2vercol(ver)] = c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
 
         # Write out
         print(">>> Saving Support Matrix...")
@@ -1469,8 +1469,9 @@ def main() -> None:
     # SPLITS
     if not conf.SKIP_VOICE_CORPORA:
         main_splits()
-        # SUPPORT MATRIX
-        main_support_matrix()
+
+    # SUPPORT MATRIX
+    main_support_matrix()
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
