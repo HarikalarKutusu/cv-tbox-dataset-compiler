@@ -305,7 +305,7 @@ REPORTING_ALL.append("other")
 # cv-tbox related
 #
 
-ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
+ALGORITHMS: list[str] = ["s1", "s5", "s99", "v1", "vw", "vx"]
 
 # SEPARATORS
 SEP_ROW: str = "|"
