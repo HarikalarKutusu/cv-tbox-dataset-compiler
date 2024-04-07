@@ -156,7 +156,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     _ser.apply(int).reset_index(drop=True).to_list(), int
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_WORDS)
-                res.w_freq = _hist[0].tolist()
+                res.w_freq = _hist[0].tolist()[1:]
 
             # token_cnt stats
             _df2 = pd.DataFrame(token_counter.most_common(), columns=c.FIELDS_TOKENS)
@@ -174,7 +174,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     int,
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_TOKENS)
-                res.t_freq = _hist[0].tolist()
+                res.t_freq = _hist[0].tolist()[1:]
             if do_save:
                 fn: str = os.path.join(
                     tc_anal_dir,
@@ -424,7 +424,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         int,
     )
     hist = np.histogram(arr, bins=c.BINS_REPORTED)
-    rep_freq = hist[0].tolist()
+    rep_freq = hist[0].tolist()[1:]
 
     # Get reason counts
     reason_counts: pd.DataFrame = (
@@ -607,7 +607,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             return SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
 
         # [TODO] Move these to split_compile: Make all confirm to current style?
-        # Normalize data to the latest version's columns w,th typing
+        # Normalize data to the latest version's columns with typing
         # Replace NA with NODATA with some typing and conditionals
         # df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
         df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_BUCKETS_SPLITS)
@@ -694,7 +694,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_VOICES)
-        voice_freq = hist[0].tolist()
+        voice_freq = hist[0].tolist()[1:]
 
         # === SENTENCES
         sentence_counts: pd.DataFrame = (
@@ -714,7 +714,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_SENTENCES)
-        sentence_freq = hist[0].tolist()
+        sentence_freq = hist[0].tolist()[1:]
 
         # === VOTES
         bins: list[int] = c.BINS_VOTES_UP
@@ -1427,14 +1427,14 @@ def main() -> None:
             algorithms=c.ALGORITHMS,
             # Drop the last huge values from bins
             bins_duration=c.BINS_DURATION[:-1],
-            bins_voices=c.BINS_VOICES[:-1],
+            bins_voices=c.BINS_VOICES[1:-1],
             bins_votes_up=c.BINS_VOTES_UP[:-1],
             bins_votes_down=c.BINS_VOTES_DOWN[:-1],
-            bins_sentences=c.BINS_SENTENCES[:-1],
+            bins_sentences=c.BINS_SENTENCES[1:-1],
             bins_chars=c.BINS_CHARS[:-1],
-            bins_words=c.BINS_WORDS[:-1],
-            bins_tokens=c.BINS_TOKENS[:-1],
-            bins_reported=c.BINS_REPORTED[:-1],
+            bins_words=c.BINS_WORDS[1:-1],
+            bins_tokens=c.BINS_TOKENS[1:-1],
+            bins_reported=c.BINS_REPORTED[1:-1],
             bins_reasons=c.REPORTING_ALL,
         )
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
