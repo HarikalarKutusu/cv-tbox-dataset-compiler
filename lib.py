@@ -3,7 +3,7 @@
 # Standard Lib
 # from ast import literal_eval
 from datetime import datetime
-from typing import Literal, Any
+from typing import Literal, Any, Tuple
 from urllib.request import urlopen
 import os
 import sys
@@ -180,6 +180,91 @@ def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
         if df2.shape[0] == 0
         else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
     )
+
+
+#
+# Safe DataFrame readers for Common Voice to handle CRLF/LF/TAB cases in text
+#
+
+def df_read_safe_tc_validated(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
+    """Read in possibly malformed validated_sentences.tsv file"""
+
+    def has_valid_columns(ss: list[str]) -> bool:
+        """Replaces old with new multple times"""
+        return len(ss) == col_count_needed and len(ss[0]) == 64 and ss[-2].isdigit() and ss[-1].isdigit()
+
+    lines_read: list[str] = []
+    final_arr: list[list[str]] = []
+    problem_arr: list[str] = []
+    col_count_needed: int = len(c.FIELDS_TC_VALIDATED)
+
+    # read all data and split to lines
+    with open(fpath, encoding="utf8") as fd:
+        lines_read = fd.read().splitlines()
+
+    total_lines: int = len(lines_read)
+
+    # we expect these:
+    # sentence_id	sentence	sentence_domain	source	is_used	clips_count
+    # first line is column names, so we skip it because we predefine them
+    cur_source_line: int = 1
+    while cur_source_line < len(lines_read):
+        line: str = lines_read[cur_source_line].replace("\r\n", "\n").replace("\n", "")
+        ss1: list[str] = line.split("\t")
+
+        # No problem: We have good data (most common)
+        # Action: Get it
+        if has_valid_columns(ss1):
+            final_arr.append(ss1)
+            cur_source_line += 1
+            continue
+
+        # Problem-1: More columns than needed, most probably caused by having tab character(s) inside "sentence"
+        # Solution: Squieze sentence field(s) into one
+        if len(ss1) > col_count_needed:
+            while not has_valid_columns(ss1) and len(ss1) > col_count_needed:
+                ss1[1] = (ss1[1] + ss1[2]).replace("\t", "")
+                ss1.pop(2)
+            if has_valid_columns(ss1):
+                final_arr.append(ss1)
+                cur_source_line += 1
+                continue
+
+        # Problem-2: Fewer columns than needed, most probably caused by having newline character(s) inside "sentence"
+        # Solution: Look ahead more lines until corrected
+        # Check if we are at the last line!
+        look_ahead: int = 0
+        if len(ss1) < col_count_needed and cur_source_line < total_lines:
+            ss2: list[str] = ss1
+            while not has_valid_columns(ss2) and len(ss1) < col_count_needed:
+                if cur_source_line + look_ahead >= total_lines - 1:
+                    break
+                look_ahead += 1
+                next_line: str = lines_read[cur_source_line + look_ahead].replace("\r\n", "\n").replace("\n", "")
+                line = (line + " " + next_line).replace("  ", " ")
+                ss2 = line.split("\t")
+            if has_valid_columns(ss2):
+                final_arr.append(ss2)
+                cur_source_line += look_ahead + 1
+                continue
+
+        # FATAL: If we reached here, we have an unhandled case
+        # We should skip these lines and report problem lines
+        for line in lines_read[ cur_source_line : cur_source_line+look_ahead ]:
+            problem_arr.append(line)
+        cur_source_line += look_ahead + 1
+
+        # EOF check
+        if cur_source_line >= total_lines - 1:
+            break
+    # end of loop
+
+    df_final: pd.DataFrame = (
+        pd.DataFrame(final_arr, columns=c.FIELDS_TC_VALIDATED)
+        .astype(c.FIELDS_TC_VALIDATED)
+        .drop_duplicates()
+    )
+    return df_final, problem_arr
 
 
 #
