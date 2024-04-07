@@ -115,7 +115,7 @@ def report_results(g: Globals) -> None:
 #
 
 
-def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
+def df_read(fpath: str, dtypes: dict | None = None, use_cols: list[str] | None = None) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
     _df: pd.DataFrame = pd.DataFrame()
     if not os.path.isfile(fpath):
@@ -133,9 +133,11 @@ def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
         on_bad_lines="warn",
         quotechar='"',
         quoting=csv.QUOTE_NONE,
+        skip_blank_lines=True,
         engine="python",  # "pyarrow"
+        usecols=use_cols,
         dtype_backend="pyarrow",
-        dtype=dtype,
+        dtype=dtypes,
     )
     return _df
 
