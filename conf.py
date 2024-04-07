@@ -44,3 +44,7 @@ DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: list[str] = ["15.0", "16.1", "17.0"]
 DEBUG_CV_LC: list[str] = ["tr"]
+
+# This is independent of debug value
+# Create "not_found" files for text corpora?
+CREATE_TS_NOT_FOUND: bool = False
