@@ -1203,7 +1203,7 @@ def main() -> None:
                 num_to_process: int = len(ver_lc_new)
                 ver_lc_list.extend(ver_lc_new)
                 g_rep.processed_lc += num_to_process
-                g_rep.skipped_exists += len(lc_list) - num_to_process
+                g_rep.skipped_nodata += len(lc_list) - num_to_process
                 g_rep.processed_ver += 1 if num_to_process > 0 else 0
 
         # Now multi-process each record
@@ -1218,7 +1218,7 @@ def main() -> None:
             + (0 if num_items % used_proc_count == 0 else 1),
         )
         print(
-            f"Total: {g_rep.total_lc} Existing: {g_rep.skipped_exists} Remaining: {g_rep.processed_lc} "
+            f"Total: {g_rep.total_lc} Missing: {g_rep.skipped_nodata} Remaining: {g_rep.processed_lc} "
             + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
