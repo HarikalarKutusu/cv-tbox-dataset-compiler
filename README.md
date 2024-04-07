@@ -237,7 +237,7 @@ Duration(s)     : Total: 2778.214 Avg: 2.08
 
 ```
 
-The process took about 03:30 for the whole set. Before the latest changes, in v16.1, the process was taking about 24 hours.
+The process took about 3.5 hours for the whole set (1336 datasets). Before the latest changes, in v16.1, the process was taking about 24 hours.
 The results are cached. Thus, when calculating after a new CV release, the code will only calculate the new ones.
 On the other hand, the cached data totals 264 GB uncompressed for v17.0 and prior.
 But, the `.json` files passed to the Common Voice Dataset Analyzer is only 76.6 MB.

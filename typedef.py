@@ -16,6 +16,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+# External dependencies
 import pyarrow as pa
 import pandas as pd
 
