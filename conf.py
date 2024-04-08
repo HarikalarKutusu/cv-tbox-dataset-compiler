@@ -48,3 +48,5 @@ DEBUG_CV_LC: list[str] = ["tr"]
 # This is independent of debug value
 # Create "not_found" files for text corpora?
 CREATE_TS_NOT_FOUND: bool = False
+# Create corrected & problems files
+CREATE_REPORTED_PROBLEMS: bool = False
