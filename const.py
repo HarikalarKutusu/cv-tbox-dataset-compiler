@@ -126,6 +126,20 @@ FIELDS_BUCKETS_SPLITS: dict[str, pd.ArrowDtype] = {
     "segment": dtype_pa_str,
 }
 
+FIELDS_REPORTED: dict[str, pd.ArrowDtype] = {
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "locale": dtype_pa_str,
+    "reason": dtype_pa_str,
+}
+
+FIELDS_REPORTED_OLD: dict[str, pd.ArrowDtype] = {
+    "sentence": dtype_pa_str,
+    "sentence_id": dtype_pa_str,
+    "locale": dtype_pa_str,
+    "reason": dtype_pa_str,
+}
+
 
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
 # new gender definitions
