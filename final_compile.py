@@ -44,6 +44,7 @@ from typedef import (
 )
 from lib import (
     df_read,
+    df_read_safe_reported,
     df_write,
     gender_backmapping,
     init_directories,
@@ -395,7 +396,29 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
     if not os.path.isfile(rep_file) or os.path.getsize(rep_file) == 0:
         return ReportedStatsRec(ver=ver, lc=lc)
     # read file in - Columns: sentence sentence_id locale reason
-    df: pd.DataFrame = df_read(rep_file)
+    # df: pd.DataFrame = df_read(rep_file)
+    problem_list: list[str] = []
+    fields: dict[str, pd.ArrowDtype] = (
+        c.FIELDS_REPORTED if float(ver) >= 17.0 else c.FIELDS_REPORTED_OLD
+    )
+    df: pd.DataFrame = pd.DataFrame(columns=fields).astype(fields)
+    df, problem_list = df_read_safe_reported(rep_file)
+
+    # debug
+    if conf.CREATE_REPORTED_PROBLEMS:
+        # if ver == "17.0" and lc == "en":
+        if ver == "17.0":
+            df_write(
+                df, os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv")
+            )
+            if len(problem_list) > 0:
+                with open(
+                    os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"),
+                    mode="w",
+                    encoding="utf8",
+                ) as fd:
+                    fd.write("\n".join(problem_list))
+
     if df.shape[0] == 0:  # skip those without records
         return ReportedStatsRec(ver=ver, lc=lc)
 
@@ -1027,13 +1050,20 @@ def main() -> None:
         )
         # Get joined TSV
         combined_ver_lc: list[str] = []
+
         if os.path.isfile(combined_tsv_file):
-            combined_ver_lc = [
-                "|".join(row)
-                for row in df_read(combined_tsv_file)
-                .reset_index(drop=True)[["ver", "lc"]]
-                .values.tolist()
-            ]
+            try:
+                combined_ver_lc = [
+                    "|".join(row)
+                    for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
+                    .reset_index(drop=True)
+                    .dropna()
+                    .drop_duplicates()
+                    .astype(str)
+                    .values.tolist()
+                ]
+            except ValueError as e:
+                print(e)
 
         ver_lc_list: list[str] = []  # final
         # start with newer, thus larger / longer versions' data
@@ -1162,16 +1192,16 @@ def main() -> None:
         combined_tsv_file: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
-        # Get joined TSV
-        combined_df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_REPORTED_STATS)
+        # Get from joined TSV
+        combined_ver_lc: list[str] = []
         if os.path.isfile(combined_tsv_file):
-            combined_df = df_read(combined_tsv_file).reset_index(drop=True)
-        combined_df = combined_df[["ver", "lc"]]
-        combined_ver_lc: list[str] = [
-            "|".join([row[0], row[1]]) for row in combined_df.values.tolist()
-        ]
-        del combined_df
-        combined_df = pd.DataFrame()
+            combined_ver_lc: list[str] = [
+                "|".join(row)
+                for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
+                .reset_index(drop=True)
+                .astype(str)
+                .values.tolist()
+            ]
 
         # For each version
         ver_lc_list: list[str] = []  # final
@@ -1192,13 +1222,14 @@ def main() -> None:
                 ver_lc_new: list[str] = []
                 for lc in lc_list:
                     ver_lc: str = f"{ver}|{lc}"
-                    rep_tsv: str = os.path.join(
-                        vc_base,
-                        ver_dir,
-                        lc,
-                        "reported.tsv",
-                    )
-                    if not ver_lc in combined_ver_lc and os.path.isfile(rep_tsv):
+                    if not ver_lc in combined_ver_lc and os.path.isfile(
+                        os.path.join(
+                            vc_base,
+                            ver_dir,
+                            lc,
+                            "reported.tsv",
+                        )
+                    ):
                         ver_lc_new.append(ver_lc)
                 num_to_process: int = len(ver_lc_new)
                 ver_lc_list.extend(ver_lc_new)
@@ -1211,6 +1242,8 @@ def main() -> None:
         if num_items == 0:
             print("Nothing to process...")
             return
+
+        used_proc_count = 1
 
         chunk_size: int = min(
             MAX_BATCH_SIZE,
@@ -1227,6 +1260,7 @@ def main() -> None:
                 for res in pool.imap_unordered(
                     handle_reported, ver_lc_list, chunksize=chunk_size
                 ):
+                    # pbar.write(f"Finished {res.ver} - {res.lc}")
                     results.append(res)
                     pbar.update()
                     if res.rep_sum == 0:
@@ -1371,7 +1405,9 @@ def main() -> None:
         rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
         rev_versions.reverse()
 
-        cols_support_matrix: list[str] = ["lc", "lang"] + [ver2vercol(v) for v in rev_versions]
+        cols_support_matrix: list[str] = ["lc", "lang"] + [
+            ver2vercol(v) for v in rev_versions
+        ]
 
         df_support_matrix: pd.DataFrame = pd.DataFrame(
             columns=cols_support_matrix,
@@ -1386,7 +1422,9 @@ def main() -> None:
                 algo_list: list[str] = (
                     df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
                 )
-                df_support_matrix.at[lc, ver2vercol(ver)] = c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
+                df_support_matrix.at[lc, ver2vercol(ver)] = (
+                    c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
+                )
 
         # Write out
         print(">>> Saving Support Matrix...")
