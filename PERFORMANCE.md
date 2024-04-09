@@ -118,45 +118,46 @@ Duration(s)     : Total: 2778.214 Avg: 2.08
 
 ```text
 $ python final_compile.py
+python .\final_compile.py
 === cv-tbox-dataset-analyzer - Final Statistics Compilation ===
 Preparing directory structures...
 
 === Start Text Corpora Analysis ===
 Total: 1336 Existing: 0 NoData: 0 Remaining: 1336 Procs: 12  chunk_size: 1...
-100%|████████████████████████████████████████████████████████████████| 1336/1336 [2:15:33<00:00,  6.09s/it]
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1336/1336 [2:20:44<00:00,  6.32s/it] 
 >>> Finished... Now saving...
 ================================================================================
 Total           : Ver: 16 LC: 1336 Algo: 0 Splits: 0
 Processed       : Ver: 16 LC: 1336 Algo: 0
 Skipped         : Exists: 0 No Data: 0
-Duration(s)     : Total: 8149.147 Avg: 6.1
+Duration(s)     : Total: 8460.841 Avg: 6.333
 
 === Start Reported Analysis ===
-Total: 1336 Missing: 139 Remaining: 1197 Procs: 12  chunk_size: 1...
-100%|████████████████████████████████████████████████████████████████| 1197/1197 [00:04<00:00, 267.28it/s] 
+Total: 1336 Missing: 139 Remaining: 1197 Procs: 1  chunk_size: 1...
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1197/1197 [00:19<00:00, 61.80it/s] 
 >>> Finished... Now saving...
 ================================================================================
 Total           : Ver: 16 LC: 1336 Algo: 0 Splits: 0
 Processed       : Ver: 13 LC: 1197 Algo: 0
-Skipped         : Exists: 139 No Data: 0
-Duration(s)     : Total: 8154.527 Avg: 6.812
+Skipped         : Exists: 0 No Data: 139
+Duration(s)     : Total: 8480.936 Avg: 7.085
 
 === Start Dataset/Split Analysis ===
 Processing 1336 locales in 12 processes with chunk_size 1...
-100%|████████████████████████████████████████████████████████████████| 1336/1336 [56:31<00:00,  2.54s/it]
->>> Processed 24723 splits...
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1336/1336 [59:25<00:00,  2.67s/it] 
+>>> Processed 24735 splits...
 
 === Build Support Matrix ===
 >>> Saving Support Matrix...
 ================================================================================
-Total           : Ver: 16 LC: 1336 Algo: 6684 Splits: 24723
+Total           : Ver: 16 LC: 1336 Algo: 6688 Splits: 24735
 Processed       : Ver: 0 LC: 0 Algo: 0
 Skipped         : Exists: 0 No Data: 24
-Duration(s)     : Total: 11598.727 Avg: -
+Duration(s)     : Total: 12104.039 Avg: -
 
 === Save Configuration ===
 Finished compiling statistics!
-Duration 11598.341 sec, avg=8.681 secs/dataset.
+Duration 12103.631 sec, avg=9.06 secs/dataset.
 
 ```
 
