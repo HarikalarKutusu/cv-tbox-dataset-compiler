@@ -21,7 +21,6 @@ import sys
 import os
 import glob
 import multiprocessing as mp
-from typing import Tuple
 
 # External dependencies
 from tqdm import tqdm
