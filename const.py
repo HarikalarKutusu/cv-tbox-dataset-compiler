@@ -126,6 +126,20 @@ FIELDS_BUCKETS_SPLITS: dict[str, pd.ArrowDtype] = {
     "segment": dtype_pa_str,
 }
 
+FIELDS_REPORTED: dict[str, pd.ArrowDtype] = {
+    "sentence_id": dtype_pa_str,
+    "sentence": dtype_pa_str,
+    "locale": dtype_pa_str,
+    "reason": dtype_pa_str,
+}
+
+FIELDS_REPORTED_OLD: dict[str, pd.ArrowDtype] = {
+    "sentence": dtype_pa_str,
+    "sentence_id": dtype_pa_str,
+    "locale": dtype_pa_str,
+    "reason": dtype_pa_str,
+}
+
 
 CV_GENDERS: list[str] = ["male", "female", "other", NODATA]
 # new gender definitions
@@ -305,7 +319,7 @@ REPORTING_ALL.append("other")
 # cv-tbox related
 #
 
-ALGORITHMS: list[str] = ["s1", "s99", "v1", "vw", "vx"]
+ALGORITHMS: list[str] = ["s1", "s5", "s99", "v1", "vw", "vx"]
 
 # SEPARATORS
 SEP_ROW: str = "|"
@@ -371,6 +385,7 @@ BINS_DURATION: list[int] = [
     14,
     15,
     20,
+    30,
     999999,
 ]
 BINS_VOICES: list[int] = [
@@ -392,6 +407,7 @@ BINS_VOICES: list[int] = [
     16384,
     32768,
     65536,
+    131072,
     999999,
 ]
 BINS_SENTENCES: list[int] = [
@@ -435,6 +451,7 @@ BINS_CHARS: list[int] = [
     180,
     190,
     200,
+    250,
     999999,
 ]
 BINS_WORDS: list[int] = [
@@ -464,6 +481,8 @@ BINS_WORDS: list[int] = [
     23,
     24,
     25,
+    30,
+    40,
     999999,
 ]
 BINS_TOKENS: list[int] = [
@@ -485,6 +504,8 @@ BINS_TOKENS: list[int] = [
     16384,
     32768,
     65536,
+    131072,
+    262144,
     999999,
 ]
 

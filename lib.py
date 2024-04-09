@@ -3,7 +3,7 @@
 # Standard Lib
 # from ast import literal_eval
 from datetime import datetime
-from typing import Literal, Any
+from typing import Literal, Any, Tuple
 from urllib.request import urlopen
 import os
 import sys
@@ -115,8 +115,9 @@ def report_results(g: Globals) -> None:
 #
 
 
-# def df_read(fpath: str, dtypes: defaultdict = defaultdict(str)) -> pd.DataFrame:
-def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
+def df_read(
+    fpath: str, dtypes: dict | None = None, use_cols: list[str] | None = None
+) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
     _df: pd.DataFrame = pd.DataFrame()
     if not os.path.isfile(fpath):
@@ -134,9 +135,11 @@ def df_read(fpath: str, dtype: dict | None = None) -> pd.DataFrame:
         on_bad_lines="warn",
         quotechar='"',
         quoting=csv.QUOTE_NONE,
-        engine="python", #"pyarrow"
+        skip_blank_lines=True,
+        engine="python",  # "pyarrow"
+        usecols=use_cols,
         dtype_backend="pyarrow",
-        dtype=dtype,
+        dtype=dtypes,
     )
     return _df
 
@@ -179,6 +182,204 @@ def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
         if df2.shape[0] == 0
         else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
     )
+
+
+#
+# Safe DataFrame readers for Common Voice to handle CRLF/LF/TAB cases in text
+#
+
+
+def df_read_safe_tc_validated(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
+    """Read in possibly malformed validated_sentences.tsv file"""
+
+    def has_valid_columns(ss: list[str]) -> bool:
+        """Check if we have an acceptable row"""
+        return (
+            len(ss) == col_count_needed
+            and len(ss[0]) == 64
+            and ss[-2].isdigit()
+            and ss[-1].isdigit()
+        )
+
+    lines_read: list[str] = []
+    final_arr: list[list[str]] = []
+    problem_arr: list[str] = []
+    col_count_needed: int = len(c.FIELDS_TC_VALIDATED)
+
+    # read all data and split to lines
+    with open(fpath, encoding="utf8") as fd:
+        lines_read = fd.read().splitlines()
+
+    total_lines: int = len(lines_read)
+
+    # we expect these:
+    # sentence_id	sentence	sentence_domain	source	is_used	clips_count
+    # first line is column names, so we skip it because we predefine them
+    cur_source_line: int = 1
+    while cur_source_line < len(lines_read):
+        line: str = lines_read[cur_source_line].replace("\r\n", "\n").replace("\n", "")
+        ss1: list[str] = line.split("\t")
+
+        # No problem: We have good data (most common)
+        # Action: Get it
+        if has_valid_columns(ss1):
+            final_arr.append(ss1)
+            cur_source_line += 1
+            continue
+
+        # Problem-1: More columns than needed, most probably caused by having tab character(s) inside "sentence"
+        # Solution: Squieze sentence field(s) into one
+        if len(ss1) > col_count_needed:
+            while not has_valid_columns(ss1) and len(ss1) > col_count_needed:
+                ss1[1] = (ss1[1] + ss1[2]).replace("\t", " ").replace("  ", " ")
+                ss1.pop(2)
+            if has_valid_columns(ss1):
+                final_arr.append(ss1)
+                cur_source_line += 1
+                continue
+
+        # Problem-2: Fewer columns than needed, most probably caused by having newline character(s) inside "sentence"
+        # Solution: Look ahead more lines until corrected
+        # Check if we are at the last line!
+        look_ahead: int = 0
+        if len(ss1) < col_count_needed and cur_source_line < total_lines:
+            ss2: list[str] = ss1
+            while not has_valid_columns(ss2) and len(ss1) < col_count_needed:
+                if cur_source_line + look_ahead >= total_lines - 1:
+                    break
+                look_ahead += 1
+                next_line: str = (
+                    lines_read[cur_source_line + look_ahead]
+                    .replace("\r\n", "\n")
+                    .replace("\n", "")
+                )
+                line = (line + " " + next_line).replace("  ", " ")
+                ss2 = line.split("\t")
+            if has_valid_columns(ss2):
+                final_arr.append(ss2)
+                cur_source_line += look_ahead + 1
+                continue
+
+        # FATAL: If we reached here, we have an unhandled case
+        # We should skip these lines and report problem lines
+        for line in lines_read[cur_source_line : cur_source_line + look_ahead]:
+            problem_arr.append(line)
+        cur_source_line += look_ahead + 1
+
+        # EOF check
+        if cur_source_line >= total_lines - 1:
+            break
+    # end of loop
+
+    df_final: pd.DataFrame = (
+        pd.DataFrame(final_arr, columns=c.FIELDS_TC_VALIDATED)
+        .astype(c.FIELDS_TC_VALIDATED)
+        .drop_duplicates()
+    )
+    return df_final, problem_arr
+
+
+def df_read_safe_reported(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
+    """Read in possibly malformed reported.tsv file"""
+
+    def has_valid_columns(ss: list[str]) -> bool:
+        """Check if we have an acceptable row"""
+        return len(ss) == col_count_needed and len(ss[sentence_id_inx]) == 64
+
+    ver: str = fpath.split(os.sep)[-3].split("-")[2]
+    fields: dict[str, pd.ArrowDtype] = (
+        c.FIELDS_REPORTED if float(ver) >= 17.0 else c.FIELDS_REPORTED_OLD
+    )
+
+    # look_ahead: int = 0
+    lines_read: list[str] = []
+    final_arr: list[list[str]] = []
+    problem_arr: list[str] = []
+    col_count_needed: int = len(fields)
+
+    # read all data and split to lines
+    with open(fpath, encoding="utf8") as fd:
+        lines_read = fd.read().splitlines()
+
+    # get first line to find the column indexes (they changed in versions)
+    sentence_inx: int = lines_read[0].split("\t").index("sentence")
+    sentence_id_inx: int = lines_read[0].split("\t").index("sentence_id")
+
+    # we expect these:
+    # sentence_id	sentence	locale	reason
+    # first line is column names, so we skip it because we predefine them
+
+    while lines_read:
+        line: str = lines_read.pop(0).replace("\r\n", "\n").replace("\n", "")
+        ss1: list[str] = line.split("\t")
+
+        next_line: str = (
+            lines_read[0].replace("\r\n", "\n").replace("\n", "") if lines_read else ""
+        )
+        ss2: list[str] = next_line.split("\t")
+
+        # No problem: We have good data in this line and next (most common)
+        # Action: Get it
+        if (
+            has_valid_columns(ss1)
+            and next_line
+            and len(ss2) == col_count_needed
+            and has_valid_columns(ss2)
+        ) or (has_valid_columns(ss1) and not next_line):
+            final_arr.append(ss1)
+            continue
+
+        # Problem-1: More columns than needed, most probably caused by having tab character(s) inside fields
+        # Solution: Squieze sentence field(s) into one
+        if len(ss1) > col_count_needed:
+            while not has_valid_columns(ss1):
+                ss1[sentence_inx] = (
+                    (ss1[sentence_inx] + ss1[sentence_inx + 1])
+                    .replace("\t", " ")
+                    .replace("  ", " ")
+                )
+                ss1.pop(sentence_inx + 1)
+            if has_valid_columns(ss1):
+                final_arr.append(ss1)
+            else:
+                problem_arr.append(f"P1\t{line}")
+            continue
+
+        # Problem-2: We have good data in this line but not in the next, it should be overflow in "reason"
+        # Action: Append it to current until next line is OK
+
+        # Try to merge with the next line,
+        # Else, just get rid of bad lines until we find a good one
+        if not has_valid_columns(ss1) and len(ss2) < col_count_needed:
+            line_to_try: str = line + " " + next_line
+            ss3: list[str] = line_to_try.split("\t")
+            if has_valid_columns(ss3):
+                final_arr.append(ss3)
+                if lines_read:
+                    lines_read.pop(0)
+            elif len(ss3) < col_count_needed:
+                inx_to_add: int = 0
+                while (
+                    inx_to_add < len(lines_read) - 1
+                    and len(ss3) < col_count_needed
+                    and not has_valid_columns(ss3)
+                ):
+                    inx_to_add += 1
+                    line_to_try += lines_read[inx_to_add]
+                    ss3 = line_to_try.split("\t")
+                if has_valid_columns(ss3):
+                    final_arr.append(ss3)
+                    for _ in range(inx_to_add - 1):
+                        if lines_read:
+                            lines_read.pop(0)
+            else:
+                while lines_read and not has_valid_columns(lines_read[0].split("\t")):
+                    problem_arr.append(f"P2\t{lines_read.pop(0)}")
+    # end of loop
+
+    # Finalise
+    df_final: pd.DataFrame = pd.DataFrame(final_arr, columns=fields).astype(fields)
+    return df_final, problem_arr
 
 
 #

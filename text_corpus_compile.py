@@ -35,6 +35,7 @@ from lib import (
     calc_dataset_prefix,
     df_concat,
     df_read,
+    df_read_safe_tc_validated,
     df_write,
     get_cutoff_date,
     get_locales_from_cv_dataset,
@@ -69,53 +70,23 @@ g: Globals = Globals(
 
 
 #
-# This is temporary for handling malformed validated_sentences.tsv of v17.0
-#
-
-
-def df_read_safe_tc_validated(fpath: str) -> pd.DataFrame:
-    """Read in possibly malformed validated_sentences.tsv file"""
-    lines_read: list[str] = []
-    final_arr: list[list[str]] = []
-    # read all data and split to lines
-    with open(fpath, encoding="utf8") as fd:
-        lines_read: list[str] = fd.read().splitlines()
-
-    # first line is column names, so we skip it because we predefine them
-    cur_source_line: int = 1
-    while cur_source_line < len(lines_read):
-        line: str = lines_read[cur_source_line].replace("\n", " ").replace("  ", " ")
-        # if there are 6 columns, we are OK, else we append next line to this.
-        if len(line.split("\t")) < len(c.FIELDS_TC_VALIDATED) and cur_source_line < len(
-            lines_read
-        ):
-            if cur_source_line >= len(lines_read) - 1:
-                break
-            # not EOF
-            next_line: str = lines_read[cur_source_line + 1].replace("\n", "")
-            line += next_line
-            cur_source_line += 1  # extra inc
-        # normal inc
-        cur_source_line += 1
-        # add to final
-        v: list[str] = line.split("\t")
-        if len(v) == 6:
-            final_arr.append(v)
-
-    # _df: pd.DataFrame = pd.DataFrame(final_arr, columns=c.COLS_TC_VALIDATED).drop_duplicates()
-    _df: pd.DataFrame = pd.DataFrame(
-        final_arr, columns=c.FIELDS_TC_VALIDATED
-    ).drop_duplicates()
-    return _df
-
-
-#
 # LAST VERSION HANDLERS
 #
 
 
 def handle_last_version_locale(ver_lc: str) -> str:
     """Process to handle a single locale in last version"""
+
+    ver: str = ver_lc.split("|")[0]
+    lc: str = ver_lc.split("|")[1]
+    ver_dir: str = calc_dataset_prefix(ver)
+
+    # cvu - do we have them?
+    validator: cvu.Validator | None = cvu.Validator(lc) if lc in VALIDATORS else None
+    phonemiser: cvu.Phonemiser | None = (
+        cvu.Phonemiser(lc) if lc in PHONEMISERS else None
+    )
+    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
 
     def handle_preprocess(df_base: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
         """Get whole data and only process the unprocessed ones, returns the full result"""
@@ -159,24 +130,15 @@ def handle_last_version_locale(ver_lc: str) -> str:
         return df_concat(df_base, df_new)
 
     # handle_locale MAIN
-    # print("PROCESSING=", ver_lc)
-    ver: str = ver_lc.split("|")[0]
-    lc: str = ver_lc.split("|")[1]
-    ver_dir: str = calc_dataset_prefix(ver)
-
-    # cvu - do we have them?
-    validator: cvu.Validator | None = cvu.Validator(lc) if lc in VALIDATORS else None
-    phonemiser: cvu.Phonemiser | None = (
-        cvu.Phonemiser(lc) if lc in PHONEMISERS else None
-    )
-    tokeniser: cvu.Tokeniser = cvu.Tokeniser(lc)
 
     # get existing base (already preprocessed) and new validated dataframes
     # df_base: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS, dtype=c.DTYPES_TEXT_CORPUS)
     base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
     os.makedirs(base_tc_dir, exist_ok=True)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
-    df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS)
+    df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
+        c.FIELDS_TEXT_CORPUS
+    )
     if os.path.isfile(base_tc_file):
         df_base = df_read(base_tc_file)
 
@@ -184,8 +146,15 @@ def handle_last_version_locale(ver_lc: str) -> str:
     src_tc_val_file: str = os.path.join(
         HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
     )
-    df_tc_val: pd.DataFrame = df_read_safe_tc_validated(src_tc_val_file)
+    df_tc_val: pd.DataFrame
+    problem_lines: list[str]
+    df_tc_val, problem_lines = df_read_safe_tc_validated(src_tc_val_file)
     df_tc_val = df_tc_val.reindex(columns=c.FIELDS_TEXT_CORPUS)  # add new columns
+
+    # write-out problem lines
+    if problem_lines:
+        with open(os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_problem_lines.txt"), mode="w", encoding="utf8") as fd:
+            fd.write("\n".join(problem_lines) + "\n")
 
     # write-out result
     df_new_tc: pd.DataFrame = handle_preprocess(df_base, df_tc_val)
@@ -253,7 +222,7 @@ def handle_last_version() -> None:
     )
 
     if num_locales > 0:
-        print(f"Processing: {[x.split(" | ")[1] for x in ver_lc_list]}")
+        print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=num_locales, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
@@ -285,26 +254,37 @@ def handle_old_version_locale(ver_lc: str) -> str:
     base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     ver_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}.tsv")
+    disabled_file: str = os.path.join(
+        base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_disabled.tsv"
+    )
     # ver_vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc)
 
     # get existing base (already preprocessed) and new validated dataframes
-    df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS)
+    df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
+        c.FIELDS_TEXT_CORPUS
+    )
     # NotImplementedError: Converting strings to list<item: string> is not implemented.
     # df_base = df_read(fpath=base_tc_file, dtype=c.FIELDS_TEXT_CORPUS)
     df_base = df_read(fpath=base_tc_file)
-    # df_base = df_base[ df_base["is_used"] == "1" ][["sentence_id", "sentence"]] # we only need these
-    df_base = df_base[df_base["is_used"] == 1]  # we only need these
-    df_indexes: pd.DataFrame = pd.DataFrame(columns=["sentence_id"])
+    # These got validated, then disabled. Maybe they are recorded?
+    # These might cause low quality recordings (people tend to correct errors)
+    df_disabled: pd.DataFrame = df_base[df_base["is_used"] == 0]
+    # we only need these (allowed ones = ready for recording or already recorded)
+    df_base = df_base[df_base["is_used"] == 1]
     # For versions v17.0 and later, we just use the main text_corpora file - even current is generated
     if float(ver) >= 17.0:
-        df_indexes = (
+        df_write(
             df_base["sentence_id"]
             .to_frame()
             .dropna()
             .drop_duplicates()
-            .sort_values("sentence_id")
+            .sort_values("sentence_id"),
+            ver_tc_file,
         )
-        df_write(df_indexes, ver_tc_file)
+        df_write(
+            df_disabled.dropna().drop_duplicates().sort_values("sentence_id"),
+            disabled_file,
+        )
         return ver_lc
 
     # ELSE- For versions before v17.0, get the data from github clone + main buckets
@@ -313,20 +293,20 @@ def handle_old_version_locale(ver_lc: str) -> str:
     sentences: list[str] = []
 
     # get sentences from git clone server/data/<lc>/*.txt
-    git_data_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, "clones", "common-voice", "server", "data", lc
-    )
     file_list: list[str] = glob.glob(
-        os.path.join(git_data_path, "*.txt"), recursive=False
+        os.path.join(
+            conf.CV_TBOX_CACHE, "clones", "common-voice", "server", "data", lc, "*.txt"
+        ),
+        recursive=False,
     )
     for fn in file_list:
         with open(fn, encoding="utf8") as fd:
             sentences.extend(fd.read().splitlines())
     # make unique & get rid of new lines
-    # sentences = [line.replace("\n", "").replace("\t", " ").replace("  ", " ") for line in sentences]
     sentences = [s for s in list(set(sentences)) if s]
 
-    # [FIXME] The following does not work as the sentences are post-manipulated by CorporaCreator
+    # [FIXME] The following does not fully work as the sentences are post-manipulated by CorporaCreator
+    # This would solve the "vanished text-corpora" problem after the move
     # Get sentences from major buckets
     # for bucket in c.MAIN_BUCKETS:
     #     ver_vc_bucket_file: str = os.path.join(ver_vc_dir, f"{bucket}.tsv")
@@ -337,24 +317,23 @@ def handle_old_version_locale(ver_lc: str) -> str:
     # sentences = list(set(sentences))
 
     # now get a subset
-    df_subset: pd.DataFrame = df_base[df_base["sentence"].isin(sentences)]
-    # print(df_subset.shape[0])
-    df_indexes = (
-        df_subset["sentence_id"]
+    df_found: pd.DataFrame = df_base[df_base["sentence"].isin(sentences)]
+    if conf.CREATE_TS_NOT_FOUND:
+        not_found_file: str = os.path.join(
+            base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_not_found.tsv"
+        )
+        df_not_found: pd.DataFrame = df_base[~df_base["sentence"].isin(sentences)]
+        df_write(df_not_found, not_found_file)
+
+    # write-out result
+    df_write(
+        df_found["sentence_id"]
         .to_frame()
         .dropna()
         .drop_duplicates()
-        .sort_values("sentence_id")
+        .sort_values("sentence_id"),
+        ver_tc_file,
     )
-    # debug df's
-    # df_sentences: pd.DataFrame = pd.DataFrame(sentences, columns=["sentence"])
-    # df_exluded: pd.DataFrame = df_base[~df_base["sentence"].isin(sentences)]
-    # df_write(df_sentences, os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_sentences.tsv"))
-    # df_write(df_subset, os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_subset.tsv"))
-    # df_write(df_exluded, os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_excluded.tsv"))
-
-    # write-out result
-    df_write(df_indexes, ver_tc_file)
     return ver_lc
 
 
@@ -440,6 +419,7 @@ def main() -> None:
     handle_last_version()
 
     # Loop for versions in reverse, just to keep sentence_id info
+    # Includes the last release to handle disallowed ones (is_used == 0)
     rev_cv_versions: list[str] = (
         c.CV_VERSIONS if not conf.DEBUG else conf.DEBUG_CV_VER
     ).copy()

@@ -17,19 +17,21 @@
 ###########################################################################
 """
 
+from collections import Counter
 import os
 import sys
 import shutil
 import glob
-from datetime import datetime, timedelta
 import multiprocessing as mp
 
 import psutil
+from tqdm import tqdm
 
 # This package
 import const as c
 import conf
-from lib import get_locales_from_cv_dataset, init_directories
+from lib import init_directories, report_results
+from typedef import Globals
 
 
 #
@@ -43,69 +45,120 @@ if not HERE in sys.path:
 # Program parameters
 PROC_COUNT: int = min(60, int(2 * psutil.cpu_count(logical=True)))  # OVER usage
 BATCH_SIZE: int = 5
-ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
+
+g: Globals = Globals()
+
+ver_counter: Counter[str] = Counter()
+lc_counter: Counter[str] = Counter()
+algo_counter: Counter[str] = Counter()
 
 
-def handle_ds(dspath: str) -> None:
+def handle_ds(p: str) -> str:
     """Handle a single version/lc in multi-processing"""
 
-    plist: list[str] = dspath.split(os.sep)
-    corpus: str = plist[-2]
-    ver: str = corpus.split("-")[2]
-    lc: str = plist[-1]
+    plist: list[str] = p.split(os.sep)
+    algo: str = plist[-1]
+    lc: str = plist[-2]
+    ver: str = plist[-3].split("-")[2]
+
     upload_dir: str = os.path.join(
         conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOAD_DIRNAME, lc
     )
-    uploaded_dir: str = os.path.join(
-        conf.COMPRESSED_RESULTS_BASE_DIR, c.UPLOADED_DIRNAME, lc
-    )
+
     os.makedirs(upload_dir, exist_ok=True)
-    for algo in c.ALGORITHMS:
-        if os.path.isdir(os.path.join(dspath, algo)):  # check if algo exists at source
-            tarpath1: str = os.path.join(upload_dir, f"{lc}_{ver}_{algo}")
-            tarpath2: str = os.path.join(uploaded_dir, f"{lc}_{ver}_{algo}")
-            # Skip existing?
-            if (
-                not os.path.isfile(tarpath2 + ".tar.xz")
-                and not os.path.isfile(tarpath1 + ".tar.xz")
-            ) or conf.FORCE_CREATE_COMPRESSED:
-                print(f"Compressing Dataset Splits for {corpus} - {lc}", flush=True)
-                shutil.make_archive(
-                    base_name=tarpath1, format="xztar", root_dir=dspath, base_dir=algo
-                )
+    shutil.make_archive(
+        base_name=os.path.join(upload_dir, f"{lc}_{ver}_{algo}"),
+        format="xztar",
+        root_dir=os.path.split(p)[0],
+        base_dir=algo,
+    )
+    g.processed_algo += 1
+
+    # report back
+    return f"{ver}_{lc}_{algo}"
 
 
 # MAIN PROCESS
 def main() -> None:
     """Main loop to compress split files for download"""
 
-    print("=== Split Compressor for cv-tbox-dataset-analyzer ===")
-    start_time: datetime = datetime.now()
-
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
         os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
         recursive=True,
     )
-    for inx, dspath in enumerate(dspaths):
-        dspaths[inx] = os.path.split(dspath)[0]  # get rid of the final part
+    dspaths = [os.path.split(p)[0] for p in dspaths]
 
-    # extra line is for progress line
-    print(f"Compressing for {len(dspaths)} datasets...\n")
+    #
+    # Drop already compressed
+    #
+    compressed_list: list[str] = glob.glob(
+        os.path.join(conf.COMPRESSED_RESULTS_BASE_DIR, "**", "*.tar.xz"), recursive=True
+    )
+    compressed_list = [
+        p.split(os.sep)[-1].replace(".tar.xz", "") for p in compressed_list
+    ]
 
-    with mp.Pool(processes=PROC_COUNT, maxtasksperchild=BATCH_SIZE) as pool:
-        pool.map(handle_ds, dspaths)
+    final_list: list[str] = []
+    for p in dspaths:
+        plist: list[str] = p.split(os.sep)
+        ver: str = plist[-2].split("-")[2]
+        lc: str = plist[-1]
+        ver_counter.update([ver])
+        lc_counter.update([lc])
+        for algo in c.ALGORITHMS:
+            maybe_p: str = os.path.join(p, algo)
+            if os.path.isdir(maybe_p):
+                algo_counter.update([algo])
+                if not "_".join([lc, ver, algo]) in compressed_list:
+                    final_list.append(maybe_p)
+                else:
+                    g.skipped_exists += 1
+            else:
+                g.skipped_nodata += 1
+
+    total_cnt: int = len(final_list)
+
+    # record totals
+    g.total_ver = len(ver_counter.values())
+    g.total_lc = lc_counter.total()
+    g.total_algo = algo_counter.total()
+    g.total_splits = 3 * g.total_algo
+
+    ver_counter.clear()
+    lc_counter.clear()
+    algo_counter.clear()
+
+    #
+    # Process with multi-processing
+    #
+    if total_cnt > 0:
+        print(
+            f"Compressing for {len(final_list)} algorithmns in {len(dspaths)} datasets...\n"
+        )
+        with mp.Pool(processes=PROC_COUNT, maxtasksperchild=BATCH_SIZE) as pool:
+            # pool.map(handle_ds, dspaths)
+            with tqdm(total=total_cnt, desc="Datasets") as pbar:
+                for res in pool.imap_unordered(
+                    handle_ds, final_list, chunksize=BATCH_SIZE
+                ):
+                    if conf.VERBOSE:
+                        pbar.write(f"Finished: {res}")
+                    reslist: list[str] = res.split("_")
+                    ver_counter.update([reslist[0]])
+                    lc_counter.update([reslist[1]])
+                    algo_counter.update([reslist[2]])
+                    pbar.update()
 
     # done
-    finish_time: datetime = datetime.now()
-    process_timedelta: timedelta = finish_time - start_time
-    process_seconds: float = process_timedelta.total_seconds()
-    print(
-        f"Finished compressing for {len(dspaths)} datasets in {str(process_timedelta)}"
-        + f" avg={process_seconds/len(dspaths)} sec/locale"
-    )
+    g.processed_ver = len(ver_counter.keys())
+    g.processed_lc = len(lc_counter.keys())
+    g.processed_algo = len(algo_counter.keys())
+    print(ver_counter.most_common())
+    report_results(g)
 
 
 if __name__ == "__main__":
+    print("=== cv-tbox-dataset-analyzer - Split Compressiom ===")
     init_directories(HERE)
     main()

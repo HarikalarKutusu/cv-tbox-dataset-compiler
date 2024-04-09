@@ -44,6 +44,7 @@ from typedef import (
 )
 from lib import (
     df_read,
+    df_read_safe_reported,
     df_write,
     gender_backmapping,
     init_directories,
@@ -156,7 +157,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     _ser.apply(int).reset_index(drop=True).to_list(), int
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_WORDS)
-                res.w_freq = _hist[0].tolist()
+                res.w_freq = _hist[0].tolist()[1:]
 
             # token_cnt stats
             _df2 = pd.DataFrame(token_counter.most_common(), columns=c.FIELDS_TOKENS)
@@ -174,7 +175,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     int,
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_TOKENS)
-                res.t_freq = _hist[0].tolist()
+                res.t_freq = _hist[0].tolist()[1:]
             if do_save:
                 fn: str = os.path.join(
                     tc_anal_dir,
@@ -395,7 +396,29 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
     if not os.path.isfile(rep_file) or os.path.getsize(rep_file) == 0:
         return ReportedStatsRec(ver=ver, lc=lc)
     # read file in - Columns: sentence sentence_id locale reason
-    df: pd.DataFrame = df_read(rep_file)
+    # df: pd.DataFrame = df_read(rep_file)
+    problem_list: list[str] = []
+    fields: dict[str, pd.ArrowDtype] = (
+        c.FIELDS_REPORTED if float(ver) >= 17.0 else c.FIELDS_REPORTED_OLD
+    )
+    df: pd.DataFrame = pd.DataFrame(columns=fields).astype(fields)
+    df, problem_list = df_read_safe_reported(rep_file)
+
+    # debug
+    if conf.CREATE_REPORTED_PROBLEMS:
+        # if ver == "17.0" and lc == "en":
+        if ver == "17.0":
+            df_write(
+                df, os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv")
+            )
+            if len(problem_list) > 0:
+                with open(
+                    os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"),
+                    mode="w",
+                    encoding="utf8",
+                ) as fd:
+                    fd.write("\n".join(problem_list))
+
     if df.shape[0] == 0:  # skip those without records
         return ReportedStatsRec(ver=ver, lc=lc)
 
@@ -424,7 +447,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         int,
     )
     hist = np.histogram(arr, bins=c.BINS_REPORTED)
-    rep_freq = hist[0].tolist()
+    rep_freq = hist[0].tolist()[1:]
 
     # Get reason counts
     reason_counts: pd.DataFrame = (
@@ -607,7 +630,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             return SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
 
         # [TODO] Move these to split_compile: Make all confirm to current style?
-        # Normalize data to the latest version's columns w,th typing
+        # Normalize data to the latest version's columns with typing
         # Replace NA with NODATA with some typing and conditionals
         # df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
         df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_BUCKETS_SPLITS)
@@ -694,7 +717,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_VOICES)
-        voice_freq = hist[0].tolist()
+        voice_freq = hist[0].tolist()[1:]
 
         # === SENTENCES
         sentence_counts: pd.DataFrame = (
@@ -714,7 +737,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_SENTENCES)
-        sentence_freq = hist[0].tolist()
+        sentence_freq = hist[0].tolist()[1:]
 
         # === VOTES
         bins: list[int] = c.BINS_VOTES_UP
@@ -1027,13 +1050,20 @@ def main() -> None:
         )
         # Get joined TSV
         combined_ver_lc: list[str] = []
+
         if os.path.isfile(combined_tsv_file):
-            combined_ver_lc = [
-                "|".join(row)
-                for row in df_read(combined_tsv_file)
-                .reset_index(drop=True)[["ver", "lc"]]
-                .values.tolist()
-            ]
+            try:
+                combined_ver_lc = [
+                    "|".join(row)
+                    for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
+                    .reset_index(drop=True)
+                    .dropna()
+                    .drop_duplicates()
+                    .astype(str)
+                    .values.tolist()
+                ]
+            except ValueError as e:
+                print(e)
 
         ver_lc_list: list[str] = []  # final
         # start with newer, thus larger / longer versions' data
@@ -1162,16 +1192,16 @@ def main() -> None:
         combined_tsv_file: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
-        # Get joined TSV
-        combined_df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_REPORTED_STATS)
+        # Get from joined TSV
+        combined_ver_lc: list[str] = []
         if os.path.isfile(combined_tsv_file):
-            combined_df = df_read(combined_tsv_file).reset_index(drop=True)
-        combined_df = combined_df[["ver", "lc"]]
-        combined_ver_lc: list[str] = [
-            "|".join([row[0], row[1]]) for row in combined_df.values.tolist()
-        ]
-        del combined_df
-        combined_df = pd.DataFrame()
+            combined_ver_lc: list[str] = [
+                "|".join(row)
+                for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
+                .reset_index(drop=True)
+                .astype(str)
+                .values.tolist()
+            ]
 
         # For each version
         ver_lc_list: list[str] = []  # final
@@ -1192,18 +1222,19 @@ def main() -> None:
                 ver_lc_new: list[str] = []
                 for lc in lc_list:
                     ver_lc: str = f"{ver}|{lc}"
-                    rep_tsv: str = os.path.join(
-                        vc_base,
-                        ver_dir,
-                        lc,
-                        "reported.tsv",
-                    )
-                    if not ver_lc in combined_ver_lc and os.path.isfile(rep_tsv):
+                    if not ver_lc in combined_ver_lc and os.path.isfile(
+                        os.path.join(
+                            vc_base,
+                            ver_dir,
+                            lc,
+                            "reported.tsv",
+                        )
+                    ):
                         ver_lc_new.append(ver_lc)
                 num_to_process: int = len(ver_lc_new)
                 ver_lc_list.extend(ver_lc_new)
                 g_rep.processed_lc += num_to_process
-                g_rep.skipped_exists += len(lc_list) - num_to_process
+                g_rep.skipped_nodata += len(lc_list) - num_to_process
                 g_rep.processed_ver += 1 if num_to_process > 0 else 0
 
         # Now multi-process each record
@@ -1212,13 +1243,15 @@ def main() -> None:
             print("Nothing to process...")
             return
 
+        used_proc_count = 1
+
         chunk_size: int = min(
             MAX_BATCH_SIZE,
             num_items // used_proc_count
             + (0 if num_items % used_proc_count == 0 else 1),
         )
         print(
-            f"Total: {g_rep.total_lc} Existing: {g_rep.skipped_exists} Remaining: {g_rep.processed_lc} "
+            f"Total: {g_rep.total_lc} Missing: {g_rep.skipped_nodata} Remaining: {g_rep.processed_lc} "
             + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
@@ -1227,6 +1260,7 @@ def main() -> None:
                 for res in pool.imap_unordered(
                     handle_reported, ver_lc_list, chunksize=chunk_size
                 ):
+                    # pbar.write(f"Finished {res.ver} - {res.lc}")
                     results.append(res)
                     pbar.update()
                     if res.rep_sum == 0:
@@ -1371,7 +1405,9 @@ def main() -> None:
         rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
         rev_versions.reverse()
 
-        cols_support_matrix: list[str] = ["lc", "lang"] + [ver2vercol(v) for v in rev_versions]
+        cols_support_matrix: list[str] = ["lc", "lang"] + [
+            ver2vercol(v) for v in rev_versions
+        ]
 
         df_support_matrix: pd.DataFrame = pd.DataFrame(
             columns=cols_support_matrix,
@@ -1386,7 +1422,9 @@ def main() -> None:
                 algo_list: list[str] = (
                     df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
                 )
-                df_support_matrix.at[lc, ver2vercol(ver)] = c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
+                df_support_matrix.at[lc, ver2vercol(ver)] = (
+                    c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
+                )
 
         # Write out
         print(">>> Saving Support Matrix...")
@@ -1427,14 +1465,14 @@ def main() -> None:
             algorithms=c.ALGORITHMS,
             # Drop the last huge values from bins
             bins_duration=c.BINS_DURATION[:-1],
-            bins_voices=c.BINS_VOICES[:-1],
+            bins_voices=c.BINS_VOICES[1:-1],
             bins_votes_up=c.BINS_VOTES_UP[:-1],
             bins_votes_down=c.BINS_VOTES_DOWN[:-1],
-            bins_sentences=c.BINS_SENTENCES[:-1],
+            bins_sentences=c.BINS_SENTENCES[1:-1],
             bins_chars=c.BINS_CHARS[:-1],
-            bins_words=c.BINS_WORDS[:-1],
-            bins_tokens=c.BINS_TOKENS[:-1],
-            bins_reported=c.BINS_REPORTED[:-1],
+            bins_words=c.BINS_WORDS[1:-1],
+            bins_tokens=c.BINS_TOKENS[1:-1],
+            bins_reported=c.BINS_REPORTED[1:-1],
             bins_reasons=c.REPORTING_ALL,
         )
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)

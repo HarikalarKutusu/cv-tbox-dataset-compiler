@@ -77,8 +77,6 @@ def main() -> None:
         if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
             os.path.join(dst_dir, "validated.tsv")
         ):
-            # os.makedirs(os.path.join(dst_dir, c.ALGORITHMS[0]), exist_ok=True)
-            os.makedirs(dst_dir, exist_ok=True)
             for fn in files_to_copy:
                 tsv_fpath = os.path.join(src_dir, fn)
                 if os.path.isfile(tsv_fpath):
@@ -123,7 +121,6 @@ def main() -> None:
         # for all CV versions (not taking deletions into account)
         if ver == c.CV_VERSIONS[-1]:
             dst_dir = os.path.join(cd_dir_base, lc)
-            os.makedirs(dst_dir, exist_ok=True)
             # With v15.0, we have the provided "clip_durations.tsv" (duration is in ms)
             cd_file: str = os.path.join(
                 conf.SRC_BASE_DIR,
@@ -151,7 +148,6 @@ def main() -> None:
 
         # Create destination
         dst_dir = os.path.join(vc_dir_base, ver_dir)
-        os.makedirs(dst_dir, exist_ok=True)
 
         # Get a  list of available language codes
         lc_paths: list[str] = glob.glob(
