@@ -153,7 +153,7 @@ CV_GENDERS_EXTENDED: list[str] = [
     NODATA,
 ]
 # backmapping of new genders for backwards compatibility
-CV_GENDERS_MAPPING: dict = {
+CV_GENDERS_MAPPING: dict[str, str] = {
     "male_masculine": "male",
     "female_feminine": "female",
     "intersex": "other",
