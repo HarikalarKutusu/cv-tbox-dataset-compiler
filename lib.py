@@ -164,7 +164,7 @@ def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
         quoting=csv.QUOTE_NONE,
     )
     # float_format="%.4f"
-    if conf.VERBOSE:
+    if conf.DEBUG:
         print(f"Generated: {fpath} Records={df.shape[0]}")
     return True
 
