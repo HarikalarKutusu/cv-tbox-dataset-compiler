@@ -177,18 +177,18 @@ CV_AGES: list[str] = [
 
 # Domains
 CV_DOMAINS: list[str] = [
-    "general",
-    "agriculture",
-    "automotive",
+    "agriculture_food",
+    "automotive_transport",
     "finance",
-    "food_service_retail",
+    "general",
     "healthcare",
     "history_law_government",
+    "language_fundamentals",
     "media_entertainment",
     "nature_environment",
     "news_current_affairs",
+    "service_retail",
     "technology_robotics",
-    "language_fundamentals",
 ]
 
 # CLIP DURATIONS
