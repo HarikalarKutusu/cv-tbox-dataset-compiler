@@ -8,7 +8,13 @@ import const as c
 
 # This is where your split data is
 SRC_BASE_DIR: str = os.path.join(
-    "C:", os.sep, "GITREPO", "_HK_GITHUB", "common-voice-diversity-check", "experiments"
+    "C:",
+    os.sep,
+    "GITREPO",
+    "_HK_GITHUB",
+    "_cv-tbox-python",
+    "cv-tbox-split-maker",
+    "experiments",
 )
 
 # This is where cache of API calls and clones are kept, common to cv-tbox repors
