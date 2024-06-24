@@ -38,7 +38,7 @@ from lib import (
     df_read_safe_tc_validated,
     df_write,
     get_cutoff_date,
-    get_locales_from_cv_dataset,
+    get_locales,
     git_checkout,
     git_clone_or_pull_all,
     init_directories,
@@ -177,7 +177,7 @@ def handle_last_version() -> None:
     print(f"=== HANDLE: v{ver} @ {cutoff_date} ===")
     # git_checkout(c.CV_GITREC, cutoff_date)
 
-    lc_list: list[str] = get_locales_from_cv_dataset(ver)
+    lc_list: list[str] = get_locales(ver)
     total_locales: int = len(lc_list)
 
     # Get list of new validated_sentences files, in reverse size order
@@ -345,7 +345,7 @@ def handle_older_version(ver: str) -> None:
     print(f"=== HANDLE INDEXING: v{ver} @ {cutoff_date} ===")
 
     lc_list: list[str] = (
-        get_locales_from_cv_dataset(ver) if not conf.DEBUG else conf.DEBUG_CV_LC
+        get_locales(ver) if not conf.DEBUG else conf.DEBUG_CV_LC
     )
     total_locales: int = len(lc_list)
 

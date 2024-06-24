@@ -13,9 +13,11 @@ SRC_BASE_DIR: str = os.path.join(
 
 # This is where cache of API calls and clones are kept, common to cv-tbox repors
 CV_TBOX_CACHE: str = os.path.join(
-    "C:", os.sep, "GITREPO", "_HK_GITHUB", "cv-tbox-cache"
+    "C:", os.sep, "GITREPO", "_HK_GITHUB", "_cv-tbox-python", "cv-tbox-cache"
 )
 
+# This is where cache of API calls and clones are kept, common to cv-tbox repors
+TBOX_TSV_CACHE_DIR: str = os.path.join("T:", os.sep, "TBOX", "cache", "tsv")
 
 # This is where your compressed splits will go (under "upload" and "uploaded") - so that we can upload it to Google Drive
 COMPRESSED_RESULTS_BASE_DIR: str = os.path.join(
@@ -42,7 +44,7 @@ SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: list[str] = ["15.0", "16.1", "17.0"]
+DEBUG_CV_VER: list[str] = ["18.0"]
 DEBUG_CV_LC: list[str] = ["tr"]
 
 # This is independent of debug value

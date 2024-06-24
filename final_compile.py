@@ -50,7 +50,7 @@ from lib import (
     init_directories,
     dec3,
     calc_dataset_prefix,
-    get_locales_from_cv_dataset,
+    get_locales,
     list2str,
     report_results,
     sort_by_largest_file,
@@ -66,7 +66,7 @@ if not HERE in sys.path:
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 MAX_BATCH_SIZE: int = 1
 
-ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
+ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
 cv: cvu.CV = cvu.CV()
 VALIDATORS: list[str] = cv.validators()
@@ -242,7 +242,12 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             )
             df_write(_df2, fn)
 
-        # Domains (for < CV v17.0, they will be "nodata", after that new items are added)
+        # Domains
+        # for < CV v17.0, they will be "nodata", after that new items are added
+        # for CV v17.0, there will be single instance (or empty)
+        # [TODO] for CV >= v18.0, it can be comma delimited list of max 3 domains
+        _df2 = df["sentence_domain"].astype(dtype_pa_str).fillna(c.NODATA).to_frame()
+
         _df2 = (
             df["sentence_domain"]
             .astype(dtype_pa_str)
@@ -409,11 +414,16 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         # if ver == "17.0" and lc == "en":
         if ver == "17.0":
             df_write(
-                df, os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv")
+                df,
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv"
+                ),
             )
             if len(problem_list) > 0:
                 with open(
-                    os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"),
+                    os.path.join(
+                        HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"
+                    ),
                     mode="w",
                     encoding="utf8",
                 ) as fd:
@@ -1074,7 +1084,7 @@ def main() -> None:
             # ver_dir: str = calc_dataset_prefix(ver)
 
             # get all possible
-            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            lc_list: list[str] = get_locales(ver)
             g_tc.total_lc += len(lc_list)
 
             # Get list of existing processed text corpus files, in reverse size order
@@ -1209,7 +1219,7 @@ def main() -> None:
             ver_dir: str = calc_dataset_prefix(ver)
 
             # get all possible
-            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            lc_list: list[str] = get_locales(ver)
             g_rep.total_lc += len(lc_list)
 
             # remove already calculated ones
