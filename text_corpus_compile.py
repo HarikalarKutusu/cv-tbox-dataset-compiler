@@ -281,10 +281,13 @@ def handle_old_version_locale(ver_lc: str) -> str:
             .sort_values("sentence_id"),
             ver_tc_file,
         )
-        df_write(
-            df_disabled.dropna().drop_duplicates().sort_values("sentence_id"),
-            disabled_file,
-        )
+        # create only if there is data
+        df_disabled = df_disabled.dropna().drop_duplicates().sort_values("sentence_id")
+        if df_disabled.shape[0] > 0:
+            df_write(
+                df_disabled.dropna().drop_duplicates().sort_values("sentence_id"),
+                disabled_file,
+            )
         return ver_lc
 
     # ELSE- For versions before v17.0, get the data from github clone + main buckets
