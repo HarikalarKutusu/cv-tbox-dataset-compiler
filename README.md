@@ -1,5 +1,7 @@
 # Common Voice Dataset Compiler - Common Voice ToolBox
 
+IMPORTANT NOTICE: We are moving our Common Voice Toolbox related packages (and more) into a combined monorepo, so this repo will be archived in the future.
+
 This repository contains python command line utilities for pre-calculating the data for [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer) (which is actually a viewer) in an offline process.
 To be able to use this, you have to download the datasets yourselves and provide the tsv files and other data (such as clip durations and text-corpora).
 It is a lengthy process using huge amounts of data (in our case it is 274 GB uncompressed after Common Voice v16.1 - i.e. without the audio files) and you are not expected to use this utility.
@@ -18,7 +20,7 @@ Assumes:
 
 - You have downloaded all datasets from all Common Voice versions
 - Extracted the tsv files
-- Ran different splitting algorithms on them and kept the results in different directories (i.e. using the ones in [Common Voice Diversity Check](https://github.com/HarikalarKutusu/common-voice-diversity-check)).
+- Ran different splitting algorithms on them and kept the results in different directories (i.e. using the ones in [Common Voice Split Maker](https://github.com/HarikalarKutusu/cv-tbox-split-maker)).
 
 This script reorganizes (compiles) them under this repo to be processed.
 
