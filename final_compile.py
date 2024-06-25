@@ -242,25 +242,37 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             )
             df_write(_df2, fn)
 
-        # Domains
+        # SENTENCE DOMAINS
         # for < CV v17.0, they will be "nodata", after that new items are added
         # for CV v17.0, there will be single instance (or empty)
         # [TODO] for CV >= v18.0, it can be comma delimited list of max 3 domains
-        _df2 = df["sentence_domain"].astype(dtype_pa_str).fillna(c.NODATA).to_frame()
-
         _df2 = (
             df["sentence_domain"]
             .astype(dtype_pa_str)
-            .fillna(c.NODATA)
+            # .fillna(c.NODATA)
+            .dropna()
             .value_counts()
             .to_frame()
             .reset_index()
             .reindex(columns=c.FIELDS_SENTENCE_DOMAINS)
-            .sort_values("count", ascending=False)
-        )
-        res.dom_cnt = _df2.shape[0]
-        res.dom_items = _df2["sentence_domain"].to_list()
-        res.dom_freq = _df2["count"].to_list()
+            # .sort_values("count", ascending=False)
+        ).astype(c.FIELDS_SENTENCE_DOMAINS)
+
+        # prep counters & loop for comma delimited multi-domains
+        counters: dict[str, int] = {}
+        # domain_list: list[str] = c.CV_DOMAINS_V17 if ver == "17.0" else c.CV_DOMAINS
+        domain_list: list[str] = c.CV_DOMAINS
+        for dom in domain_list:
+            counters[dom] = 0
+        for _, row in _df2.iterrows():
+            domains: list[str] = row.iloc[0].split(",")
+            for dom in domains:
+                counters[c.CV_DOMAIN_MAPPER[dom]] += row.iloc[1]
+
+        res.dom_cnt = len(domain_list)
+        res.dom_items = domain_list
+        res.dom_freq = [tup[1] for tup in counters.items()]
+
         if do_save:
             fn: str = os.path.join(
                 tc_anal_dir,

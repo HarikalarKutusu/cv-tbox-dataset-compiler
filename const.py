@@ -176,6 +176,21 @@ CV_AGES: list[str] = [
 ]
 
 # Domains
+# CV_DOMAINS_V17: list[str] = [
+#     "agriculture",
+#     "automotive",
+#     "finance",
+#     "general",
+#     "healthcare",
+#     "history_law_government",
+#     "language_fundamentals",
+#     "media_entertainment",
+#     "nature_environment",
+#     "news_current_affairs",
+#     "food_service_retail",
+#     "technology_robotics",
+# ]
+
 CV_DOMAINS: list[str] = [
     "agriculture_food",
     "automotive_transport",
@@ -190,6 +205,25 @@ CV_DOMAINS: list[str] = [
     "service_retail",
     "technology_robotics",
 ]
+
+CV_DOMAIN_MAPPER: dict[str, str] = {
+    "agriculture": "agriculture_food",
+    "agriculture_food": "agriculture_food",
+    "automotive": "automotive_transport",
+    "automotive_transport": "automotive_transport",
+    "finance": "finance",
+    "general": "general",
+    "healthcare": "healthcare",
+    "history_law_government": "history_law_government",
+    "language_fundamentals": "language_fundamentals",
+    "media_entertainment": "media_entertainment",
+    "nature_environment": "nature_environment",
+    "news_current_affairs": "news_current_affairs",
+    "food_service_retail": "service_retail",
+    "service_retail": "service_retail",
+    "technology_robotics": "technology_robotics",
+}
+
 
 # CLIP DURATIONS
 CLIP_DURATIONS_FILE: str = "clip_durations.tsv"
