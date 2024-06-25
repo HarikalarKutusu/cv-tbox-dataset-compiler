@@ -269,9 +269,9 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             for dom in domains:
                 counters[c.CV_DOMAIN_MAPPER[dom]] += row.iloc[1]
 
-        res.dom_cnt = len(domain_list)
-        res.dom_items = domain_list
-        res.dom_freq = [tup[1] for tup in counters.items()]
+        res.dom_cnt = len([tup[0] for tup in counters.items() if tup[1] > 0])
+        res.dom_items = [tup[0] for tup in counters.items() if tup[1] > 0]
+        res.dom_freq = [tup[1] for tup in counters.items() if tup[1] > 0]
 
         if do_save:
             fn: str = os.path.join(
@@ -404,7 +404,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 
     ver_dir: str = calc_dataset_prefix(ver)
 
-    # Calc voice-corpus directory
+    # Calc reported file
     rep_file: str = os.path.join(
         HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
     )
@@ -1054,10 +1054,10 @@ def main() -> None:
 
         def save_results() -> pd.DataFrame:
             """Temporarily or finally save the returned results"""
-            df: pd.DataFrame = pd.DataFrame(
-                results, columns=c.FIELDS_TC_STATS
+            df: pd.DataFrame = pd.concat(
+                [df_combined, pd.DataFrame(results, columns=c.FIELDS_TC_STATS)]
             ).reset_index(drop=True)
-            df.sort_values(["lc", "ver"], inplace=True)
+            df.sort_values(by=["lc", "ver"], inplace=True)
             # Write out combined (TSV only to use later for above existence checks)
             df_write(
                 df, os.path.join(res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv")
@@ -1067,25 +1067,32 @@ def main() -> None:
         print("\n=== Start Text Corpora Analysis ===")
 
         tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
-        combined_tsv_file: str = os.path.join(
+        combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv"
         )
         # Get joined TSV
         combined_ver_lc: list[str] = []
+        df_combined: pd.DataFrame = pd.DataFrame()
 
-        if os.path.isfile(combined_tsv_file):
-            try:
-                combined_ver_lc = [
-                    "|".join(row)
-                    for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
-                    .reset_index(drop=True)
-                    .dropna()
-                    .drop_duplicates()
-                    .astype(str)
-                    .values.tolist()
-                ]
-            except ValueError as e:
-                print(e)
+        if os.path.isfile(combined_tsv_fpath):
+            df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
+            combined_ver_lc: list[str] = [
+                "|".join(row)
+                for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
+            ]
+
+            # try:
+            #     combined_ver_lc = [
+            #         "|".join(row)
+            #         for row in df_read(combined_tsv_fpath, use_cols=["ver", "lc"])
+            #         .reset_index(drop=True)
+            #         .dropna()
+            #         .drop_duplicates()
+            #         .astype(str)
+            #         .values.tolist()
+            #     ]
+            # except ValueError as e:
+            #     print(e)
 
         ver_lc_list: list[str] = []  # final
         # start with newer, thus larger / longer versions' data
@@ -1166,7 +1173,7 @@ def main() -> None:
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
                     results.extend(res)
-                    save_results()  # temporary saving, discard return
+                    save_results()  # temporary saving: it takes a long time which might end, discard return
                     pbar.update()
                     for r in res:
                         if r.s_cnt == 0:
@@ -1210,20 +1217,18 @@ def main() -> None:
         """Handle all reported sentences"""
         print("\n=== Start Reported Analysis ===")
 
-        vc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        vc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
         combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
         # Get joined TSV, get ver-lc list for all previously
         combined_ver_lc: list[str] = []
-        df_combined_reported: pd.DataFrame = pd.DataFrame()
+        df_combined: pd.DataFrame = pd.DataFrame()
         if os.path.isfile(combined_tsv_fpath):
-            df_combined_reported = df_read(combined_tsv_fpath).reset_index(drop=True)
+            df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
             combined_ver_lc: list[str] = [
                 "|".join(row)
-                for row in df_combined_reported[["ver", "lc"]]
-                .astype(str)
-                .values.tolist()
+                for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
 
         # For each version
@@ -1247,7 +1252,7 @@ def main() -> None:
                     ver_lc: str = f"{ver}|{lc}"
                     if not ver_lc in combined_ver_lc and os.path.isfile(
                         os.path.join(
-                            vc_base,
+                            vc_base_dir,
                             ver_dir,
                             lc,
                             "reported.tsv",
@@ -1292,7 +1297,7 @@ def main() -> None:
         # Sort and write-out
         print(">>> Finished... Now saving...")
         df: pd.DataFrame = pd.concat(
-            [df_combined_reported, pd.DataFrame(results).reset_index(drop=True)]
+            [df_combined, pd.DataFrame(results).reset_index(drop=True)]
         )
         df.sort_values(by=["lc", "ver"], inplace=True)
 
