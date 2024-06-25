@@ -207,9 +207,12 @@ CV_DOMAINS: list[str] = [
 ]
 
 CV_DOMAIN_MAPPER: dict[str, str] = {
+    # v17 - v18 mapping
     "agriculture": "agriculture_food",
-    "agriculture_food": "agriculture_food",
     "automotive": "automotive_transport",
+    "food_service_retail": "service_retail",
+    # v18
+    "agriculture_food": "agriculture_food",
     "automotive_transport": "automotive_transport",
     "finance": "finance",
     "general": "general",
@@ -219,7 +222,6 @@ CV_DOMAIN_MAPPER: dict[str, str] = {
     "media_entertainment": "media_entertainment",
     "nature_environment": "nature_environment",
     "news_current_affairs": "news_current_affairs",
-    "food_service_retail": "service_retail",
     "service_retail": "service_retail",
     "technology_robotics": "technology_robotics",
 }
