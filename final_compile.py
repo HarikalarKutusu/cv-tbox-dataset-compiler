@@ -1211,16 +1211,17 @@ def main() -> None:
         print("\n=== Start Reported Analysis ===")
 
         vc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
-        combined_tsv_file: str = os.path.join(
+        combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
-        # Get from joined TSV
+        # Get joined TSV, get ver-lc list for all previously
         combined_ver_lc: list[str] = []
-        if os.path.isfile(combined_tsv_file):
+        df_combined_reported: pd.DataFrame = pd.DataFrame()
+        if os.path.isfile(combined_tsv_fpath):
+            df_combined_reported = df_read(combined_tsv_fpath).reset_index(drop=True)
             combined_ver_lc: list[str] = [
                 "|".join(row)
-                for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
-                .reset_index(drop=True)
+                for row in df_combined_reported[["ver", "lc"]]
                 .astype(str)
                 .values.tolist()
             ]
@@ -1290,8 +1291,10 @@ def main() -> None:
 
         # Sort and write-out
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
-        df.sort_values(["lc", "ver"], inplace=True)
+        df: pd.DataFrame = pd.concat(
+            [df_combined_reported, pd.DataFrame(results).reset_index(drop=True)]
+        )
+        df.sort_values(by=["lc", "ver"], inplace=True)
 
         # Write out combined (TSV only to use later)
         df_write(df, os.path.join(res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"))
