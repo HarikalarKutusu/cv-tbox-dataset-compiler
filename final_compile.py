@@ -43,6 +43,7 @@ from typedef import (
     dtype_pa_str,
 )
 from lib import (
+    df_concat,
     df_read,
     df_read_safe_reported,
     df_write,
@@ -1054,8 +1055,8 @@ def main() -> None:
 
         def save_results() -> pd.DataFrame:
             """Temporarily or finally save the returned results"""
-            df: pd.DataFrame = pd.concat(
-                [df_combined, pd.DataFrame(results, columns=c.FIELDS_TC_STATS)]
+            df: pd.DataFrame = df_concat(
+                df_combined, pd.DataFrame(results, columns=c.FIELDS_TC_STATS)
             ).reset_index(drop=True)
             df.sort_values(by=["lc", "ver"], inplace=True)
             # Write out combined (TSV only to use later for above existence checks)
@@ -1296,8 +1297,8 @@ def main() -> None:
 
         # Sort and write-out
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.concat(
-            [df_combined, pd.DataFrame(results).reset_index(drop=True)]
+        df: pd.DataFrame = df_concat(
+            df_combined, pd.DataFrame(results).reset_index(drop=True)
         )
         df.sort_values(by=["lc", "ver"], inplace=True)
 
