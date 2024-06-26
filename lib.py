@@ -540,6 +540,8 @@ def get_locales_from_cv_dataset_api(ver: str) -> list[str]:
     lc_list: list[str] = df_ds_languages[df_ds_languages["id"].isin(lc_id_list)][
         "name"
     ].to_list()
+    # [FIXME] Temporary fix for missing "ka" locale (Georgian) in early v18.0 release
+    lc_list.append("ka")
     return sorted(lc_list)
 
 
