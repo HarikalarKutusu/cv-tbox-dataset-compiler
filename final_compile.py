@@ -43,6 +43,7 @@ from typedef import (
     dtype_pa_str,
 )
 from lib import (
+    df_concat,
     df_read,
     df_read_safe_reported,
     df_write,
@@ -50,7 +51,7 @@ from lib import (
     init_directories,
     dec3,
     calc_dataset_prefix,
-    get_locales_from_cv_dataset,
+    get_locales,
     list2str,
     report_results,
     sort_by_largest_file,
@@ -66,7 +67,7 @@ if not HERE in sys.path:
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 MAX_BATCH_SIZE: int = 1
 
-ALL_LOCALES: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
+ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
 cv: cvu.CV = cvu.CV()
 VALIDATORS: list[str] = cv.validators()
@@ -242,20 +243,37 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             )
             df_write(_df2, fn)
 
-        # Domains (for < CV v17.0, they will be "nodata", after that new items are added)
+        # SENTENCE DOMAINS
+        # for < CV v17.0, they will be "nodata", after that new items are added
+        # for CV v17.0, there will be single instance (or empty)
+        # [TODO] for CV >= v18.0, it can be comma delimited list of max 3 domains
         _df2 = (
             df["sentence_domain"]
             .astype(dtype_pa_str)
-            .fillna(c.NODATA)
+            # .fillna(c.NODATA)
+            .dropna()
             .value_counts()
             .to_frame()
             .reset_index()
             .reindex(columns=c.FIELDS_SENTENCE_DOMAINS)
-            .sort_values("count", ascending=False)
-        )
-        res.dom_cnt = _df2.shape[0]
-        res.dom_items = _df2["sentence_domain"].to_list()
-        res.dom_freq = _df2["count"].to_list()
+            # .sort_values("count", ascending=False)
+        ).astype(c.FIELDS_SENTENCE_DOMAINS)
+
+        # prep counters & loop for comma delimited multi-domains
+        counters: dict[str, int] = {}
+        # domain_list: list[str] = c.CV_DOMAINS_V17 if ver == "17.0" else c.CV_DOMAINS
+        domain_list: list[str] = c.CV_DOMAINS
+        for dom in domain_list:
+            counters[dom] = 0
+        for _, row in _df2.iterrows():
+            domains: list[str] = row.iloc[0].split(",")
+            for dom in domains:
+                counters[c.CV_DOMAIN_MAPPER[dom]] += row.iloc[1]
+
+        res.dom_cnt = len([tup[0] for tup in counters.items() if tup[1] > 0])
+        res.dom_items = [tup[0] for tup in counters.items() if tup[1] > 0]
+        res.dom_freq = [tup[1] for tup in counters.items() if tup[1] > 0]
+
         if do_save:
             fn: str = os.path.join(
                 tc_anal_dir,
@@ -387,7 +405,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 
     ver_dir: str = calc_dataset_prefix(ver)
 
-    # Calc voice-corpus directory
+    # Calc reported file
     rep_file: str = os.path.join(
         HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
     )
@@ -409,11 +427,16 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         # if ver == "17.0" and lc == "en":
         if ver == "17.0":
             df_write(
-                df, os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv")
+                df,
+                os.path.join(
+                    HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv"
+                ),
             )
             if len(problem_list) > 0:
                 with open(
-                    os.path.join(HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"),
+                    os.path.join(
+                        HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"
+                    ),
                     mode="w",
                     encoding="utf8",
                 ) as fd:
@@ -1032,10 +1055,10 @@ def main() -> None:
 
         def save_results() -> pd.DataFrame:
             """Temporarily or finally save the returned results"""
-            df: pd.DataFrame = pd.DataFrame(
-                results, columns=c.FIELDS_TC_STATS
+            df: pd.DataFrame = df_concat(
+                df_combined, pd.DataFrame(results, columns=c.FIELDS_TC_STATS)
             ).reset_index(drop=True)
-            df.sort_values(["lc", "ver"], inplace=True)
+            df.sort_values(by=["lc", "ver"], inplace=True)
             # Write out combined (TSV only to use later for above existence checks)
             df_write(
                 df, os.path.join(res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv")
@@ -1045,25 +1068,32 @@ def main() -> None:
         print("\n=== Start Text Corpora Analysis ===")
 
         tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
-        combined_tsv_file: str = os.path.join(
+        combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv"
         )
         # Get joined TSV
         combined_ver_lc: list[str] = []
+        df_combined: pd.DataFrame = pd.DataFrame()
 
-        if os.path.isfile(combined_tsv_file):
-            try:
-                combined_ver_lc = [
-                    "|".join(row)
-                    for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
-                    .reset_index(drop=True)
-                    .dropna()
-                    .drop_duplicates()
-                    .astype(str)
-                    .values.tolist()
-                ]
-            except ValueError as e:
-                print(e)
+        if os.path.isfile(combined_tsv_fpath):
+            df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
+            combined_ver_lc: list[str] = [
+                "|".join(row)
+                for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
+            ]
+
+            # try:
+            #     combined_ver_lc = [
+            #         "|".join(row)
+            #         for row in df_read(combined_tsv_fpath, use_cols=["ver", "lc"])
+            #         .reset_index(drop=True)
+            #         .dropna()
+            #         .drop_duplicates()
+            #         .astype(str)
+            #         .values.tolist()
+            #     ]
+            # except ValueError as e:
+            #     print(e)
 
         ver_lc_list: list[str] = []  # final
         # start with newer, thus larger / longer versions' data
@@ -1074,7 +1104,7 @@ def main() -> None:
             # ver_dir: str = calc_dataset_prefix(ver)
 
             # get all possible
-            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            lc_list: list[str] = get_locales(ver)
             g_tc.total_lc += len(lc_list)
 
             # Get list of existing processed text corpus files, in reverse size order
@@ -1144,7 +1174,7 @@ def main() -> None:
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
                     results.extend(res)
-                    save_results()  # temporary saving, discard return
+                    save_results()  # temporary saving: it takes a long time which might end, discard return
                     pbar.update()
                     for r in res:
                         if r.s_cnt == 0:
@@ -1188,19 +1218,18 @@ def main() -> None:
         """Handle all reported sentences"""
         print("\n=== Start Reported Analysis ===")
 
-        vc_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
-        combined_tsv_file: str = os.path.join(
+        vc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
-        # Get from joined TSV
+        # Get joined TSV, get ver-lc list for all previously
         combined_ver_lc: list[str] = []
-        if os.path.isfile(combined_tsv_file):
+        df_combined: pd.DataFrame = pd.DataFrame()
+        if os.path.isfile(combined_tsv_fpath):
+            df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
             combined_ver_lc: list[str] = [
                 "|".join(row)
-                for row in df_read(combined_tsv_file, use_cols=["ver", "lc"])
-                .reset_index(drop=True)
-                .astype(str)
-                .values.tolist()
+                for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
 
         # For each version
@@ -1209,7 +1238,7 @@ def main() -> None:
             ver_dir: str = calc_dataset_prefix(ver)
 
             # get all possible
-            lc_list: list[str] = get_locales_from_cv_dataset(ver)
+            lc_list: list[str] = get_locales(ver)
             g_rep.total_lc += len(lc_list)
 
             # remove already calculated ones
@@ -1224,7 +1253,7 @@ def main() -> None:
                     ver_lc: str = f"{ver}|{lc}"
                     if not ver_lc in combined_ver_lc and os.path.isfile(
                         os.path.join(
-                            vc_base,
+                            vc_base_dir,
                             ver_dir,
                             lc,
                             "reported.tsv",
@@ -1268,8 +1297,10 @@ def main() -> None:
 
         # Sort and write-out
         print(">>> Finished... Now saving...")
-        df: pd.DataFrame = pd.DataFrame(results).reset_index(drop=True)
-        df.sort_values(["lc", "ver"], inplace=True)
+        df: pd.DataFrame = df_concat(
+            df_combined, pd.DataFrame(results).reset_index(drop=True)
+        )
+        df.sort_values(by=["lc", "ver"], inplace=True)
 
         # Write out combined (TSV only to use later)
         df_write(df, os.path.join(res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"))

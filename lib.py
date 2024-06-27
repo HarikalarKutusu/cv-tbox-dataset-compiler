@@ -33,7 +33,8 @@ def init_directories(basedir: str) -> None:
     #     return
 
     print("Preparing directory structures...")
-    all_locales: list[str] = get_locales_from_cv_dataset(c.CV_VERSIONS[-1])
+    # get these either from cv-dataset repo clone or API data (cv_datasets)
+    all_locales: list[str] = get_locales(c.CV_VERSIONS[-1])
     for lc in all_locales:
         os.makedirs(os.path.join(data_dir, c.CD_DIRNAME, lc), exist_ok=True)
         os.makedirs(os.path.join(data_dir, c.TC_DIRNAME, lc), exist_ok=True)
@@ -44,8 +45,9 @@ def init_directories(basedir: str) -> None:
             os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True
         )
     for ver in c.CV_VERSIONS:
-        ver_lc: list[str] = get_locales_from_cv_dataset(ver)
+        ver_lc: list[str]
         ds_prefix: str = calc_dataset_prefix(ver)
+        ver_lc: list[str] = get_locales(ver)
         os.makedirs(
             os.path.join(data_dir, c.TC_ANALYSIS_DIRNAME, ds_prefix),
             exist_ok=True,
@@ -149,7 +151,7 @@ def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
     Writes out a dataframe to a file.
     """
 
-    _head: bool = False if mode == "a" else True
+    _head: bool = mode != "a"
     # Create/override the file
     df.to_csv(
         fpath,
@@ -162,7 +164,7 @@ def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
         quoting=csv.QUOTE_NONE,
     )
     # float_format="%.4f"
-    if conf.VERBOSE:
+    if conf.DEBUG:
         print(f"Generated: {fpath} Records={df.shape[0]}")
     return True
 
@@ -507,8 +509,8 @@ def get_from_cv_dataset_clone(p: str) -> Any:
     return json.loads(s)
 
 
-def get_locales_from_cv_dataset(ver: str) -> list[str]:
-    """Get data from API 'datasets' endpoint"""
+def get_locales_from_cv_dataset_clone(ver: str) -> list[str]:
+    """Get data from ds-datasets json file"""
     p: str = os.path.join(
         conf.CV_TBOX_CACHE,
         c.CLONES_DIRNAME,
@@ -516,9 +518,41 @@ def get_locales_from_cv_dataset(ver: str) -> list[str]:
         "datasets",
         f"{calc_dataset_prefix(ver)}.json",
     )
+    if not os.path.isfile(p):
+        raise FileNotFoundError
     jdict: Any = get_from_cv_dataset_clone(p)
     locales: list[str] = [item[0] for item in jdict["locales"].items()]
     return sorted(locales)
+
+
+def get_locales_from_cv_dataset_api(ver: str) -> list[str]:
+    """Get data from API 'datasets' endpoint"""
+    ds_dir: str = calc_dataset_prefix(ver)
+    df_ds_languages: pd.DataFrame = df_read(
+        os.path.join(conf.TBOX_TSV_CACHE_DIR, "$cv_dataset_languages.tsv")
+    ).astype({"name": str, "id": int})
+    df_ds: pd.DataFrame = df_read(
+        os.path.join(conf.TBOX_TSV_CACHE_DIR, "$cv_datasets.tsv")
+    )
+    lc_id_list: list[int] = (
+        df_ds[df_ds["release_dir"] == ds_dir]["locale_id"].astype(int).to_list()
+    )
+    lc_list: list[str] = df_ds_languages[df_ds_languages["id"].isin(lc_id_list)][
+        "name"
+    ].to_list()
+    # [FIXME] Temporary fix for missing "ka" locale (Georgian) in early v18.0 release
+    lc_list.append("ka")
+    return sorted(lc_list)
+
+
+def get_locales(ver: str) -> list[str]:
+    """Get version locale list"""
+    all_locales: list[str] = []
+    try:
+        all_locales = get_locales_from_cv_dataset_clone(ver)
+    except FileNotFoundError:
+        all_locales = get_locales_from_cv_dataset_api(ver)
+    return all_locales
 
 
 #

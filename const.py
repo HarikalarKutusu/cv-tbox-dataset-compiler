@@ -70,7 +70,7 @@ CV_VERSIONS: list[str] = [
     "15.0",
     "16.1",
     "17.0",
-    # "18.0",
+    "18.0",
     # "19.0",
     # "20.0",
 ]
@@ -92,7 +92,7 @@ CV_DATES: list[str] = [
     "2023-09-08",
     "2023-12-06",
     "2024-03-15",
-    # "2024-06-00",
+    "2024-06-14",
     # "2024-09-00",
     # "2024-12-00",
 ]
@@ -176,20 +176,56 @@ CV_AGES: list[str] = [
 ]
 
 # Domains
+# CV_DOMAINS_V17: list[str] = [
+#     "agriculture",
+#     "automotive",
+#     "finance",
+#     "general",
+#     "healthcare",
+#     "history_law_government",
+#     "language_fundamentals",
+#     "media_entertainment",
+#     "nature_environment",
+#     "news_current_affairs",
+#     "food_service_retail",
+#     "technology_robotics",
+# ]
+
 CV_DOMAINS: list[str] = [
-    "general",
-    "agriculture",
-    "automotive",
+    "agriculture_food",
+    "automotive_transport",
     "finance",
-    "food_service_retail",
+    "general",
     "healthcare",
     "history_law_government",
+    "language_fundamentals",
     "media_entertainment",
     "nature_environment",
     "news_current_affairs",
+    "service_retail",
     "technology_robotics",
-    "language_fundamentals",
 ]
+
+CV_DOMAIN_MAPPER: dict[str, str] = {
+    # v17 - v18 mapping
+    "agriculture": "agriculture_food",
+    "automotive": "automotive_transport",
+    "food_service_retail": "service_retail",
+    # v18
+    "agriculture_food": "agriculture_food",
+    "automotive_transport": "automotive_transport",
+    "finance": "finance",
+    "general": "general",
+    "healthcare": "healthcare",
+    "history_law_government": "history_law_government",
+    "language_fundamentals": "language_fundamentals",
+    "media_entertainment": "media_entertainment",
+    "nature_environment": "nature_environment",
+    "news_current_affairs": "news_current_affairs",
+    "service_retail": "service_retail",
+    "technology_robotics": "technology_robotics",
+}
+
 
 # CLIP DURATIONS
 CLIP_DURATIONS_FILE: str = "clip_durations.tsv"

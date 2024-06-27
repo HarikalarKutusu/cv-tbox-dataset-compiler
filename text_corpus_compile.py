@@ -38,7 +38,7 @@ from lib import (
     df_read_safe_tc_validated,
     df_write,
     get_cutoff_date,
-    get_locales_from_cv_dataset,
+    get_locales,
     git_checkout,
     git_clone_or_pull_all,
     init_directories,
@@ -127,6 +127,8 @@ def handle_last_version_locale(ver_lc: str) -> str:
                 # for w in str(s).split(" ")
             ]
         # return with newly processed data added
+        if conf.VERBOSE:
+            print(f"LC: {lc}  OLD: {df_base.shape[0]}  NEW: {df_new.shape[0]}", flush=True)
         return df_concat(df_base, df_new)
 
     # handle_locale MAIN
@@ -153,7 +155,8 @@ def handle_last_version_locale(ver_lc: str) -> str:
 
     # write-out problem lines
     if problem_lines:
-        with open(os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_problem_lines.txt"), mode="w", encoding="utf8") as fd:
+        problem_fname: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_problem_lines.txt")
+        with open(problem_fname, mode="w", encoding="utf8") as fd:
             fd.write("\n".join(problem_lines) + "\n")
 
     # write-out result
@@ -174,10 +177,11 @@ def handle_last_version() -> None:
     # Get the repo at cutoff date ([TODO] Need to compile real cut-off dates)
     ver: str = c.CV_VERSIONS[-1]
     cutoff_date: str = c.CV_DATES[-1]
+    ds_prefix: str = calc_dataset_prefix(ver)
     print(f"=== HANDLE: v{ver} @ {cutoff_date} ===")
     # git_checkout(c.CV_GITREC, cutoff_date)
 
-    lc_list: list[str] = get_locales_from_cv_dataset(ver)
+    lc_list: list[str] = get_locales(ver)
     total_locales: int = len(lc_list)
 
     # Get list of new validated_sentences files, in reverse size order
@@ -188,7 +192,7 @@ def handle_last_version() -> None:
             HERE,
             c.DATA_DIRNAME,
             c.VC_DIRNAME,
-            calc_dataset_prefix(ver),
+            ds_prefix,
             "**",
             c.TC_VALIDATED_FILE,
         )
@@ -228,7 +232,8 @@ def handle_last_version() -> None:
                 for _res in pool.imap_unordered(
                     handle_last_version_locale, ver_lc_list, chunksize=chunk_size
                 ):
-                    # pbar.write(f"Finished: {_res}")
+                    if conf.DEBUG:
+                        pbar.write(f"Finished: {_res}")
                     pbar.update()
 
     g.total_lc += total_locales
@@ -281,10 +286,13 @@ def handle_old_version_locale(ver_lc: str) -> str:
             .sort_values("sentence_id"),
             ver_tc_file,
         )
-        df_write(
-            df_disabled.dropna().drop_duplicates().sort_values("sentence_id"),
-            disabled_file,
-        )
+        # create only if there is data
+        df_disabled = df_disabled.dropna().drop_duplicates().sort_values("sentence_id")
+        if df_disabled.shape[0] > 0:
+            df_write(
+                df_disabled.dropna().drop_duplicates().sort_values("sentence_id"),
+                disabled_file,
+            )
         return ver_lc
 
     # ELSE- For versions before v17.0, get the data from github clone + main buckets
@@ -345,7 +353,7 @@ def handle_older_version(ver: str) -> None:
     print(f"=== HANDLE INDEXING: v{ver} @ {cutoff_date} ===")
 
     lc_list: list[str] = (
-        get_locales_from_cv_dataset(ver) if not conf.DEBUG else conf.DEBUG_CV_LC
+        get_locales(ver) if not conf.DEBUG else conf.DEBUG_CV_LC
     )
     total_locales: int = len(lc_list)
 
