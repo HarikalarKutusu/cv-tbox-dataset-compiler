@@ -606,5 +606,5 @@ def sort_by_largest_file(fpaths: list[str]) -> list[str]:
 #
 def gender_backmapping(df: pd.DataFrame) -> pd.DataFrame:
     """Backmap new genders back to older ones for backward compatibility"""
-    df["gender"] = df["gender"].replace(c.CV_GENDERS_MAPPING)
+    df["gender"] = df["gender"].replace(c.CV_GENDER_MAPPER)
     return df

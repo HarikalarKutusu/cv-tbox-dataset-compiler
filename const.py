@@ -153,7 +153,7 @@ CV_GENDERS_EXTENDED: list[str] = [
     NODATA,
 ]
 # backmapping of new genders for backwards compatibility
-CV_GENDERS_MAPPING: dict[str, str] = {
+CV_GENDER_MAPPER: dict[str, str] = {
     "male_masculine": "male",
     "female_feminine": "female",
     "intersex": "other",
@@ -174,22 +174,6 @@ CV_AGES: list[str] = [
     "nineties",
     NODATA,
 ]
-
-# Domains
-# CV_DOMAINS_V17: list[str] = [
-#     "agriculture",
-#     "automotive",
-#     "finance",
-#     "general",
-#     "healthcare",
-#     "history_law_government",
-#     "language_fundamentals",
-#     "media_entertainment",
-#     "nature_environment",
-#     "news_current_affairs",
-#     "food_service_retail",
-#     "technology_robotics",
-# ]
 
 CV_DOMAINS: list[str] = [
     "agriculture_food",
