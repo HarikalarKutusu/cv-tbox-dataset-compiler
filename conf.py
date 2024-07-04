@@ -8,7 +8,7 @@ import const as c
 
 # This is where your split data is
 SRC_BASE_DIR: str = os.path.join(
-    "C:",
+    "T:",
     os.sep,
     "GITREPO",
     "_HK_GITHUB",
@@ -19,10 +19,10 @@ SRC_BASE_DIR: str = os.path.join(
 
 # This is where cache of API calls and clones are kept, common to cv-tbox repors
 CV_TBOX_CACHE: str = os.path.join(
-    "C:", os.sep, "GITREPO", "_HK_GITHUB", "_cv-tbox-python", "cv-tbox-cache"
+    "T:", os.sep, "GITREPO", "_HK_GITHUB", "_cv-tbox-python", "cv-tbox-cache"
 )
 
-# This is where cache of API calls and clones are kept, common to cv-tbox repors
+# This is where cache of API calls and clones are kept, common to cv-tbox repos
 TBOX_TSV_CACHE_DIR: str = os.path.join("T:", os.sep, "TBOX", "cache", "tsv")
 
 # This is where your compressed splits will go (under "upload" and "uploaded") - so that we can upload it to Google Drive
