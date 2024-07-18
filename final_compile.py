@@ -40,6 +40,7 @@ from typedef import (
     TextCorpusStatsRec,
     ReportedStatsRec,
     SplitStatsRec,
+    CharSpeedRec,
     dtype_pa_str,
 )
 from lib import (
@@ -52,6 +53,7 @@ from lib import (
     dec3,
     calc_dataset_prefix,
     get_locales,
+    arr2str,
     list2str,
     report_results,
     sort_by_largest_file,
@@ -65,7 +67,7 @@ if not HERE in sys.path:
 
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
-MAX_BATCH_SIZE: int = 1
+MAX_BATCH_SIZE: int = 60
 
 ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
@@ -502,7 +504,9 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 ########################################################
 
 
-def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
+def handle_dataset_splits(
+    ds_path: str,
+) -> tuple[list[SplitStatsRec], list[CharSpeedRec]]:
     """Handle a single dataset (ver/lc)"""
     # Handle one split, this is where calculations happen
     # The default column structure of CV dataset splits is as follows [FIXME] variants?
@@ -513,7 +517,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
     # now, do calculate some statistics...
     def handle_split(
         ver: str, lc: str, algorithm: str, split: str, fpath: str
-    ) -> SplitStatsRec:
+    ) -> tuple[SplitStatsRec, CharSpeedRec]:
         """Processes a single split and return calculated values"""
 
         nonlocal df_clip_durations
@@ -650,7 +654,10 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
 
         # Do nothing, if there is no data
         if df_orig.shape[0] == 0:
-            return SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split)
+            return (
+                SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split),
+                CharSpeedRec(ver=ver, lc=lc, alg=algorithm, sp=split),
+            )
 
         # [TODO] Move these to split_compile: Make all confirm to current style?
         # Normalize data to the latest version's columns with typing
@@ -701,13 +708,12 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         df["sentence_lower"] = df["sentence"].str.lower()
 
         # === DURATIONS: Calc duration agregate values
-        if (
-            df_clip_durations.shape[0] > 0 and ver != "1"
-        ):  # there must be records + v1 cannot be mapped
-            # Connect with duration table
+        # there must be records + v1 cannot be mapped
+        if df_clip_durations.shape[0] > 0 and ver != "1":
+            # Connect with duration table and convert to seconds
             df["duration"] = df["path"].map(
                 df_clip_durations["duration[ms]"] / 1000, na_action="ignore"
-            )  # convert to seconds
+            )
             ser: pd.Series = df["duration"].dropna()
             duration_total: float = ser.sum()
             duration_mean: float = ser.mean()
@@ -726,7 +732,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             duration_std: float = -1
             duration_freq = []
 
-        # === VOICES
+        # === VOICES (how many recordings per voice)
         voice_counts: pd.DataFrame = (
             df["client_id"].value_counts().dropna().to_frame().reset_index()
         )
@@ -742,7 +748,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         hist = np.histogram(arr, bins=c.BINS_VOICES)
         voice_freq = hist[0].tolist()[1:]
 
-        # === SENTENCES
+        # === SENTENCES (how many recordings per sentence)
         sentence_counts: pd.DataFrame = (
             df["sentence"].value_counts().dropna().to_frame().reset_index()
         )
@@ -750,7 +756,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         sentence_mean: float = ser.mean()
         sentence_median: float = ser.median()
         sentence_std: float = ser.std(ddof=0)
-        # Calc speaker recording distribution
+        # Calc sentence recording distribution
         arr: np.ndarray = np.fromiter(
             sentence_counts["count"]
             .dropna()
@@ -780,10 +786,12 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             bin_val: int = bins[i]
             bin_next: int = bins[i + 1]
             up_votes_freq.append(
-                vote_counts_df.loc[
-                    (vote_counts_df["votes"] >= bin_val)
-                    & (vote_counts_df["votes"] < bin_next)
-                ]["count"].sum()
+                int(
+                    vote_counts_df.loc[
+                        (vote_counts_df["votes"] >= bin_val)
+                        & (vote_counts_df["votes"] < bin_next)
+                    ]["count"].sum()
+                )
             )
 
         bins: list[int] = c.BINS_VOTES_DOWN
@@ -808,10 +816,12 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             bin_val: int = bins[i]
             bin_next: int = bins[i + 1]
             down_votes_freq.append(
-                vote_counts_df.loc[
-                    (vote_counts_df["votes"] >= bin_val)
-                    & (vote_counts_df["votes"] < bin_next)
-                ]["count"].sum()
+                int(
+                    vote_counts_df.loc[
+                        (vote_counts_df["votes"] >= bin_val)
+                        & (vote_counts_df["votes"] < bin_next)
+                    ]["count"].sum()
+                )
             )
 
         # === BASIC MEASURES
@@ -876,7 +886,7 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         # dem_fixes_list: list[list[int]] = find_fixes(df_orig)
         dem_fixes_list: list[list[int]] = [[], []]
 
-        res: SplitStatsRec = SplitStatsRec(
+        res_ss: SplitStatsRec = SplitStatsRec(
             ver=ver,
             lc=lc,
             alg=algorithm,
@@ -888,28 +898,28 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             # Duration
             dur_total=dec3(duration_total),
             dur_avg=dec3(duration_mean),
-            dur_med=duration_median,
+            dur_med=dec3(duration_median),
             dur_std=dec3(duration_std),
             dur_freq=duration_freq,
             # Recordings per Voice
             v_avg=dec3(voice_mean),
-            v_med=voice_median,
+            v_med=dec3(voice_median),
             v_std=dec3(voice_std),
             v_freq=voice_freq,
             # Recordings per Sentence
             s_avg=dec3(sentence_mean),
-            s_med=sentence_median,
+            s_med=dec3(sentence_median),
             s_std=dec3(sentence_std),
             s_freq=sentence_freq,
             # Votes
             uv_sum=up_votes_sum,
             uv_avg=dec3(up_votes_mean),
-            uv_med=up_votes_median,
+            uv_med=dec3(up_votes_median),
             uv_std=dec3(up_votes_std),
             uv_freq=up_votes_freq,
             dv_sum=down_votes_sum,
             dv_avg=dec3(down_votes_mean),
-            dv_med=down_votes_median,
+            dv_med=dec3(down_votes_median),
             dv_std=dec3(down_votes_std),
             dv_freq=down_votes_freq,
             # Demographics distribution for recordings
@@ -919,7 +929,123 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
             dem_fix_v=dem_fixes_list[1],
         )
 
-        return res
+        # === AVERAGE AND PER USER CHAR SPEED
+
+        res_cs: CharSpeedRec = CharSpeedRec(
+            ver=ver,
+            lc=lc,
+            alg=algorithm,
+            sp=split,
+        )
+
+        if duration_total == -1 or clips_cnt == 0:
+            df["char_speed"] = pd.NA
+        else:
+            df["s_len"] = (
+                df["sentence"]
+                .astype(str)
+                .apply(lambda x: len(x) if pd.notna(x) else pd.NA)
+            )
+            df = df.assign(
+                char_speed=lambda x: round(1000 * (x["duration"] / x["s_len"]))
+            )
+            # print(df[["duration", "s_len", "char_speed", "sentence"]])
+            df_char_speed: pd.DataFrame = (
+                df["char_speed"].value_counts().dropna().to_frame().reset_index()
+            )
+            ser = df["char_speed"]
+            cs_mean: float = ser.mean()
+            cs_median: float = ser.median()
+            cs_std: float = ser.std(ddof=0)
+            # Calc speaker recording distribution
+            arr: np.ndarray = np.fromiter(
+                df_char_speed["count"]
+                .dropna()
+                .apply(int)
+                .reset_index(drop=True)
+                .to_list(),
+                int,
+            )
+            hist = np.histogram(arr, bins=c.BINS_CS)
+            cs_freq = hist[0].tolist()[1:]
+            #
+            # Crosstab Calculations
+            #
+
+            # add temp pre-calc bin cols
+            df["bin_cs"] = pd.cut(
+                df["char_speed"],
+                bins=c.BINS_CS,
+                right=False,
+                labels=c.BINS_CS[:-1],
+            )
+            df["bin_slen"] = pd.cut(
+                df["s_len"], bins=c.BINS_CHARS, right=False, labels=c.BINS_CHARS[:-1]
+            )
+
+            # row_labels: list = c.BINS_CS[:-1]
+            # row_labels.append("TOTAL")
+            col_labels: list
+
+            # char_speed versus sentence length (using bins)
+            col_labels = c.BINS_CHARS[:-1]
+            # col_labels.append("TOTAL")
+            cs_vs_slen: pd.DataFrame = pd.crosstab(
+                index=df["bin_cs"],
+                columns=df["bin_slen"],
+            )
+            cs_row_labels: list[str] = cs_vs_slen.index.values.astype(str).tolist()
+            cs_vs_slen_col_labels: list[str] = cs_vs_slen.columns.tolist()
+            cs_vs_slen.reset_index(drop=True, inplace=True)
+            cs_clips: int = cs_vs_slen.sum(skipna=True).sum()
+
+            #
+            # char_speed versus gender
+            #
+            col_labels = c.CV_GENDERS
+            # col_labels.append("TOTAL")
+            cs_vs_gender: pd.DataFrame = (
+                pd.crosstab(
+                    index=df["bin_cs"],
+                    columns=df["gender"],
+                )
+                .reindex(columns=col_labels, fill_value=0)
+                .reset_index(drop=True)
+            )
+
+            #
+            # char_speed versus age group
+            #
+            col_labels = c.CV_AGES
+            # col_labels.append("TOTAL")
+            cs_vs_age: pd.DataFrame = (
+                pd.crosstab(
+                    index=df["bin_cs"],
+                    columns=df["age"],
+                )
+                .reindex(columns=col_labels, fill_value=0)
+                .reset_index(drop=True)
+            )
+
+            res_cs = CharSpeedRec(
+                ver=ver,
+                lc=lc,
+                alg=algorithm,
+                sp=split,
+                clips=cs_clips,
+                # Character Speed
+                cs_avg=dec3(cs_mean),
+                cs_med=dec3(cs_median),
+                cs_std=dec3(cs_std),
+                cs_freq=cs_freq,
+                cs_r=list2str(cs_row_labels),
+                cs2s_c=list2str(cs_vs_slen_col_labels),
+                cs2s=arr2str(cs_vs_slen.to_numpy(int).tolist()),
+                cs2g=arr2str(cs_vs_gender.to_numpy(int).tolist()),
+                cs2a=arr2str(cs_vs_age.to_numpy(int).tolist()),
+            )
+
+        return (res_ss, res_cs)
 
     # END handle_split
 
@@ -959,21 +1085,23 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         print(f"WARNING: No duration data for {lc}\n")
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
-    res: list[SplitStatsRec] = []  # Init the result list
+    ret_ss: SplitStatsRec
+    ret_cs: CharSpeedRec
+    res_ss: list[SplitStatsRec] = []  # Init the result list
+    res_cs: list[CharSpeedRec] = []  # Init the result list
 
     # Special case for temporary "clips.tsv"
-    res.append(
-        handle_split(
-            ver=ver,
-            lc=lc,
-            algorithm="",
-            split="clips",
-            fpath=os.path.join(
-                ds_path, "validated.tsv"
-            ),  # to start with we set validated
-        )
+    ret_ss, ret_cs = handle_split(
+        ver=ver,
+        lc=lc,
+        algorithm="",
+        split="clips",
+        fpath=os.path.join(ds_path, "validated.tsv"),
     )
-    validated_result: SplitStatsRec = res[-1]
+    res_ss.append(ret_ss)
+    res_cs.append(ret_cs)
+
+    validated_result: SplitStatsRec = res_ss[-1]
     validated_records: int = validated_result.clips
     # Append to clips.tsv at the source, at the base of that version
     # (it will include all recording data for all locales to be used in CC & alternatives)
@@ -983,43 +1111,49 @@ def handle_dataset_splits(ds_path: str) -> list[SplitStatsRec]:
         df_write(df_read(src), fpath=dst, mode="a")
 
     for sp in c.MAIN_BUCKETS:
-        res.append(
-            handle_split(
-                ver=ver,
-                lc=lc,
-                algorithm="",
-                split=sp,
-                fpath=os.path.join(ds_path, sp + ".tsv"),
-            )
+        ret_ss, ret_cs = handle_split(
+            ver=ver,
+            lc=lc,
+            algorithm="",
+            split=sp,
+            fpath=os.path.join(ds_path, sp + ".tsv"),
         )
+        res_ss.append(ret_ss)
+        res_cs.append(ret_cs)
 
     # If no record in validated, do not try further
     if validated_records == 0:
-        return res
+        return (res_ss, res_cs)
 
     # SPLITTING ALGO SPECIFIC (inc default splits)
 
     for algo in c.ALGORITHMS:
         for sp in c.TRAINING_SPLITS:
             if os.path.isfile(os.path.join(ds_path, algo, sp + ".tsv")):
-                res.append(
-                    handle_split(
-                        ver=ver,
-                        lc=lc,
-                        algorithm=algo,
-                        split=sp,
-                        fpath=os.path.join(ds_path, algo, sp + ".tsv"),
-                    )
+                ret_ss, ret_cs = handle_split(
+                    ver=ver,
+                    lc=lc,
+                    algorithm=algo,
+                    split=sp,
+                    fpath=os.path.join(ds_path, algo, sp + ".tsv"),
                 )
+                res_ss.append(ret_ss)
+                res_cs.append(ret_cs)
 
     # Create DataFrames
-    df: pd.DataFrame = pd.DataFrame(res)
+    df: pd.DataFrame = pd.DataFrame(res_ss)
     df_write(df, os.path.join(tsv_path, f"{lc}_{ver}_splits.tsv"))
     df.to_json(
         os.path.join(json_path, f"{lc}_{ver}_splits.json"), orient="table", index=False
     )
 
-    return res
+    df: pd.DataFrame = pd.DataFrame(res_cs)
+    df_write(df, os.path.join(tsv_path, f"{lc}_{ver}_cs.tsv"))
+    df.to_json(
+        os.path.join(json_path, f"{lc}_{ver}_cs.json"), orient="table", index=False
+    )
+
+    return (res_ss, res_cs)
 
 
 # END - Dataset Split Stats (MP Handler)
@@ -1160,6 +1294,7 @@ def main() -> None:
 
         chunk_size: int = min(
             MAX_BATCH_SIZE,
+            num_items // 100 + 1,
             num_items // used_proc_count
             + (0 if num_items % used_proc_count == 0 else 1),
         )
@@ -1234,11 +1369,12 @@ def main() -> None:
 
         # For each version
         ver_lc_list: list[str] = []  # final
-        for ver in c.CV_VERSIONS:
+        ver_to_process: list[str] = conf.DEBUG_CV_VER if conf.DEBUG else c.CV_VERSIONS
+        for ver in ver_to_process:
             ver_dir: str = calc_dataset_prefix(ver)
 
-            # get all possible
-            lc_list: list[str] = get_locales(ver)
+            # get all possible or use DEBUG list
+            lc_list: list[str] = conf.DEBUG_CV_LC if conf.DEBUG else get_locales(ver)
             g_rep.total_lc += len(lc_list)
 
             # remove already calculated ones
@@ -1276,6 +1412,7 @@ def main() -> None:
 
         chunk_size: int = min(
             MAX_BATCH_SIZE,
+            num_items // 100 + 1,
             num_items // used_proc_count
             + (0 if num_items % used_proc_count == 0 else 1),
         )
@@ -1347,28 +1484,38 @@ def main() -> None:
         # sort by largest first
         pp = sort_by_largest_file(pp)
 
-        # skip existing?
+        tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
+        json_path: str = os.path.join(
+            HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
+        )
         ds_paths: list[str] = []
-        if conf.FORCE_CREATE_VC_STATS:
-            ds_paths = pp
-        else:
-            tsv_path: str = os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
-            )
-            json_path: str = os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
-            )
-
+        # handle debug
+        if conf.DEBUG:
             for p in pp:
                 lc: str = os.path.split(p)[1]
                 ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
-                tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
-                json_fn: str = os.path.join(json_path, lc, f"{lc}_{ver}_splits.json")
-                if not (os.path.isfile(tsv_fn) and os.path.isfile(json_fn)):
+                if lc in conf.DEBUG_CV_LC and ver in conf.DEBUG_CV_VER:
                     ds_paths.append(p)
+        else:
+            # skip existing?
+            if conf.FORCE_CREATE_VC_STATS:
+                ds_paths = pp
+            else:
+                for p in pp:
+                    lc: str = os.path.split(p)[1]
+                    ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
+                    tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
+                    json_fn: str = os.path.join(
+                        json_path, lc, f"{lc}_{ver}_splits.json"
+                    )
+                    if not (os.path.isfile(tsv_fn) and os.path.isfile(json_fn)):
+                        ds_paths.append(p)
         # finish filter out existing
 
-        results: list[SplitStatsRec] = []
+        ret_ss: list[SplitStatsRec]
+        ret_cs: list[CharSpeedRec]
+        results_ss: list[SplitStatsRec] = []
+        results_cs: list[CharSpeedRec] = []
         cnt_to_process: int = len(ds_paths)
 
         if cnt_to_process == 0:
@@ -1377,6 +1524,7 @@ def main() -> None:
 
         chunk_size: int = min(
             MAX_BATCH_SIZE,
+            cnt_to_process // 100 + 1,
             cnt_to_process // used_proc_count
             + (0 if cnt_to_process % used_proc_count == 0 else 1),
         )
@@ -1387,13 +1535,14 @@ def main() -> None:
         # now process each dataset
         with mp.Pool(used_proc_count) as pool:
             with tqdm(total=cnt_to_process, desc="") as pbar:
-                for res in pool.imap_unordered(
+                for ret_ss, ret_cs in pool.imap_unordered(
                     handle_dataset_splits, ds_paths, chunksize=chunk_size
                 ):
-                    results.extend(res)
+                    results_ss.extend(ret_ss)
+                    results_cs.extend(ret_cs)
                     pbar.update()
 
-        print(f">>> Processed {len(results)} splits...")
+        print(f">>> Processed {len(results_ss)} splits...")
 
     #
     # SUPPORT MATRIX
@@ -1500,6 +1649,7 @@ def main() -> None:
             bins_votes_up=c.BINS_VOTES_UP[:-1],
             bins_votes_down=c.BINS_VOTES_DOWN[:-1],
             bins_sentences=c.BINS_SENTENCES[1:-1],
+            bins_char_speed=c.BINS_CS[:-1],
             bins_chars=c.BINS_CHARS[:-1],
             bins_words=c.BINS_WORDS[1:-1],
             bins_tokens=c.BINS_TOKENS[1:-1],
