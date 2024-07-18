@@ -209,6 +209,7 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     s_med: float = 0.0  # median
     s_std: float = 0.0  # standard deviation
     s_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
+
     # Votes (UpVotes, DownVotes)
     uv_sum: int = 0  # total
     uv_avg: float = 0.0  # average (mean)
@@ -225,6 +226,29 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     dem_uq: list[list[int]] = field(default_factory=lambda: [])
     dem_fix_r: list[int] = field(default_factory=lambda: [])
     dem_fix_v: list[int] = field(default_factory=lambda: [])
+
+
+@dataclass
+class CharSpeedRec:  # pylint: disable=too-many-instance-attributes
+    """Record definition for dataset split statistics"""
+
+    ver: str = ""  # cv version code (internal format nn.n, see const.py)
+    lc: str = ""  # cv language code
+    alg: str = ""  # cv-tbox splitting algorithm (see const.py)
+    sp: str = ""  # split name (blank, train, dev, test)
+    clips: int = 0  # number of recordings
+    # Character Speed data
+    cs_avg: float = 0.0  # average (mean)
+    cs_med: float = 0.0  # median
+    cs_std: float = 0.0  # standard deviation
+    cs_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
+    # CrossTabs
+    cs_r: str = ""  # row labels for all crosstabs (from list of int)
+    cs2s_c: str = ""  # col labels for sentence length (from list of int)
+
+    cs2s: str = ""  # char-speed vs sentence length
+    cs2g: str = ""  # char-speed vs gender (columns are known)
+    cs2a: str = ""  # char-speed vs age (columns are known)
 
 
 #
@@ -246,6 +270,7 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     bins_votes_up: list[int] = field(default_factory=lambda: [])
     bins_votes_down: list[int] = field(default_factory=lambda: [])
     bins_sentences: list[int] = field(default_factory=lambda: [])
+    bins_char_speed: list[int] = field(default_factory=lambda: [])
     bins_chars: list[int] = field(default_factory=lambda: [])
     bins_words: list[int] = field(default_factory=lambda: [])
     bins_tokens: list[int] = field(default_factory=lambda: [])
