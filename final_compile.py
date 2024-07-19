@@ -949,28 +949,12 @@ def handle_dataset_splits(
             df = df.assign(
                 char_speed=lambda x: round(1000 * (x["duration"] / x["s_len"]))
             )
-            # print(df[["duration", "s_len", "char_speed", "sentence"]])
-            df_char_speed: pd.DataFrame = (
-                df["char_speed"].value_counts().dropna().to_frame().reset_index()
-            )
+
+            # calc general stats from real values
             ser = df["char_speed"]
             cs_mean: float = ser.mean()
             cs_median: float = ser.median()
             cs_std: float = ser.std(ddof=0)
-            # Calc speaker recording distribution
-            arr: np.ndarray = np.fromiter(
-                df_char_speed["count"]
-                .dropna()
-                .apply(int)
-                .reset_index(drop=True)
-                .to_list(),
-                int,
-            )
-            hist = np.histogram(arr, bins=c.BINS_CS)
-            cs_freq = hist[0].tolist()[1:]
-            #
-            # Crosstab Calculations
-            #
 
             # add temp pre-calc bin cols
             df["bin_cs"] = pd.cut(
@@ -982,6 +966,57 @@ def handle_dataset_splits(
             df["bin_slen"] = pd.cut(
                 df["s_len"], bins=c.BINS_CHARS, right=False, labels=c.BINS_CHARS[:-1]
             )
+
+            # simulated pivot
+            df_char_speed: pd.DataFrame = (
+                df["bin_cs"]
+                .value_counts()
+                .dropna()
+                .to_frame()
+                .astype(int)
+                .reindex(index=c.BINS_CS, fill_value=0)
+                .reset_index(drop=False)
+                .sort_values("bin_cs")
+            )
+            cs_freq: list[int] = df_char_speed["count"].tolist()[:-1]
+
+            # # Calc speaker recording distribution
+            # arr: np.ndarray = np.fromiter(
+            #     df_char_speed["count"].dropna()
+            #     # .apply(int)
+            #     # .reset_index(drop=True)
+            #     .to_list(),
+            #     int,
+            # )
+            # hist = np.histogram(arr, bins=c.BINS_CS)
+            # cs_freq = hist[0].tolist()
+            # cs_freq = hist[0].tolist()
+
+            # if conf.DEBUG and split == "clips" and lc == "tr":
+            #     print("=== df")
+            #     print(
+            #         df[
+            #             [
+            #                 "duration",
+            #                 "s_len",
+            #                 "char_speed",
+            #                 "sentence",
+            #                 "bin_slen",
+            #                 "bin_cs",
+            #             ]
+            #         ]
+            #     )
+            #     print("=== df_char_speed")
+            #     print(df_char_speed)
+            #     print("=== ser")
+            #     print(ser)
+            #     print("=== cs_freq")
+            #     print(cs_freq)
+            #     print(len(c.BINS_CS), len(cs_freq))
+
+            #
+            # Crosstab Calculations
+            #
 
             # row_labels: list = c.BINS_CS[:-1]
             # row_labels.append("TOTAL")
@@ -1690,7 +1725,8 @@ def main() -> None:
         main_splits()
 
     # SUPPORT MATRIX
-    main_support_matrix()
+    if not conf.DEBUG:
+        main_support_matrix()
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
@@ -1698,7 +1734,8 @@ def main() -> None:
     # [TODO] Get some statistical plots as images (e.g. corrolation: age-char speed graph)
 
     # Save config
-    main_config()
+    if not conf.DEBUG:
+        main_config()
 
     # FINALIZE
     process_seconds: float = (datetime.now() - start_time).total_seconds()
