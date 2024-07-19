@@ -588,10 +588,6 @@ BINS_REPORTED: list[int] = [
 # Character Speed
 BINS_CS: list[int] = [
     0,
-    10,
-    20,
-    30,
-    40,
     50,
     60,
     70,
