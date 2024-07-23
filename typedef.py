@@ -270,8 +270,11 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     bins_votes_up: list[int] = field(default_factory=lambda: [])
     bins_votes_down: list[int] = field(default_factory=lambda: [])
     bins_sentences: list[int] = field(default_factory=lambda: [])
-    bins_char_speed: list[int] = field(default_factory=lambda: [])
-    bins_chars: list[int] = field(default_factory=lambda: [])
+    cs_threshold: int = 0
+    bins_cs_low: list[int] = field(default_factory=lambda: [])
+    bins_cs_high: list[int] = field(default_factory=lambda: [])
+    bins_chars_short: list[int] = field(default_factory=lambda: [])
+    bins_chars_long: list[int] = field(default_factory=lambda: [])
     bins_words: list[int] = field(default_factory=lambda: [])
     bins_tokens: list[int] = field(default_factory=lambda: [])
     bins_reported: list[int] = field(default_factory=lambda: [])

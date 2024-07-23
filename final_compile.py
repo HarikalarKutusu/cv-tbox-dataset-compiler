@@ -226,7 +226,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             _arr: np.ndarray = np.fromiter(
                 _ser.apply(int).reset_index(drop=True).to_list(), int
             )
-            _hist = np.histogram(_arr, bins=c.BINS_CHARS)
+            _hist = np.histogram(_arr, bins=c.BINS_CHARS_LONG)
             res.c_freq = _hist[0].tolist()
 
         # GRAPHEMES
@@ -955,18 +955,29 @@ def handle_dataset_splits(
             cs_mean: float = ser.mean()
             cs_median: float = ser.median()
             cs_std: float = ser.std(ddof=0)
+            # decide which bin should be used
+            _cs_bins: list[int] = (
+                c.BINS_CS_LOW if cs_mean < c.CS_BIN_THRESHOLD else c.BINS_CS_HIGH
+            )
+            _sl_bins: list[int] = (
+                c.BINS_CHARS_SHORT
+                if cs_mean < c.CS_BIN_THRESHOLD
+                else c.BINS_CHARS_LONG
+            )
 
             # add temp pre-calc bin cols
             df["bin_cs"] = pd.cut(
                 df["char_speed"],
-                bins=c.BINS_CS,
+                bins=_cs_bins,
                 right=False,
-                labels=c.BINS_CS[:-1],
+                labels=_cs_bins[:-1],
             )
             df["bin_slen"] = pd.cut(
-                df["s_len"], bins=c.BINS_CHARS, right=False, labels=c.BINS_CHARS[:-1]
+                df["s_len"],
+                bins=_sl_bins,
+                right=False,
+                labels=_sl_bins[:-1],
             )
-
             # simulated pivot
             df_char_speed: pd.DataFrame = (
                 df["bin_cs"]
@@ -974,7 +985,7 @@ def handle_dataset_splits(
                 .dropna()
                 .to_frame()
                 .astype(int)
-                .reindex(index=c.BINS_CS, fill_value=0)
+                .reindex(index=_cs_bins, fill_value=0)
                 .reset_index(drop=False)
                 .sort_values("bin_cs")
             )
@@ -1023,7 +1034,7 @@ def handle_dataset_splits(
             col_labels: list
 
             # char_speed versus sentence length (using bins)
-            col_labels = c.BINS_CHARS[:-1]
+            col_labels = c.BINS_CHARS_LONG[:-1]
             # col_labels.append("TOTAL")
             cs_vs_slen: pd.DataFrame = pd.crosstab(
                 index=df["bin_cs"],
@@ -1684,8 +1695,11 @@ def main() -> None:
             bins_votes_up=c.BINS_VOTES_UP[:-1],
             bins_votes_down=c.BINS_VOTES_DOWN[:-1],
             bins_sentences=c.BINS_SENTENCES[1:-1],
-            bins_char_speed=c.BINS_CS[:-1],
-            bins_chars=c.BINS_CHARS[:-1],
+            cs_threshold=c.CS_BIN_THRESHOLD,
+            bins_cs_low=c.BINS_CS_LOW[:-1],
+            bins_cs_high=c.BINS_CS_HIGH[:-1],
+            bins_chars_short=c.BINS_CHARS_SHORT[:-1],
+            bins_chars_long=c.BINS_CHARS_LONG[:-1],
             bins_words=c.BINS_WORDS[1:-1],
             bins_tokens=c.BINS_TOKENS[1:-1],
             bins_reported=c.BINS_REPORTED[1:-1],
@@ -1734,8 +1748,7 @@ def main() -> None:
     # [TODO] Get some statistical plots as images (e.g. corrolation: age-char speed graph)
 
     # Save config
-    if not conf.DEBUG:
-        main_config()
+    main_config()
 
     # FINALIZE
     process_seconds: float = (datetime.now() - start_time).total_seconds()

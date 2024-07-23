@@ -449,31 +449,6 @@ BINS_SENTENCES: list[int] = [
     100,
     999999,
 ]
-BINS_CHARS: list[int] = [
-    0,
-    10,
-    20,
-    30,
-    40,
-    50,
-    60,
-    70,
-    80,
-    90,
-    100,
-    110,
-    120,
-    130,
-    140,
-    150,
-    160,
-    170,
-    180,
-    190,
-    200,
-    250,
-    999999,
-]
 BINS_WORDS: list[int] = [
     0,
     1,
@@ -585,9 +560,40 @@ BINS_REPORTED: list[int] = [
     999999,
 ]
 
-# Character Speed
-BINS_CS: list[int] = [
+# Sentence Length
+# For logogram languages
+BINS_CHARS_SHORT: list[int] = [
     0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
+    60,
+    70,
+    80,
+    999999,
+]
+# Regular languages
+BINS_CHARS_LONG: list[int] = [
+    0,
+    10,
+    20,
+    30,
+    40,
     50,
     60,
     70,
@@ -605,9 +611,55 @@ BINS_CS: list[int] = [
     190,
     200,
     250,
+    999999,
+]
+
+# Character Speed
+# Average CS to decide between bin types
+CS_BIN_THRESHOLD: int = 300
+# This one is for latin
+BINS_CS_LOW: list[int] = [
+    0,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+    110,
+    120,
+    130,
+    140,
+    150,
+    175,
+    200,
+    250,
     300,
     350,
     400,
+    999999,
+]
+
+# This one usually is for logograğhic languages (one char = a word)
+BINS_CS_HIGH: list[int] = [
+    0,
+    100,
+    200,
+    250,
+    300,
+    325,
+    350,
+    375,
+    400,
+    425,
+    450,
+    475,
+    500,
+    525,
+    550,
+    575,
+    600,
+    650,
     999999,
 ]
 
