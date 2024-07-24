@@ -589,6 +589,16 @@ def dec3(x: float) -> float:
     return round(1000 * x) / 1000
 
 
+def dec2(x: float) -> float:
+    """Make to 3 decimals"""
+    return round(100 * x) / 100
+
+
+def dec1(x: float) -> float:
+    """Make to 3 decimals"""
+    return round(10 * x) / 10
+
+
 #
 # FS
 #
