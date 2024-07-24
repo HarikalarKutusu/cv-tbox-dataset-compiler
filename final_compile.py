@@ -42,8 +42,11 @@ from typedef import (
     SplitStatsRec,
     CharSpeedRec,
     dtype_pa_str,
+    # dtype_pa_float64,
+    # dtype_pa_uint16,
 )
 from lib import (
+    dec1,
     df_concat,
     df_read,
     df_read_safe_reported,
@@ -112,7 +115,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         res: TextCorpusStatsRec = TextCorpusStatsRec(
             ver=ver,
             lc=lc,
-            algo=algo,
+            alg=algo,
             sp=sp,
             has_val=has_validator,
             has_phon=has_phonemiser,
@@ -512,11 +515,11 @@ def handle_dataset_splits(
     # The default column structure of CV dataset splits is as follows [FIXME] variants?
     # client_id, path, sentence, up_votes, down_votes, age, gender, accents, locale, segment
     # we have as input:
-    # 'version', 'locale', 'algorithm', 'split'
+    # 'version', 'locale', 'algo', 'split'
 
     # now, do calculate some statistics...
     def handle_split(
-        ver: str, lc: str, algorithm: str, split: str, fpath: str
+        ver: str, lc: str, algo: str, split: str, fpath: str
     ) -> tuple[SplitStatsRec, CharSpeedRec]:
         """Processes a single split and return calculated values"""
 
@@ -641,6 +644,7 @@ def handle_dataset_splits(
 
         # Read in DataFrames
         df_orig: pd.DataFrame = df_read(fpath)
+        # .astype(c.FIELDS_BUCKETS_SPLITS) # WE CANNAOT USE THIS AS COLUMNS CHANGE WITH VERSIONS
         if split == "clips":  # build "clips" from val+inval+other
             # we already have validated (passed as param for clips)
             # add invalidated
@@ -655,8 +659,8 @@ def handle_dataset_splits(
         # Do nothing, if there is no data
         if df_orig.shape[0] == 0:
             return (
-                SplitStatsRec(ver=ver, lc=lc, alg=algorithm, sp=split),
-                CharSpeedRec(ver=ver, lc=lc, alg=algorithm, sp=split),
+                SplitStatsRec(ver=ver, lc=lc, alg=algo, sp=split),
+                CharSpeedRec(ver=ver, lc=lc, alg=algo, sp=split),
             )
 
         # [TODO] Move these to split_compile: Make all confirm to current style?
@@ -671,33 +675,33 @@ def handle_dataset_splits(
         df["up_votes"] = df_orig["up_votes"]
         df["down_votes"] = df_orig["down_votes"]
         # these exist, but can be NaN
-        df["age"] = df_orig["age"].astype(dtype_pa_str).fillna(c.NODATA)
-        df["gender"] = df_orig["gender"].astype(dtype_pa_str).fillna(c.NODATA)
+        df["age"] = df_orig["age"].fillna(c.NODATA)
+        df["gender"] = df_orig["gender"].fillna(c.NODATA)
         # These might not exist in older versions, so we fill them
         df["locale"] = df_orig["locale"] if "locale" in df_orig.columns else lc
         df["variant"] = (
-            df_orig["variant"].astype(dtype_pa_str).fillna(c.NODATA)
+            df_orig["variant"].fillna(c.NODATA)
             if "variant" in df_orig.columns
             else c.NODATA
         )
         df["segment"] = (
-            df_orig["segment"].astype(dtype_pa_str).fillna(c.NODATA)
+            df_orig["segment"].fillna(c.NODATA)
             if "segment" in df_orig.columns
             else c.NODATA
         )
         df["sentence_domain"] = (
-            df_orig["sentence_domain"].astype(dtype_pa_str).fillna(c.NODATA)
+            df_orig["sentence_domain"].fillna(c.NODATA)
             if "sentence_domain" in df_orig.columns
             else c.NODATA
         )
         # The "accent" column renamed to "accents" along the way
         if "accent" in df_orig.columns:
-            df["accents"] = df_orig["accent"].astype(dtype_pa_str).fillna(c.NODATA)
+            df["accents"] = df_orig["accent"].fillna(c.NODATA)
         if "accents" in df_orig.columns:
-            df["accents"] = df_orig["accents"].astype(dtype_pa_str).fillna(c.NODATA)
+            df["accents"] = df_orig["accents"].fillna(c.NODATA)
         # [TODO] this needs special consideration (back-lookup) but has quirks for now
         df["sentence_id"] = (
-            df_orig["sentence_id"].astype(dtype_pa_str).fillna(c.NODATA)
+            df_orig["sentence_id"].fillna(c.NODATA)
             if "sentence_id" in df_orig.columns
             else c.NODATA
         )
@@ -889,7 +893,7 @@ def handle_dataset_splits(
         res_ss: SplitStatsRec = SplitStatsRec(
             ver=ver,
             lc=lc,
-            alg=algorithm,
+            alg=algo,
             sp=split,
             clips=clips_cnt,
             uq_v=unique_voices,
@@ -934,7 +938,7 @@ def handle_dataset_splits(
         res_cs: CharSpeedRec = CharSpeedRec(
             ver=ver,
             lc=lc,
-            alg=algorithm,
+            alg=algo,
             sp=split,
         )
 
@@ -991,40 +995,6 @@ def handle_dataset_splits(
             )
             cs_freq: list[int] = df_char_speed["count"].tolist()[:-1]
 
-            # # Calc speaker recording distribution
-            # arr: np.ndarray = np.fromiter(
-            #     df_char_speed["count"].dropna()
-            #     # .apply(int)
-            #     # .reset_index(drop=True)
-            #     .to_list(),
-            #     int,
-            # )
-            # hist = np.histogram(arr, bins=c.BINS_CS)
-            # cs_freq = hist[0].tolist()
-            # cs_freq = hist[0].tolist()
-
-            # if conf.DEBUG and split == "clips" and lc == "tr":
-            #     print("=== df")
-            #     print(
-            #         df[
-            #             [
-            #                 "duration",
-            #                 "s_len",
-            #                 "char_speed",
-            #                 "sentence",
-            #                 "bin_slen",
-            #                 "bin_cs",
-            #             ]
-            #         ]
-            #     )
-            #     print("=== df_char_speed")
-            #     print(df_char_speed)
-            #     print("=== ser")
-            #     print(ser)
-            #     print("=== cs_freq")
-            #     print(cs_freq)
-            #     print(len(c.BINS_CS), len(cs_freq))
-
             #
             # Crosstab Calculations
             #
@@ -1076,7 +1046,7 @@ def handle_dataset_splits(
             res_cs = CharSpeedRec(
                 ver=ver,
                 lc=lc,
-                alg=algorithm,
+                alg=algo,
                 sp=split,
                 clips=cs_clips,
                 # Character Speed
@@ -1140,7 +1110,7 @@ def handle_dataset_splits(
     ret_ss, ret_cs = handle_split(
         ver=ver,
         lc=lc,
-        algorithm="",
+        algo="",
         split="clips",
         fpath=os.path.join(ds_path, "validated.tsv"),
     )
@@ -1160,7 +1130,7 @@ def handle_dataset_splits(
         ret_ss, ret_cs = handle_split(
             ver=ver,
             lc=lc,
-            algorithm="",
+            algo="",
             split=sp,
             fpath=os.path.join(ds_path, sp + ".tsv"),
         )
@@ -1179,7 +1149,7 @@ def handle_dataset_splits(
                 ret_ss, ret_cs = handle_split(
                     ver=ver,
                     lc=lc,
-                    algorithm=algo,
+                    algo=algo,
                     split=sp,
                     fpath=os.path.join(ds_path, algo, sp + ".tsv"),
                 )
@@ -1369,8 +1339,7 @@ def main() -> None:
         df2: pd.DataFrame = pd.DataFrame()
         for ver in c.CV_VERSIONS:
             for lc in ALL_LOCALES:
-                # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
-                df2 = df[(df["ver"] == ver) & (df["lc"] == lc)]  # pylint: disable=E1136
+                df2 = df[(df["ver"] == ver) & (df["lc"] == lc)]
                 if df2.shape[0] > 0:
                     df_write(
                         df2,
@@ -1489,8 +1458,7 @@ def main() -> None:
         df_write(df, os.path.join(res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"))
         # Write out per locale
         for lc in ALL_LOCALES:
-            # pylint - false positive / fix not available yet: https://github.com/UCL/TLOmodel/pull/1193
-            df_lc: pd.DataFrame = df[df["lc"] == lc]  # pylint: disable=E1136
+            df_lc: pd.DataFrame = df[df["lc"] == lc]
             df_write(
                 df_lc,
                 os.path.join(
@@ -1599,33 +1567,59 @@ def main() -> None:
         print("\n=== Build Support Matrix ===")
 
         # Scan files once again (we could have run it partial)
+        # "df" will contain combined split stats (which we will save and only use "validated" from it)
+        # df: pd.DataFrame = pd.DataFrame(
+        #     columns=list(c.FIELDS_SPLIT_STATS.keys())
+        # ).astype(c.FIELDS_SPLIT_STATS)
+        df: pd.DataFrame = pd.DataFrame()
         all_tsv_paths: list[str] = sorted(
             glob.glob(
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "**", "*.tsv"
+                    HERE,
+                    c.DATA_DIRNAME,
+                    c.RES_DIRNAME,
+                    c.TSV_DIRNAME,
+                    "**",
+                    "*_splits.tsv",
                 ),
                 recursive=True,
             )
         )
-
-        df: pd.DataFrame = pd.DataFrame().reset_index(drop=True)
+        # preload all TSV to concat later
+        df_list: list[pd.DataFrame] = []
         for tsv_path in all_tsv_paths:
-            # ignore system files (they start with $)
-            if os.path.split(tsv_path)[1][0] != "$":
-                df = pd.concat([df.loc[:], df_read(tsv_path)]).reset_index(drop=True)
+            # prevent "ver" col to be converted to float
+            df_list.append(df_read(tsv_path, dtypes={"ver": dtype_pa_str}))
+        # concat
+        df = pd.concat(df_list, copy=False).reset_index(drop=True)
+        # save to root
+        print(">>> Saving combined split stats...")
+        dst: str = os.path.join(
+            HERE,
+            c.DATA_DIRNAME,
+            c.RES_DIRNAME,
+            c.TSV_DIRNAME,
+            "$combined_splits.tsv",
+        )
+        df_write(df, dst)
 
+        # clean
+        df = df.drop(
+            columns=list(set(df.columns) - set(["ver", "lc", "alg", "sp", "dur_total"]))
+        )
+
+        # get some stats
         g.total_splits = df.shape[0]
-        g.total_lc = df[df["sp"] == "validated"].shape[0]
+        g.total_lc = df[df["sp"] == ""].shape[0]
 
-        df = df[["ver", "lc", "alg"]].drop_duplicates()
-        df["ver"] = df["ver"].astype(str)
-
-        df = (
-            df[~df["alg"].isnull()]
-            .sort_values(["lc", "ver", "alg"])
+        # get algo view
+        df_algo: pd.DataFrame = df[["ver", "lc", "alg"]].drop_duplicates()
+        df_algo = (
+            df_algo[~df_algo["alg"].isnull()].sort_values(["lc", "ver", "alg"])
+            # .astype(dtype_pa_str)
             .reset_index(drop=True)
         )
-        g.total_algo = df.shape[0]
+        g.total_algo = df_algo.shape[0]
 
         # Prepare Support Matrix DataFrame
         rev_versions: list[str] = c.CV_VERSIONS.copy()  # versions in reverse order
@@ -1646,32 +1640,37 @@ def main() -> None:
         for lc in ALL_LOCALES:
             for ver in c.CV_VERSIONS:
                 algo_list: list[str] = (
-                    df[(df["lc"] == lc) & (df["ver"] == ver)]["alg"].unique().tolist()
+                    df_algo[(df_algo["lc"] == lc) & (df_algo["ver"] == ver)]["alg"]
+                    .unique()
+                    .tolist()
                 )
+                hours: str = "0.0"
+                if algo_list:
+                    dur: float = df[
+                        (df["lc"] == lc)
+                        & (df["ver"] == ver)
+                        & (df["sp"] == "validated")
+                    ]["dur_total"].to_list()[0]
+                    hours = str(dec1(dur / 3600)) if dur >= 0 else "0"
+
                 df_support_matrix.at[lc, ver2vercol(ver)] = (
-                    c.SEP_ALGO.join(algo_list) if algo_list else pd.NA
+                    f"{hours}{c.SEP_ALGO}{c.SEP_ALGO.join(algo_list)}"
+                    if algo_list
+                    else pd.NA
                 )
 
         # Write out
         print(">>> Saving Support Matrix...")
-        df_write(
-            df_support_matrix,
-            os.path.join(
-                HERE,
-                c.DATA_DIRNAME,
-                c.RES_DIRNAME,
-                c.TSV_DIRNAME,
-                f"{c.SUPPORT_MATRIX_FN}.tsv",
-            ),
+        dst = os.path.join(
+            HERE,
+            c.DATA_DIRNAME,
+            c.RES_DIRNAME,
+            c.TSV_DIRNAME,
+            f"{c.SUPPORT_MATRIX_FN}.tsv",
         )
+        df_write(df_support_matrix, dst)
         df_support_matrix.to_json(
-            os.path.join(
-                HERE,
-                c.DATA_DIRNAME,
-                c.RES_DIRNAME,
-                c.JSON_DIRNAME,
-                f"{c.SUPPORT_MATRIX_FN}.json",
-            ),
+            dst.replace("tsv", "json"),
             orient="table",
             index=False,
         )
@@ -1739,8 +1738,8 @@ def main() -> None:
         main_splits()
 
     # SUPPORT MATRIX
-    if not conf.DEBUG:
-        main_support_matrix()
+    # if not conf.DEBUG:
+    main_support_matrix()
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
