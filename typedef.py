@@ -24,6 +24,11 @@ import pandas as pd
 # Pandas / ArrowDType definitions to use Arrow backend
 # See: https://pandas.pydata.org/docs/user_guide/pyarrow.html#data-structure-integration
 #
+dtype_pa_int8 = pd.ArrowDtype(pa.int8())
+dtype_pa_int16 = pd.ArrowDtype(pa.int16())
+dtype_pa_int32 = pd.ArrowDtype(pa.int32())
+dtype_pa_int64 = pd.ArrowDtype(pa.int64())
+
 dtype_pa_uint8 = pd.ArrowDtype(pa.uint8())
 dtype_pa_uint16 = pd.ArrowDtype(pa.uint16())
 dtype_pa_uint32 = pd.ArrowDtype(pa.uint32())
@@ -105,7 +110,7 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
 
     ver: str = ""  # cv version code (internal format nn.n, see const.py)
     lc: str = ""  # cv language code
-    algo: str = (
+    alg: str = (
         ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
     )
     sp: str = (
