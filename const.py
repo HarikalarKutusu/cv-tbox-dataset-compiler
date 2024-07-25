@@ -607,8 +607,9 @@ BINS_REPORTED: list[int] = [
     999999,
 ]
 
-# Sentence Length
-# For logogram languages
+# Sentence Length (measure by Python "len() function")
+CHARS_BIN_THRESHOLD: int = 30
+# For logogram languages (avg. sentence length < CHARS_BIN_THRESHOLD)
 BINS_CHARS_SHORT: list[int] = [
     0,
     1,

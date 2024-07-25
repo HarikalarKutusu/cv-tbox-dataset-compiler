@@ -278,6 +278,7 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     cs_threshold: int = 0
     bins_cs_low: list[int] = field(default_factory=lambda: [])
     bins_cs_high: list[int] = field(default_factory=lambda: [])
+    ch_threshold: int = 0
     bins_chars_short: list[int] = field(default_factory=lambda: [])
     bins_chars_long: list[int] = field(default_factory=lambda: [])
     bins_words: list[int] = field(default_factory=lambda: [])
