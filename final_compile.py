@@ -220,7 +220,7 @@ def main() -> None:
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
                 ):
                     results.extend(res)
-                    save_results()  # temporary saving: it takes a long time which might end, discard return
+                    # save_results()  # temporary saving: it takes a long time which might end, discard return
                     pbar.update()
                     for r in res:
                         if r.s_cnt == 0:
