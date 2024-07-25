@@ -57,7 +57,6 @@ from lib import (
     get_locales,
     arr2str,
     list2str,
-    mp_estimate_ram_usage,
     report_results,
     sort_by_largest_file,
     mp_schedular,
@@ -1313,9 +1312,7 @@ def main() -> None:
 
         proc_count: int
         chunk_size: int
-        proc_count, chunk_size = mp_schedular(
-            num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
-        )
+        proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
         print(
             f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} NoData: {g_tc.skipped_nodata} "
             + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
@@ -1427,7 +1424,7 @@ def main() -> None:
 
         proc_count: int
         chunk_size: int
-        proc_count, chunk_size = mp_schedular(num_items=num_items, ram_per_proc=0.5)
+        proc_count, chunk_size = mp_schedular(num_items, 1, 1)
         print(
             f"Total: {g_rep.total_lc} Missing: {g_rep.skipped_nodata} Remaining: {g_rep.processed_lc} "
             + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
@@ -1537,9 +1534,7 @@ def main() -> None:
 
         proc_count: int
         chunk_size: int
-        proc_count, chunk_size = mp_schedular(
-            num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
-        )
+        proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
         print(
             f"Processing {num_items} locales in {proc_count} processes with chunk_size {chunk_size}..."
         )

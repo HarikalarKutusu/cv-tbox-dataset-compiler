@@ -10,6 +10,7 @@ import sys
 import csv
 import json
 import multiprocessing as mp
+import gc
 
 # External dependencies
 from git import Repo
@@ -112,11 +113,21 @@ def report_results(g: Globals) -> None:
     )
 
 
-def mp_schedular(num_items: int, ram_per_proc: float) -> tuple[int, int]:
-    """Given number of items and estimated ram usage per proc, estimate process count and chunk size"""
-    # AVAILABLE RAM IN GBs (we try to not swap)
-    free_ram: int = psutil.virtual_memory().available // (1000 * 1000 * 1000)
-    procs_ram_limited: int = round(free_ram / ram_per_proc)
+def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int]:
+    """Given number of items and estimated ram usage per proc in MB, estimate process count and chunk size"""
+    # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
+    # - Add 100 MB for Python & local usage overhead
+    # - Take 80% to prevent outlier max file
+    # - Mmultiply it with 2 for local copy overhead
+    # 100 MB data file =>  2 * (100 + 80)  => 360 MB
+    # 1 GB data file => 2 * (100 + 800)  => 1800 MB
+    # mult: float = 1.0 - (max_size / avg_size) / 100
+    ram_per_proc: float = 2 * (100.0 + 0.8 * max_size / 1000000)
+
+    # AVAILABLE RAM IN MBs (we try to not swap)
+    gc.collect()
+    free_ram_mb: float = psutil.virtual_memory().available / 1000000  # MB
+    procs_ram_limited: int = round(free_ram_mb / ram_per_proc)
 
     # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
     procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
@@ -132,14 +143,6 @@ def mp_schedular(num_items: int, ram_per_proc: float) -> tuple[int, int]:
         num_items // procs_calcutaled + (0 if num_items % procs_calcutaled == 0 else 1),
     )
     return (procs_calcutaled, chunk_size)
-
-
-def mp_estimate_ram_usage(max_size: int, avg_size: int) -> int:
-    """Given max/avg file size to be processed, estimate RAM usage of a process in GB"""
-    # 100 MB file => 1.08 => 1
-    # 1000 MB file => 1.8 => 2
-    # We add 1 for Python & local usage overhead
-    return round(1 + max_size * 0.8 / (1000 * 1000 * 1000))
 
 
 #

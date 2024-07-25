@@ -42,7 +42,6 @@ from lib import (
     git_clone_or_pull_all,
     init_directories,
     mp_schedular,
-    mp_estimate_ram_usage,
     report_results,
     sort_by_largest_file,
 )
@@ -217,9 +216,7 @@ def handle_last_version() -> None:
     # Handle remaining locales in multi-processing
     proc_count: int
     chunk_size: int
-    proc_count, chunk_size = mp_schedular(
-        num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
-    )
+    proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
     print(
         f"Total: {total_locales} Existing: {total_locales-num_items} Remaining: {num_items} "
         + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
@@ -393,9 +390,7 @@ def handle_older_version(ver: str) -> None:
     # Handle remaining locales in multi-processing
     proc_count: int
     chunk_size: int
-    proc_count, chunk_size = mp_schedular(
-        num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
-    )
+    proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
     print(
         f"Total: {total_locales} Existing: {total_locales-num_items} Remaining: {num_items} "
         + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
