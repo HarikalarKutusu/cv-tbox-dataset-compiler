@@ -229,7 +229,12 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             _arr: np.ndarray = np.fromiter(
                 _ser.apply(int).reset_index(drop=True).to_list(), int
             )
-            _hist = np.histogram(_arr, bins=c.BINS_CHARS_LONG)
+            _sl_bins: list[int] = (
+                c.BINS_CHARS_SHORT
+                if res.c_avg < c.CS_BIN_THRESHOLD
+                else c.BINS_CHARS_LONG
+            )
+            _hist = np.histogram(_arr, bins=_sl_bins)
             res.c_freq = _hist[0].tolist()
 
         # GRAPHEMES
@@ -1004,7 +1009,7 @@ def handle_dataset_splits(
             col_labels: list
 
             # char_speed versus sentence length (using bins)
-            col_labels = c.BINS_CHARS_LONG[:-1]
+            col_labels = _sl_bins[:-1]
             # col_labels.append("TOTAL")
             cs_vs_slen: pd.DataFrame = pd.crosstab(
                 index=df["bin_cs"],
@@ -1697,6 +1702,7 @@ def main() -> None:
             cs_threshold=c.CS_BIN_THRESHOLD,
             bins_cs_low=c.BINS_CS_LOW[:-1],
             bins_cs_high=c.BINS_CS_HIGH[:-1],
+            ch_threshold=c.CHARS_BIN_THRESHOLD,
             bins_chars_short=c.BINS_CHARS_SHORT[:-1],
             bins_chars_long=c.BINS_CHARS_LONG[:-1],
             bins_words=c.BINS_WORDS[1:-1],
@@ -1738,8 +1744,8 @@ def main() -> None:
         main_splits()
 
     # SUPPORT MATRIX
-    # if not conf.DEBUG:
-    main_support_matrix()
+    if not conf.SKIP_SUPPORT_MATRIX:
+        main_support_matrix()
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
