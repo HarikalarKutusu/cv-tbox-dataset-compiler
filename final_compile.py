@@ -28,7 +28,6 @@ import multiprocessing as mp
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-import psutil
 import cvutils as cvu
 
 # Module
@@ -58,8 +57,10 @@ from lib import (
     get_locales,
     arr2str,
     list2str,
+    mp_estimate_ram_usage,
     report_results,
     sort_by_largest_file,
+    mp_schedular,
 )
 
 # Globals
@@ -67,10 +68,6 @@ from lib import (
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
-
-# PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
-PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
-MAX_BATCH_SIZE: int = 60
 
 ALL_LOCALES: list[str] = get_locales(c.CV_VERSIONS[-1])
 
@@ -1204,7 +1201,7 @@ def main() -> None:
     #
     def main_text_corpora() -> None:
         """Handle all text corpora"""
-        nonlocal used_proc_count
+        # nonlocal proc_count
 
         results: list[TextCorpusStatsRec] = []
 
@@ -1271,9 +1268,10 @@ def main() -> None:
                     HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
                 )
             )
-            lc_complete_list: list[str] = [
-                p.split(os.sep)[-2] for p in sort_by_largest_file(pp)
-            ]
+            avg_size: int
+            max_size: int
+            pp, avg_size, max_size = sort_by_largest_file(pp)
+            lc_complete_list: list[str] = [p.split(os.sep)[-2] for p in pp]
             lc_list = (
                 [lc for lc in lc_complete_list if lc in lc_list]
                 if not conf.DEBUG
@@ -1313,18 +1311,17 @@ def main() -> None:
             print("Nothing to process...")
             return
 
-        chunk_size: int = min(
-            MAX_BATCH_SIZE,
-            num_items // 100 + 1,
-            num_items // used_proc_count
-            + (0 if num_items % used_proc_count == 0 else 1),
+        proc_count: int
+        chunk_size: int
+        proc_count, chunk_size = mp_schedular(
+            num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
         )
         print(
             f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} NoData: {g_tc.skipped_nodata} "
-            + f"Remaining: {g_tc.processed_lc} Procs: {used_proc_count}  chunk_size: {chunk_size}..."
+            + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
 
-        with mp.Pool(used_proc_count) as pool:
+        with mp.Pool(proc_count) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
@@ -1428,20 +1425,15 @@ def main() -> None:
             print("Nothing to process...")
             return
 
-        used_proc_count = 1
-
-        chunk_size: int = min(
-            MAX_BATCH_SIZE,
-            num_items // 100 + 1,
-            num_items // used_proc_count
-            + (0 if num_items % used_proc_count == 0 else 1),
-        )
+        proc_count: int
+        chunk_size: int
+        proc_count, chunk_size = mp_schedular(num_items=num_items, ram_per_proc=0.5)
         print(
             f"Total: {g_rep.total_lc} Missing: {g_rep.skipped_nodata} Remaining: {g_rep.processed_lc} "
-            + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
+            + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
-        with mp.Pool(used_proc_count) as pool:
+        with mp.Pool(proc_count) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_reported, ver_lc_list, chunksize=chunk_size
@@ -1501,7 +1493,9 @@ def main() -> None:
             )
         ]
         # sort by largest first
-        pp = sort_by_largest_file(pp)
+        avg_size: int
+        max_size: int
+        pp, avg_size, max_size = sort_by_largest_file(pp)
 
         tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
         json_path: str = os.path.join(
@@ -1535,25 +1529,24 @@ def main() -> None:
         ret_cs: list[CharSpeedRec]
         results_ss: list[SplitStatsRec] = []
         results_cs: list[CharSpeedRec] = []
-        cnt_to_process: int = len(ds_paths)
+        num_items: int = len(ds_paths)
 
-        if cnt_to_process == 0:
+        if num_items == 0:
             print("Nothing to process")
             return
 
-        chunk_size: int = min(
-            MAX_BATCH_SIZE,
-            cnt_to_process // 100 + 1,
-            cnt_to_process // used_proc_count
-            + (0 if cnt_to_process % used_proc_count == 0 else 1),
+        proc_count: int
+        chunk_size: int
+        proc_count, chunk_size = mp_schedular(
+            num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
         )
         print(
-            f"Processing {cnt_to_process} locales in {used_proc_count} processes with chunk_size {chunk_size}..."
+            f"Processing {num_items} locales in {proc_count} processes with chunk_size {chunk_size}..."
         )
 
         # now process each dataset
-        with mp.Pool(used_proc_count) as pool:
-            with tqdm(total=cnt_to_process, desc="") as pbar:
+        with mp.Pool(proc_count) as pool:
+            with tqdm(total=num_items, desc="") as pbar:
                 for ret_ss, ret_cs in pool.imap_unordered(
                     handle_dataset_splits, ds_paths, chunksize=chunk_size
                 ):
@@ -1730,7 +1723,6 @@ def main() -> None:
     #
     # MAIN
     #
-    used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
     start_time: datetime = datetime.now()
 
     # TEXT-CORPORA

@@ -25,7 +25,6 @@ import multiprocessing as mp
 # External dependencies
 from tqdm import tqdm
 import pandas as pd
-import psutil
 import cvutils as cvu
 
 # Module
@@ -42,6 +41,8 @@ from lib import (
     git_checkout,
     git_clone_or_pull_all,
     init_directories,
+    mp_schedular,
+    mp_estimate_ram_usage,
     report_results,
     sort_by_largest_file,
 )
@@ -52,10 +53,6 @@ from typedef import Globals
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
-
-PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
-MAX_BATCH_SIZE: int = 1
-used_proc_count: int = conf.DEBUG_PROC_COUNT if conf.DEBUG else PROC_COUNT
 
 cv: cvu.CV = cvu.CV()
 VALIDATORS: list[str] = cv.validators()
@@ -197,8 +194,11 @@ def handle_last_version() -> None:
             c.TC_VALIDATED_FILE,
         )
     )
+    avg_size: int
+    max_size: int
+    pp, avg_size, max_size = sort_by_largest_file(pp)
     lc_list = (
-        [p.split(os.sep)[-2] for p in sort_by_largest_file(pp)]
+        [p.split(os.sep)[-2] for p in pp]
         if not conf.DEBUG
         else conf.DEBUG_CV_LC
     )
@@ -212,23 +212,23 @@ def handle_last_version() -> None:
         )
         or conf.FORCE_CREATE_TC_STATS
     ]
-    num_locales: int = len(ver_lc_list)
+    num_items: int = len(ver_lc_list)
 
     # Handle remaining locales in multi-processing
-    chunk_size: int = min(
-        MAX_BATCH_SIZE,
-        num_locales // used_proc_count
-        + (0 if num_locales % used_proc_count == 0 else 1),
+    proc_count: int
+    chunk_size: int
+    proc_count, chunk_size = mp_schedular(
+        num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
     )
     print(
-        f"Total: {total_locales} Existing: {total_locales-num_locales} Remaining: {num_locales} "
-        + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
+        f"Total: {total_locales} Existing: {total_locales-num_items} Remaining: {num_items} "
+        + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
     )
 
-    if num_locales > 0:
+    if num_items > 0:
         print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
-        with mp.Pool(used_proc_count) as pool:
-            with tqdm(total=num_locales, desc="Locales") as pbar:
+        with mp.Pool(proc_count) as pool:
+            with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_last_version_locale, ver_lc_list, chunksize=chunk_size
                 ):
@@ -238,8 +238,8 @@ def handle_last_version() -> None:
 
     g.total_lc += total_locales
     g.processed_ver += 1
-    g.processed_lc += num_locales
-    g.skipped_exists += total_locales - num_locales
+    g.processed_lc += num_items
+    g.skipped_exists += total_locales - num_items
 
 
 #
@@ -366,8 +366,11 @@ def handle_older_version(ver: str) -> None:
             HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
         )
     )
+    avg_size: int
+    max_size: int
+    pp, avg_size, max_size = sort_by_largest_file(pp)
     lc_complete_list: list[str] = [
-        p.split(os.sep)[-2] for p in sort_by_largest_file(pp)
+        p.split(os.sep)[-2] for p in pp
     ]
     lc_list = (
         [lc for lc in lc_complete_list if lc in lc_list]
@@ -385,24 +388,24 @@ def handle_older_version(ver: str) -> None:
         )
         or conf.FORCE_CREATE_TC_STATS
     ]
-    num_locales: int = len(ver_lc_list)
+    num_items: int = len(ver_lc_list)
 
     # Handle remaining locales in multi-processing
-    chunk_size: int = min(
-        MAX_BATCH_SIZE,
-        num_locales // used_proc_count
-        + (0 if num_locales % used_proc_count == 0 else 1),
+    proc_count: int
+    chunk_size: int
+    proc_count, chunk_size = mp_schedular(
+        num_items=num_items, ram_per_proc=mp_estimate_ram_usage(max_size, avg_size)
     )
     print(
-        f"Total: {total_locales} Existing: {total_locales-num_locales} Remaining: {num_locales} "
-        + f"Procs: {used_proc_count}  chunk_size: {chunk_size}..."
+        f"Total: {total_locales} Existing: {total_locales-num_items} Remaining: {num_items} "
+        + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
     )
 
-    if num_locales > 0:
+    if num_items > 0:
         # print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
         git_checkout(c.CV_GITREC, cutoff_date)
-        with mp.Pool(used_proc_count) as pool:
-            with tqdm(total=num_locales, desc="Locales") as pbar:
+        with mp.Pool(proc_count) as pool:
+            with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_old_version_locale, ver_lc_list, chunksize=chunk_size
                 ):
@@ -411,8 +414,8 @@ def handle_older_version(ver: str) -> None:
 
     g.total_lc += total_locales
     g.processed_ver += 1
-    g.processed_lc += num_locales
-    g.skipped_exists += total_locales - num_locales
+    g.processed_lc += num_items
+    g.skipped_exists += total_locales - num_items
 
 
 # MAIN PROCESS

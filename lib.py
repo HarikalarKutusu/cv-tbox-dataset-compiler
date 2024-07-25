@@ -112,6 +112,36 @@ def report_results(g: Globals) -> None:
     )
 
 
+def mp_schedular(num_items: int, ram_per_proc: float) -> tuple[int, int]:
+    """Given number of items and estimated ram usage per proc, estimate process count and chunk size"""
+    # AVAILABLE RAM IN GBs (we try to not swap)
+    free_ram: int = psutil.virtual_memory().available // (1000 * 1000 * 1000)
+    procs_ram_limited: int = round(free_ram / ram_per_proc)
+
+    # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
+    procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
+    procs_calcutaled: int = (
+        conf.DEBUG_PROC_COUNT
+        if conf.DEBUG
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_LIMIT)
+    )
+
+    chunk_size: int = min(
+        conf.CHUNKS_HARD_LIMIT,
+        num_items // 100 + 1,
+        num_items // procs_calcutaled + (0 if num_items % procs_calcutaled == 0 else 1),
+    )
+    return (procs_calcutaled, chunk_size)
+
+
+def mp_estimate_ram_usage(max_size: int, avg_size: int) -> int:
+    """Given max/avg file size to be processed, estimate RAM usage of a process in GB"""
+    # 100 MB file => 1.08 => 1
+    # 1000 MB file => 1.8 => 2
+    # We add 1 for Python & local usage overhead
+    return round(1 + max_size * 0.8 / (1000 * 1000 * 1000))
+
+
 #
 # DataFrames
 #
@@ -179,11 +209,7 @@ def df_int_convert(x: pd.Series) -> Any:
 
 def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Controlled concat of two dataframes"""
-    return (
-        df1
-        if df2.shape[0] == 0
-        else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
-    )
+    return df1 if df2.empty else df2 if df1.empty == 0 else pd.concat([df1, df2])
 
 
 #
@@ -602,13 +628,18 @@ def dec1(x: float) -> float:
 #
 # FS
 #
-def sort_by_largest_file(fpaths: list[str]) -> list[str]:
-    """Given a list of file paths, this gets the files sizes, sonts on them decending and returns the sorted file paths"""
+def sort_by_largest_file(fpaths: list[str]) -> tuple[list[str], int, int]:
+    """Given a list of file paths, this gets the files sizes, sorts on them decending and returns the sorted file paths with average file size"""
     recs: list[list[str | int]] = []
+    sum_sizes: int = 0
+    max_size: int = 0
     for p in fpaths:
-        recs.append([p, os.path.getsize(p)])
+        size: int = os.path.getsize(p)
+        max_size = max(max_size, size)
+        sum_sizes += size
+        recs.append([p, size])
     recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
-    return [str(row[0]) for row in recs]
+    return ([str(row[0]) for row in recs], sum_sizes // len(fpaths), max_size)
 
 
 #

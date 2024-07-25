@@ -32,11 +32,12 @@ COMPRESSED_RESULTS_BASE_DIR: str = os.path.join("T:", os.sep, "TBOX", "ds_split_
 SKIP_TEXT_CORPORA: bool = False
 SKIP_REPORTED: bool = False
 SKIP_VOICE_CORPORA: bool = False
+SKIP_SUPPORT_MATRIX: bool = False
 
 # Should we re-create old version even if they exist?
 FORCE_CREATE_TC_STATS: bool = False
-FORCE_CREATE_VC_STATS: bool = False
 FORCE_CREATE_REPORTED_STATS: bool = False
+FORCE_CREATE_VC_STATS: bool = False
 # Should we re-create the compressed .tar files even if they exist?
 FORCE_CREATE_COMPRESSED: bool = False
 
@@ -56,3 +57,7 @@ DEBUG_CV_LC: list[str] = ["tr"]
 CREATE_TS_NOT_FOUND: bool = False
 # Create corrected & problems files
 CREATE_REPORTED_PROBLEMS: bool = False
+
+# Multi-processing limiters
+PROCS_HARD_LIMIT: int = 1000
+CHUNKS_HARD_LIMIT: int = 60
