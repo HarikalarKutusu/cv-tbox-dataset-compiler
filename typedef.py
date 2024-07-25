@@ -251,9 +251,9 @@ class CharSpeedRec:  # pylint: disable=too-many-instance-attributes
     cs_r: str = ""  # row labels for all crosstabs (from list of int)
     cs2s_c: str = ""  # col labels for sentence length (from list of int)
 
-    cs2s: str = ""  # char-speed vs sentence length
-    cs2g: str = ""  # char-speed vs gender (columns are known)
-    cs2a: str = ""  # char-speed vs age (columns are known)
+    cs2s: str = ""  # char-speed vs sentence length (from arr of int)
+    cs2g: str = ""  # char-speed vs gender (columns are known) (from arr of int)
+    cs2a: str = ""  # char-speed vs age (columns are known) (from arr of int)
 
 
 #
