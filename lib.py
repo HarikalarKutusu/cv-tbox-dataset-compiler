@@ -121,6 +121,8 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     # - Mmultiply it with 2 for local copy overhead
     # 100 MB data file =>  2 * (100 + 80)  => 360 MB
     # 1 GB data file => 2 * (100 + 800)  => 1800 MB
+
+    # [TODO] Add avg into calculation of 0.8 as variable
     # mult: float = 1.0 - (max_size / avg_size) / 100
     ram_per_proc: float = 2 * (100.0 + 0.8 * max_size / 1000000)
 
@@ -128,10 +130,11 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     gc.collect()
     free_ram_mb: float = psutil.virtual_memory().available / 1000000  # MB
     procs_ram_limited: int = round(free_ram_mb / ram_per_proc)
+    print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
 
     # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
     procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
-    procs_calcutaled: int = (
+    procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
         else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_LIMIT)
@@ -140,9 +143,9 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     chunk_size: int = min(
         conf.CHUNKS_HARD_LIMIT,
         num_items // 100 + 1,
-        num_items // procs_calcutaled + (0 if num_items % procs_calcutaled == 0 else 1),
+        num_items // procs_calculated + (0 if num_items % procs_calculated == 0 else 1),
     )
-    return (procs_calcutaled, chunk_size)
+    return (procs_calculated, chunk_size)
 
 
 #
