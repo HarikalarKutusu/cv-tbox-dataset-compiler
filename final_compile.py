@@ -144,7 +144,9 @@ def main() -> None:
 
         ver_lc_list: list[str] = []  # final
         # start with newer, thus larger / longer versions' data
-        versions: list[str] = c.CV_VERSIONS.copy()
+        versions: list[str] = (
+            c.CV_VERSIONS.copy() if not conf.DEBUG else conf.DEBUG_CV_VER.copy()
+        )
         versions.reverse()
         # For each version
         for ver in versions:
@@ -214,7 +216,7 @@ def main() -> None:
             + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
 
-        with mp.Pool(proc_count) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
@@ -326,7 +328,7 @@ def main() -> None:
             + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
-        with mp.Pool(proc_count) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_reported, ver_lc_list, chunksize=chunk_size
@@ -436,7 +438,7 @@ def main() -> None:
         )
 
         # now process each dataset
-        with mp.Pool(proc_count) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for ret_ss, ret_cs in pool.imap_unordered(
                     handle_dataset_splits, ds_paths, chunksize=chunk_size
@@ -488,7 +490,7 @@ def main() -> None:
             c.DATA_DIRNAME,
             c.RES_DIRNAME,
             c.TSV_DIRNAME,
-            "$combined_splits.tsv",
+            "$vc_stats.tsv",
         )
         df_write(df, dst)
 
@@ -499,7 +501,7 @@ def main() -> None:
 
         # get some stats
         g.total_splits = df.shape[0]
-        g.total_lc = df[df["sp"] == ""].shape[0]
+        g.total_lc = df["lc"].unique().shape[0]
 
         # get algo view
         df_algo: pd.DataFrame = df[["ver", "lc", "alg"]].drop_duplicates()
@@ -646,7 +648,35 @@ def main() -> None:
     )
 
 
+def mp_test():
+
+    def test(patt: str):
+        pp: list[str] = glob.glob(patt, recursive=True)
+        print(patt, len(pp))
+        num_items: int = len(pp)
+        avg_size: int
+        max_size: int
+        pp, avg_size, max_size = sort_by_largest_file(pp)
+        proc_count: int
+        chunk_size: int
+        proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
+        print(
+            num_items, max_size // 1000000, avg_size // 1000000, proc_count, chunk_size
+        )
+
+    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "validated.tsv")
+    test(patt)
+    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "reported.tsv")
+    test(patt)
+    patt: str = os.path.join(
+        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", "$text_corpus.tsv"
+    )
+    test(patt)
+    sys.exit()
+
+
 if __name__ == "__main__":
+    # mp_test()
     print("=== cv-tbox-dataset-analyzer - Final Statistics Compilation ===")
     init_directories(HERE)
     main()
