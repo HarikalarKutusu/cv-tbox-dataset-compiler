@@ -78,7 +78,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         res: TextCorpusStatsRec = TextCorpusStatsRec(
             ver=ver,
             lc=lc,
-            alg=algo,
+            algo=algo,
             sp=sp,
             has_val=has_validator,
             has_phon=has_phonemiser,
@@ -164,6 +164,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             )
             _values = _df2.values.tolist()
             res.p_cnt = len(_values)
+            _values = _values[:100]
             res.p_items = list2str([x[0] for x in _values])
             res.p_freq = [x[1] for x in _values]
             if do_save:
@@ -205,6 +206,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         _df2 = pd.DataFrame(grapheme_counter.most_common(), columns=c.FIELDS_GRAPHEMES)
         _values = _df2.values.tolist()
         res.g_cnt = len(_values)
+        _values = _values[:100]
         res.g_items = list2str([x[0] for x in _values])
         res.g_freq = [x[1] for x in _values]
         if do_save:
@@ -352,6 +354,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
     handle_tc_global(df_base_ver_tc)
     for sp in ["validated", "invalidated", "other"]:
         handle_tc_split(df_base_ver_tc, sp, c.ALGORITHMS[0])
+        # handle_tc_split(df_base_ver_tc, sp, "")
 
     for algo in c.ALGORITHMS:
         for sp in ["train", "dev", "test"]:
@@ -635,7 +638,9 @@ def handle_dataset_splits(
         # Normalize data to the latest version's columns with typing
         # Replace NA with NODATA with some typing and conditionals
         # df: pd.DataFrame = df_orig.fillna(value=c.NODATA)
-        df: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_BUCKETS_SPLITS)
+        df: pd.DataFrame = pd.DataFrame(
+            columns=list(c.FIELDS_BUCKETS_SPLITS.keys())
+        ).astype(c.FIELDS_BUCKETS_SPLITS)
         # these should exist
         df["client_id"] = df_orig["client_id"]
         df["path"] = df_orig["path"]
@@ -643,33 +648,37 @@ def handle_dataset_splits(
         df["up_votes"] = df_orig["up_votes"]
         df["down_votes"] = df_orig["down_votes"]
         # these exist, but can be NaN
-        df["age"] = df_orig["age"].fillna(c.NODATA)
-        df["gender"] = df_orig["gender"].fillna(c.NODATA)
+        df["age"] = df_orig["age"].astype(dtype_pa_str).fillna(c.NODATA)
+        df["gender"] = df_orig["gender"].astype(dtype_pa_str).fillna(c.NODATA)
         # These might not exist in older versions, so we fill them
-        df["locale"] = df_orig["locale"] if "locale" in df_orig.columns else lc
+        df["locale"] = (
+            df_orig["locale"].astype(dtype_pa_str)
+            if "locale" in df_orig.columns
+            else lc
+        )
         df["variant"] = (
-            df_orig["variant"].fillna(c.NODATA)
+            df_orig["variant"].astype(dtype_pa_str).fillna(c.NODATA)
             if "variant" in df_orig.columns
             else c.NODATA
         )
         df["segment"] = (
-            df_orig["segment"].fillna(c.NODATA)
+            df_orig["segment"].astype(dtype_pa_str).fillna(c.NODATA)
             if "segment" in df_orig.columns
             else c.NODATA
         )
         df["sentence_domain"] = (
-            df_orig["sentence_domain"].fillna(c.NODATA)
+            df_orig["sentence_domain"].astype(dtype_pa_str).fillna(c.NODATA)
             if "sentence_domain" in df_orig.columns
             else c.NODATA
         )
         # The "accent" column renamed to "accents" along the way
         if "accent" in df_orig.columns:
-            df["accents"] = df_orig["accent"].fillna(c.NODATA)
+            df["accents"] = df_orig["accent"].astype(dtype_pa_str).fillna(c.NODATA)
         if "accents" in df_orig.columns:
-            df["accents"] = df_orig["accents"].fillna(c.NODATA)
+            df["accents"] = df_orig["accents"].astype(dtype_pa_str).fillna(c.NODATA)
         # [TODO] this needs special consideration (back-lookup) but has quirks for now
         df["sentence_id"] = (
-            df_orig["sentence_id"].fillna(c.NODATA)
+            df_orig["sentence_id"].astype(dtype_pa_str).fillna(c.NODATA)
             if "sentence_id" in df_orig.columns
             else c.NODATA
         )
@@ -918,6 +927,7 @@ def handle_dataset_splits(
                 .astype(str)
                 .apply(lambda x: len(x) if pd.notna(x) else pd.NA)
             )
+            avg_slen: float = df["s_len"].dropna().aggregate("mean")
             df = df.assign(
                 char_speed=lambda x: round(1000 * (x["duration"] / x["s_len"]))
             )
@@ -927,13 +937,13 @@ def handle_dataset_splits(
             cs_mean: float = ser.mean()
             cs_median: float = ser.median()
             cs_std: float = ser.std(ddof=0)
-            # decide which bin should be used
+            # decide which bin(s) should be used
             _cs_bins: list[int] = (
                 c.BINS_CS_LOW if cs_mean < c.CS_BIN_THRESHOLD else c.BINS_CS_HIGH
             )
             _sl_bins: list[int] = (
                 c.BINS_CHARS_SHORT
-                if cs_mean < c.CS_BIN_THRESHOLD
+                if avg_slen < c.CHARS_BIN_THRESHOLD
                 else c.BINS_CHARS_LONG
             )
 
