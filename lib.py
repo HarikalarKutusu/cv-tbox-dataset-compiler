@@ -130,20 +130,24 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     gc.collect()
     free_ram_mb: float = psutil.virtual_memory().available / 1000000  # MB
     procs_ram_limited: int = round(free_ram_mb / ram_per_proc)
-    print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
+    # print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
 
     # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
     procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
     procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
-        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_LIMIT)
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX)
     )
 
-    chunk_size: int = min(
-        conf.CHUNKS_HARD_LIMIT,
-        num_items // 100 + 1,
-        num_items // procs_calculated + (0 if num_items % procs_calculated == 0 else 1),
+    chunk_size: int = max(
+        conf.CHUNKS_HARD_MIN,
+        min(
+            conf.CHUNKS_HARD_MAX,
+            num_items // 100 + 1,
+            num_items // procs_calculated
+            + (0 if num_items % procs_calculated == 0 else 1),
+        ),
     )
     return (procs_calculated, chunk_size)
 
@@ -174,7 +178,7 @@ def df_read(
         quotechar='"',
         quoting=csv.QUOTE_NONE,
         skip_blank_lines=True,
-        engine="python",  # "pyarrow"
+        # engine="python",  # "pyarrow"
         usecols=use_cols,
         dtype_backend="pyarrow",
         dtype=dtypes,
@@ -200,7 +204,7 @@ def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
         quoting=csv.QUOTE_NONE,
     )
     # float_format="%.4f"
-    if conf.DEBUG:
+    if conf.VERBOSE:
         print(f"Generated: {fpath} Records={df.shape[0]}")
     return True
 
