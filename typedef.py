@@ -110,7 +110,7 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
 
     ver: str = ""  # cv version code (internal format nn.n, see const.py)
     lc: str = ""  # cv language code
-    alg: str = (
+    algo: str = (
         ""  # splitting algorithm the analysis based on (empty for buckets validated etc)
     )
     sp: str = (
