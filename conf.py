@@ -49,8 +49,8 @@ SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: list[str] = ["18.0"]
-DEBUG_CV_LC: list[str] = ["tr"]
+DEBUG_CV_VER: list[str] = ["17.0", "18.0"]
+DEBUG_CV_LC: list[str] = ["tr", "yue"]
 
 # This is independent of debug value
 # Create "not_found" files for text corpora?
@@ -59,5 +59,6 @@ CREATE_TS_NOT_FOUND: bool = False
 CREATE_REPORTED_PROBLEMS: bool = False
 
 # Multi-processing limiters
-PROCS_HARD_LIMIT: int = 1000
-CHUNKS_HARD_LIMIT: int = 60
+PROCS_HARD_MAX: int = 1000
+CHUNKS_HARD_MIN: int = 5
+CHUNKS_HARD_MAX: int = 60

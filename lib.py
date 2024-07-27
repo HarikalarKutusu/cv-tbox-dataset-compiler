@@ -124,7 +124,7 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
 
     # [TODO] Add avg into calculation of 0.8 as variable
     # mult: float = 1.0 - (max_size / avg_size) / 100
-    ram_per_proc: float = 2 * (100.0 + 0.8 * max_size / 1000000)
+    ram_per_proc: float = 2 * (50.0 + avg_size / 1000000)
 
     # AVAILABLE RAM IN MBs (we try to not swap)
     gc.collect()
