@@ -10,6 +10,7 @@ import sys
 import csv
 import json
 import multiprocessing as mp
+import gc
 
 # External dependencies
 from git import Repo
@@ -112,6 +113,45 @@ def report_results(g: Globals) -> None:
     )
 
 
+def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int]:
+    """Given number of items and estimated ram usage per proc in MB, estimate process count and chunk size"""
+    # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
+    # - Add 100 MB for Python & local usage overhead
+    # - Take 80% to prevent outlier max file
+    # - Mmultiply it with 2 for local copy overhead
+    # 100 MB data file =>  2 * (100 + 80)  => 360 MB
+    # 1 GB data file => 2 * (100 + 800)  => 1800 MB
+
+    # [TODO] Add avg into calculation of 0.8 as variable
+    # mult: float = 1.0 - (max_size / avg_size) / 100
+    ram_per_proc: float = 2 * (50.0 + avg_size / 1000000)
+
+    # AVAILABLE RAM IN MBs (we try to not swap)
+    gc.collect()
+    free_ram_mb: float = psutil.virtual_memory().available / 1000000  # MB
+    procs_ram_limited: int = round(free_ram_mb / ram_per_proc)
+    # print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
+
+    # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
+    procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
+    procs_calculated: int = (
+        conf.DEBUG_PROC_COUNT
+        if conf.DEBUG
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX)
+    )
+
+    chunk_size: int = max(
+        conf.CHUNKS_HARD_MIN,
+        min(
+            conf.CHUNKS_HARD_MAX,
+            num_items // 100 + 1,
+            num_items // procs_calculated
+            + (0 if num_items % procs_calculated == 0 else 1),
+        ),
+    )
+    return (procs_calculated, chunk_size)
+
+
 #
 # DataFrames
 #
@@ -138,7 +178,7 @@ def df_read(
         quotechar='"',
         quoting=csv.QUOTE_NONE,
         skip_blank_lines=True,
-        engine="python",  # "pyarrow"
+        # engine="python",  # "pyarrow"
         usecols=use_cols,
         dtype_backend="pyarrow",
         dtype=dtypes,
@@ -164,7 +204,7 @@ def df_write(df: pd.DataFrame, fpath: Any, mode: Any = "w") -> bool:
         quoting=csv.QUOTE_NONE,
     )
     # float_format="%.4f"
-    if conf.DEBUG:
+    if conf.VERBOSE:
         print(f"Generated: {fpath} Records={df.shape[0]}")
     return True
 
@@ -179,11 +219,7 @@ def df_int_convert(x: pd.Series) -> Any:
 
 def df_concat(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Controlled concat of two dataframes"""
-    return (
-        df1
-        if df2.shape[0] == 0
-        else df2 if df1.shape[0] == 0 else pd.concat([df1, df2])
-    )
+    return df1 if df2.empty else df2 if df1.empty == 0 else pd.concat([df1, df2])
 
 
 #
@@ -589,16 +625,31 @@ def dec3(x: float) -> float:
     return round(1000 * x) / 1000
 
 
+def dec2(x: float) -> float:
+    """Make to 3 decimals"""
+    return round(100 * x) / 100
+
+
+def dec1(x: float) -> float:
+    """Make to 3 decimals"""
+    return round(10 * x) / 10
+
+
 #
 # FS
 #
-def sort_by_largest_file(fpaths: list[str]) -> list[str]:
-    """Given a list of file paths, this gets the files sizes, sonts on them decending and returns the sorted file paths"""
+def sort_by_largest_file(fpaths: list[str]) -> tuple[list[str], int, int]:
+    """Given a list of file paths, this gets the files sizes, sorts on them decending and returns the sorted file paths with average file size"""
     recs: list[list[str | int]] = []
+    sum_sizes: int = 0
+    max_size: int = 0
     for p in fpaths:
-        recs.append([p, os.path.getsize(p)])
+        size: int = os.path.getsize(p)
+        max_size = max(max_size, size)
+        sum_sizes += size
+        recs.append([p, size])
     recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
-    return [str(row[0]) for row in recs]
+    return ([str(row[0]) for row in recs], sum_sizes // len(fpaths), max_size)
 
 
 #

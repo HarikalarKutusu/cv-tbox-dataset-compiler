@@ -21,12 +21,12 @@ import pandas as pd
 from typedef import (
     GitRec,
     dtype_pa_uint8,
-    dtype_pa_uint16,
+    dtype_pa_int16,
     dtype_pa_uint32,
     dtype_pa_uint64,
-    # dtype_pa_float16,
+    dtype_pa_float16,
     dtype_pa_float32,
-    # dtype_pa_float64,
+    dtype_pa_float64,
     dtype_pa_str,
     dtype_pa_list_str,
     # dtype_pa_list_uint8,
@@ -116,8 +116,8 @@ FIELDS_BUCKETS_SPLITS: dict[str, pd.ArrowDtype] = {
     "sentence_id": dtype_pa_str,
     "sentence": dtype_pa_str,
     "sentence_domain": dtype_pa_str,
-    "up_votes": dtype_pa_uint16,
-    "down_votes": dtype_pa_uint16,
+    "up_votes": dtype_pa_int16,
+    "down_votes": dtype_pa_int16,
     "age": dtype_pa_str,
     "gender": dtype_pa_str,
     "accents": dtype_pa_str,
@@ -219,6 +219,53 @@ FIELDS_CLIP_DURATIONS: dict[str, pd.ArrowDtype] = {
 }
 
 #
+# SPLIT STATS
+#
+FIELDS_SPLIT_STATS: dict[str, pd.ArrowDtype] = {
+    "ver": dtype_pa_str,
+    "lc": dtype_pa_str,
+    "alg": dtype_pa_str,
+    "sp": dtype_pa_str,
+    "clips": dtype_pa_uint32,
+    "uq_v": dtype_pa_uint32,
+    "uq_s": dtype_pa_uint32,
+    "uq_sl": dtype_pa_uint32,
+    # Duration
+    "dur_total": dtype_pa_float64,
+    "dur_avg": dtype_pa_float16,
+    "dur_med": dtype_pa_float16,
+    "dur_std": dtype_pa_float16,
+    "dur_freq": dtype_pa_str,
+    # Recordings per Voice
+    "v_avg": dtype_pa_float16,
+    "v_med": dtype_pa_float16,
+    "v_std": dtype_pa_float16,
+    "v_freq": dtype_pa_str,
+    # Recordings per Sentence
+    "s_avg": dtype_pa_float16,
+    "s_med": dtype_pa_float16,
+    "s_std": dtype_pa_float16,
+    "s_freq": dtype_pa_str,
+    # Votes (UpVotes, DownVotes)
+    "uv_sum": dtype_pa_uint32,
+    "uv_avg": dtype_pa_float16,
+    "uv_med": dtype_pa_float16,
+    "uv_std": dtype_pa_float16,
+    "uv_freq": dtype_pa_str,
+    "dv_sum": dtype_pa_uint32,
+    "dv_avg": dtype_pa_float16,
+    "dv_med": dtype_pa_float16,
+    "dv_std": dtype_pa_float16,
+    "dv_freq": dtype_pa_str,
+    # Demographics distribution for recordings
+    "dem_table": dtype_pa_str,
+    "dem_uq": dtype_pa_str,
+    "dem_fix_r": dtype_pa_str,
+    "dem_fix_v": dtype_pa_str,
+}
+
+
+#
 # TEXT-CORPUS RELATED
 #
 TC_BUCKETS: list[str] = ["validated_sentences", "unvalidated_sentences"]
@@ -238,7 +285,7 @@ FIELDS_TC_VALIDATED: dict[str, pd.ArrowDtype] = {
     "sentence_domain": dtype_pa_str,
     "source": dtype_pa_str,
     "is_used": dtype_pa_uint8,
-    "clips_count": dtype_pa_uint16,
+    "clips_count": dtype_pa_int16,
 }
 
 FIELDS_TEXT_CORPUS: dict[str, pd.ArrowDtype] = {
@@ -251,7 +298,7 @@ FIELDS_TEXT_CORPUS: dict[str, pd.ArrowDtype] = {
     "normalized": dtype_pa_str,
     "phonemised": dtype_pa_str,
     "tokens": dtype_pa_list_str,
-    "char_cnt": dtype_pa_uint16,
+    "char_cnt": dtype_pa_int16,
     "word_cnt": dtype_pa_uint8,
     "valid": dtype_pa_uint8,
 }
@@ -282,13 +329,13 @@ FIELDS_TC_STATS: dict[str, pd.ArrowDtype] = {
     "t_med": dtype_pa_float32,
     "t_std": dtype_pa_float32,
     "t_freq": dtype_pa_list_uint64,
-    "g_cnt": dtype_pa_uint16,
+    "g_cnt": dtype_pa_int16,
     "g_items": dtype_pa_str,  # dtype_pa_list_str,
     "g_freq": dtype_pa_list_uint64,
-    "p_cnt": dtype_pa_uint16,
+    "p_cnt": dtype_pa_int16,
     "p_items": dtype_pa_str,  # dtype_pa_list_str,
     "p_freq": dtype_pa_list_uint64,
-    "dom_cnt": dtype_pa_uint16,
+    "dom_cnt": dtype_pa_int16,
     "dom_items": dtype_pa_list_str,
     "dom_freq": dtype_pa_list_uint64,
 }
@@ -449,31 +496,6 @@ BINS_SENTENCES: list[int] = [
     100,
     999999,
 ]
-BINS_CHARS: list[int] = [
-    0,
-    10,
-    20,
-    30,
-    40,
-    50,
-    60,
-    70,
-    80,
-    90,
-    100,
-    110,
-    120,
-    130,
-    140,
-    150,
-    160,
-    170,
-    180,
-    190,
-    200,
-    250,
-    999999,
-]
 BINS_WORDS: list[int] = [
     0,
     1,
@@ -582,6 +604,110 @@ BINS_REPORTED: list[int] = [
     100,
     500,
     1000,
+    999999,
+]
+
+# Sentence Length (measure by Python "len() function")
+CHARS_BIN_THRESHOLD: int = 30
+# For logogram languages (avg. sentence length < CHARS_BIN_THRESHOLD)
+BINS_CHARS_SHORT: list[int] = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
+    60,
+    70,
+    80,
+    999999,
+]
+# Regular languages
+BINS_CHARS_LONG: list[int] = [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+    110,
+    120,
+    130,
+    140,
+    150,
+    160,
+    170,
+    180,
+    190,
+    200,
+    250,
+    999999,
+]
+
+# Character Speed
+# Average CS to decide between bin types
+CS_BIN_THRESHOLD: int = 300
+# This one is for latin
+BINS_CS_LOW: list[int] = [
+    0,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+    110,
+    120,
+    130,
+    140,
+    150,
+    175,
+    200,
+    250,
+    300,
+    350,
+    400,
+    999999,
+]
+
+# This one usually is for logograğhic languages (one char = a word)
+BINS_CS_HIGH: list[int] = [
+    0,
+    100,
+    200,
+    250,
+    300,
+    325,
+    350,
+    375,
+    400,
+    425,
+    450,
+    475,
+    500,
+    525,
+    550,
+    575,
+    600,
+    650,
     999999,
 ]
 

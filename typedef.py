@@ -24,6 +24,11 @@ import pandas as pd
 # Pandas / ArrowDType definitions to use Arrow backend
 # See: https://pandas.pydata.org/docs/user_guide/pyarrow.html#data-structure-integration
 #
+dtype_pa_int8 = pd.ArrowDtype(pa.int8())
+dtype_pa_int16 = pd.ArrowDtype(pa.int16())
+dtype_pa_int32 = pd.ArrowDtype(pa.int32())
+dtype_pa_int64 = pd.ArrowDtype(pa.int64())
+
 dtype_pa_uint8 = pd.ArrowDtype(pa.uint8())
 dtype_pa_uint16 = pd.ArrowDtype(pa.uint16())
 dtype_pa_uint32 = pd.ArrowDtype(pa.uint32())
@@ -113,6 +118,11 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     )
     has_val: bool = False  # if commonvoice-utils has validator for it
     has_phon: bool = False  # if commonvoice-utils has phonemiser for it
+    # data from validated_sentences.tsv & unvalidated_sentences.tsv
+    ## recordable (validated_sentences.tsv is_used = 1)
+    ## disabled (validated_sentences.tsv is_used = 0)
+    ## disabled sentences recorded count (validated_sentences.tsv is_used = 0 & sum(clips_count))
+    ## invalidated & not-yet validated (validated_sentences.tsv just num rows)
     # sentence statistics
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
@@ -209,6 +219,7 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     s_med: float = 0.0  # median
     s_std: float = 0.0  # standard deviation
     s_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
+
     # Votes (UpVotes, DownVotes)
     uv_sum: int = 0  # total
     uv_avg: float = 0.0  # average (mean)
@@ -225,6 +236,29 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     dem_uq: list[list[int]] = field(default_factory=lambda: [])
     dem_fix_r: list[int] = field(default_factory=lambda: [])
     dem_fix_v: list[int] = field(default_factory=lambda: [])
+
+
+@dataclass
+class CharSpeedRec:  # pylint: disable=too-many-instance-attributes
+    """Record definition for dataset split statistics"""
+
+    ver: str = ""  # cv version code (internal format nn.n, see const.py)
+    lc: str = ""  # cv language code
+    alg: str = ""  # cv-tbox splitting algorithm (see const.py)
+    sp: str = ""  # split name (blank, train, dev, test)
+    clips: int = 0  # number of recordings
+    # Character Speed data
+    cs_avg: float = 0.0  # average (mean)
+    cs_med: float = 0.0  # median
+    cs_std: float = 0.0  # standard deviation
+    cs_freq: list[int] = field(default_factory=lambda: [])  # frequency distribution
+    # CrossTabs
+    cs_r: str = ""  # row labels for all crosstabs (from list of int)
+    cs2s_c: str = ""  # col labels for sentence length (from list of int)
+
+    cs2s: str = ""  # char-speed vs sentence length (from arr of int)
+    cs2g: str = ""  # char-speed vs gender (columns are known) (from arr of int)
+    cs2a: str = ""  # char-speed vs age (columns are known) (from arr of int)
 
 
 #
@@ -246,7 +280,12 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     bins_votes_up: list[int] = field(default_factory=lambda: [])
     bins_votes_down: list[int] = field(default_factory=lambda: [])
     bins_sentences: list[int] = field(default_factory=lambda: [])
-    bins_chars: list[int] = field(default_factory=lambda: [])
+    cs_threshold: int = 0
+    bins_cs_low: list[int] = field(default_factory=lambda: [])
+    bins_cs_high: list[int] = field(default_factory=lambda: [])
+    ch_threshold: int = 0
+    bins_chars_short: list[int] = field(default_factory=lambda: [])
+    bins_chars_long: list[int] = field(default_factory=lambda: [])
     bins_words: list[int] = field(default_factory=lambda: [])
     bins_tokens: list[int] = field(default_factory=lambda: [])
     bins_reported: list[int] = field(default_factory=lambda: [])
