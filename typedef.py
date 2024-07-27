@@ -118,6 +118,11 @@ class TextCorpusStatsRec:  # pylint: disable=too-many-instance-attributes
     )
     has_val: bool = False  # if commonvoice-utils has validator for it
     has_phon: bool = False  # if commonvoice-utils has phonemiser for it
+    # data from validated_sentences.tsv & unvalidated_sentences.tsv
+    ## recordable (validated_sentences.tsv is_used = 1)
+    ## disabled (validated_sentences.tsv is_used = 0)
+    ## disabled sentences recorded count (validated_sentences.tsv is_used = 0 & sum(clips_count))
+    ## invalidated & not-yet validated (validated_sentences.tsv just num rows)
     # sentence statistics
     s_cnt: int = 0  # raw sentence count
     uq_s: int = 0  # unique sentence count
