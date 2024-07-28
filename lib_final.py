@@ -195,7 +195,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             )
             _sl_bins: list[int] = (
                 c.BINS_CHARS_SHORT
-                if res.c_avg < c.CS_BIN_THRESHOLD
+                if res.c_avg < c.CHARS_BIN_THRESHOLD
                 else c.BINS_CHARS_LONG
             )
             _hist = np.histogram(_arr, bins=_sl_bins)
