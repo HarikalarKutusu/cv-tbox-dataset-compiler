@@ -1,6 +1,6 @@
-pandas
-pyarrow
-psutil
-tqdm
-gitpython
+pandas>=2.2.3
+pyarrow>=17.0.0
+psutil>=6.0.0
+tqdm>=6.55.5
+gitpython>=3.1.43
 git+https://github.com/ftyers/commonvoice-utils.git@main
