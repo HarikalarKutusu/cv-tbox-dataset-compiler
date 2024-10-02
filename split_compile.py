@@ -45,9 +45,9 @@ g: Globals = Globals(
 def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
     # Destination voice corpus
-    vc_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+    vc_dir_base: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
     # Destination clip durations
-    cd_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME)
+    cd_dir_base: str = os.path.join(conf.DATA_BASE_DIR, c.CD_DIRNAME)
     # CV Release directory name
     ver_dir: str = ""
 

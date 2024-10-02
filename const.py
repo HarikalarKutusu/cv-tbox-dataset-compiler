@@ -71,7 +71,7 @@ CV_VERSIONS: list[str] = [
     "16.1",
     "17.0",
     "18.0",
-    # "19.0",
+    "19.0",
     # "20.0",
 ]
 
@@ -93,7 +93,7 @@ CV_DATES: list[str] = [
     "2023-12-06",
     "2024-03-15",
     "2024-06-14",
-    # "2024-09-00",
+    "2024-09-13",
     # "2024-12-00",
 ]
 
@@ -396,7 +396,6 @@ SEP_ALGO: str = "|"
 #
 # DIRECTORIES / FILENAMES
 #
-DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
 TC_DIRNAME: str = "text-corpus"
@@ -455,6 +454,7 @@ BINS_DURATION: list[int] = [
     30,
     999999,
 ]
+
 BINS_VOICES: list[int] = [
     0,
     1,
@@ -688,7 +688,7 @@ BINS_CS_LOW: list[int] = [
     999999,
 ]
 
-# This one usually is for logograğhic languages (one char = a word)
+# This one usually is for logographic languages (one char = a word)
 BINS_CS_HIGH: list[int] = [
     0,
     100,
@@ -708,6 +708,73 @@ BINS_CS_HIGH: list[int] = [
     575,
     600,
     650,
+    999999,
+]
+
+#
+# AUDIO ANALYSIS RELATED BINS
+#
+
+BINS_VAD_DURATION: list[int] = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    20,
+    30,
+    999999,
+]
+
+BINS_POWER: list[float] = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    20,
+    30,
+    999999,
+]
+
+BINS_SNR: list[int] = [
+    -9999999,
+    -30,
+    -20,
+    -10,
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
     999999,
 ]
 

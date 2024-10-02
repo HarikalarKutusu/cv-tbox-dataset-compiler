@@ -81,10 +81,10 @@ def main() -> None:
     """Compile all data by calculating stats"""
 
     res_json_base_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME
     )
     res_tsv_base_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME
     )
 
     def ver2vercol(ver: str) -> str:
@@ -114,7 +114,7 @@ def main() -> None:
 
         print("\n=== Start Text Corpora Analysis ===")
 
-        tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+        tc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
         combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv"
         )
@@ -162,7 +162,7 @@ def main() -> None:
             # so that multiprocessing is maximized
             pp: list[str] = glob.glob(
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
+                    conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
                 )
             )
             avg_size: int
@@ -265,7 +265,7 @@ def main() -> None:
         """Handle all reported sentences"""
         print("\n=== Start Reported Analysis ===")
 
-        vc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        vc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
         combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
@@ -379,7 +379,7 @@ def main() -> None:
         print("\n=== Start Dataset/Split Analysis ===")
 
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
-        vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        vc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
         # get path part
         pp: list[str] = [
             os.path.split(p)[0]
@@ -392,10 +392,8 @@ def main() -> None:
         max_size: int
         pp, avg_size, max_size = sort_by_largest_file(pp)
 
-        tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
-        json_path: str = os.path.join(
-            HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
-        )
+        tsv_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME)
+        json_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME)
         ds_paths: list[str] = []
         # handle debug
         if conf.DEBUG:
@@ -466,8 +464,7 @@ def main() -> None:
         all_tsv_paths: list[str] = sorted(
             glob.glob(
                 os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
+                    conf.DATA_BASE_DIR,
                     c.RES_DIRNAME,
                     c.TSV_DIRNAME,
                     "**",
@@ -486,8 +483,7 @@ def main() -> None:
         # save to root
         print(">>> Saving combined split stats...")
         dst: str = os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.RES_DIRNAME,
             c.TSV_DIRNAME,
             "$vc_stats.tsv",
@@ -553,8 +549,7 @@ def main() -> None:
         # Write out
         print(">>> Saving Support Matrix...")
         dst = os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.RES_DIRNAME,
             c.TSV_DIRNAME,
             f"{c.SUPPORT_MATRIX_FN}.tsv",
@@ -602,12 +597,12 @@ def main() -> None:
         df_write(
             df,
             os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"
+                conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"
             ),
         )
         df.to_json(
             os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"
+                conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"
             ),
             orient="table",
             index=False,
@@ -664,13 +659,11 @@ def mp_test():
             num_items, max_size // 1000000, avg_size // 1000000, proc_count, chunk_size
         )
 
-    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "validated.tsv")
+    patt: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", "validated.tsv")
     test(patt)
-    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "reported.tsv")
+    patt: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", "reported.tsv")
     test(patt)
-    patt: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", "$text_corpus.tsv"
-    )
+    patt: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", "$text_corpus.tsv")
     test(patt)
     sys.exit()
 

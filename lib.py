@@ -29,7 +29,7 @@ import conf
 
 def init_directories(basedir: str) -> None:
     """Creates data directory structures"""
-    data_dir: str = os.path.join(basedir, c.DATA_DIRNAME)
+    data_dir: str = conf.DATA_BASE_DIR
     # if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
     #     return
 
@@ -354,7 +354,7 @@ def df_read_safe_reported(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
         next_line: str = (
             lines_read[0].replace("\r\n", "\n").replace("\n", "") if lines_read else ""
         )
-        ss2: list[str] = next_line.split("\t")
+        ss2: list[str] = str(next_line).split("\t")
 
         # No problem: We have good data in this line and next (most common)
         # Action: Get it

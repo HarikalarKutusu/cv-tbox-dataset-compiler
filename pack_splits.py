@@ -84,7 +84,7 @@ def main() -> None:
 
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
-        os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
+        os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
         recursive=True,
     )
     dspaths = [os.path.split(p)[0] for p in dspaths]

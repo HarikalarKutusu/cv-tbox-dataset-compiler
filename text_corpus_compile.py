@@ -131,7 +131,7 @@ def handle_last_version_locale(ver_lc: str) -> str:
 
     # get existing base (already preprocessed) and new validated dataframes
     # df_base: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS, dtype=c.DTYPES_TEXT_CORPUS)
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, lc)
     os.makedirs(base_tc_dir, exist_ok=True)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
@@ -142,7 +142,7 @@ def handle_last_version_locale(ver_lc: str) -> str:
 
     # df_tc_val: pd.DataFrame = df_read(src_tc_val_file)
     src_tc_val_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
+        conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
     )
     df_tc_val: pd.DataFrame
     problem_lines: list[str]
@@ -185,8 +185,7 @@ def handle_last_version() -> None:
     # This executes larger data first, so that multiprocessing is maximized
     pp: list[str] = glob.glob(
         os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.VC_DIRNAME,
             ds_prefix,
             "**",
@@ -202,7 +201,7 @@ def handle_last_version() -> None:
         else conf.DEBUG_CV_LC
     )
     # Filter out already processed
-    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+    tc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
     ver_lc_list: list[str] = [
         f"{ver}|{lc}"
         for lc in lc_list
@@ -253,13 +252,13 @@ def handle_old_version_locale(ver_lc: str) -> str:
     # ver_dir: str = calc_dataset_prefix(ver)
 
     # precalc dir and file paths
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, lc)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     ver_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}.tsv")
     disabled_file: str = os.path.join(
         base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_disabled.tsv"
     )
-    # ver_vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc)
+    # ver_vc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc)
 
     # get existing base (already preprocessed) and new validated dataframes
     df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
@@ -360,7 +359,7 @@ def handle_older_version(ver: str) -> None:
     # so that multiprocessing is maximized
     pp: list[str] = glob.glob(
         os.path.join(
-            HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
+            conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
         )
     )
     avg_size: int
@@ -376,7 +375,7 @@ def handle_older_version(ver: str) -> None:
     )
 
     # Get lc list and filter out already processed
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
     ver_lc_list: list[str] = [
         f"{ver}|{lc}"
         for lc in lc_list

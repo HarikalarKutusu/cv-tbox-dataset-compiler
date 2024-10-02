@@ -315,10 +315,10 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
     results: list[TextCorpusStatsRec] = []
 
     base_tc_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}.tsv"
+        conf.DATA_BASE_DIR, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}.tsv"
     )
     ver_tc_inx_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}_{ver}.tsv"
+        conf.DATA_BASE_DIR, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}_{ver}.tsv"
     )
     if not os.path.isfile(base_tc_file):
         if conf.VERBOSE:
@@ -330,7 +330,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         return results
 
     tc_anal_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_ANALYSIS_DIRNAME, ver_dir, lc
+        conf.DATA_BASE_DIR, c.TC_ANALYSIS_DIRNAME, ver_dir, lc
     )
     os.makedirs(tc_anal_dir, exist_ok=True)
 
@@ -383,7 +383,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 
     # Calc reported file
     rep_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
+        conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
     )
 
     # skip process if no such file or there can be empty files :/
@@ -404,14 +404,12 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         if ver == "17.0":
             df_write(
                 df,
-                os.path.join(
-                    HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv"
-                ),
+                os.path.join(conf.DATA_BASE_DIR, ".debug", f"{lc}_{ver}_reported.tsv"),
             )
             if len(problem_list) > 0:
                 with open(
                     os.path.join(
-                        HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"
+                        conf.DATA_BASE_DIR, ".debug", f"{lc}_{ver}_problems.txt"
                     ),
                     mode="w",
                     encoding="utf8",
@@ -1056,13 +1054,11 @@ def handle_dataset_splits(
     ver: str = cv_dir_name.split("-")[2]
 
     # Source directories
-    cd_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME, lc)
+    cd_dir: str = os.path.join(conf.DATA_BASE_DIR, c.CD_DIRNAME, lc)
 
     # Create destinations if thet do not exist
-    tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc)
-    json_path: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc
-    )
+    tsv_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME, lc)
+    json_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME, lc)
 
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize

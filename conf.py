@@ -7,17 +7,26 @@ import const as c
 # Modify the values to point to respective directories in your system
 
 # This is where your split data is
+# T:\GITREPO_DATA\cv-tbox-split-maker\experiments
 SRC_BASE_DIR: str = os.path.join(
     "T:",
     os.sep,
-    "GITREPO",
-    "_HK_GITHUB",
-    "_cv-tbox-python",
+    "GITREPO_DATA",
     "cv-tbox-split-maker",
     "experiments",
 )
 
-# This is where cache of API calls and clones are kept, common to cv-tbox repors
+# This is where your intermediate and final data will be saved
+# T:\GITREPO_DATA\cv-tbox-dataset-compiler\data
+DATA_BASE_DIR: str = os.path.join(
+    "T:",
+    os.sep,
+    "GITREPO_DATA",
+    "cv-tbox-dataset-compiler",
+    "data",
+)
+
+# This is where cache of API calls and clones are kept, common to cv-tbox repos
 CV_TBOX_CACHE: str = os.path.join(
     "T:", os.sep, "GITREPO", "_HK_GITHUB", "_cv-tbox-python", "cv-tbox-cache"
 )
