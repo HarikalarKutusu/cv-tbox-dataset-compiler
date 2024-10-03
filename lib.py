@@ -27,7 +27,7 @@ import conf
 #
 
 
-def init_directories(basedir: str) -> None:
+def init_directories() -> None:
     """Creates data directory structures"""
     data_dir: str = conf.DATA_BASE_DIR
     # if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
@@ -46,7 +46,6 @@ def init_directories(basedir: str) -> None:
             os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True
         )
     for ver in c.CV_VERSIONS:
-        ver_lc: list[str]
         ds_prefix: str = calc_dataset_prefix(ver)
         ver_lc: list[str] = get_locales(ver)
         os.makedirs(
@@ -58,43 +57,6 @@ def init_directories(basedir: str) -> None:
                 os.path.join(data_dir, c.VC_DIRNAME, ds_prefix, lc),
                 exist_ok=True,
             )
-    # create .gitkeep
-    open(os.path.join(data_dir, ".gitkeep"), "a", encoding="utf8").close()
-    open(os.path.join(data_dir, c.CD_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, ".gitkeep"), "a", encoding="utf8"
-    ).close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, c.TSV_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(os.path.join(data_dir, c.TC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(data_dir, c.TC_ANALYSIS_DIRNAME, ".gitkeep"), "a", encoding="utf8"
-    ).close()
-    open(os.path.join(data_dir, c.VC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-
-    # outside common cache
-    os.makedirs(conf.CV_TBOX_CACHE, exist_ok=True)
-    os.makedirs(os.path.join(conf.CV_TBOX_CACHE, c.CLONES_DIRNAME), exist_ok=True)
-    os.makedirs(os.path.join(conf.CV_TBOX_CACHE, c.API_DIRNAME), exist_ok=True)
-    open(os.path.join(conf.CV_TBOX_CACHE, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(
-        os.path.join(conf.CV_TBOX_CACHE, c.API_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
 
 
 def report_results(g: Globals) -> None:
@@ -427,15 +389,14 @@ def df_read_safe_reported(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
 
 def _git_clone_or_pull(gitrec: GitRec) -> None:
     """Local multiprocessing sub to clone a single repo or update it by pulling if it exist"""
-    local_repo_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, gitrec.repo
-    )
+    local_repo_path: str = os.path.join(conf.TBOX_CLONES_DIR, gitrec.repo)
     git_path: str = f"{c.GITHUB_BASE}{gitrec.user}/{gitrec.repo}.git"
+    repo: Repo
     if os.path.isdir(local_repo_path):
         # repo exists, so pull only
         if conf.VERBOSE:
             print(f"GIT PULL: {git_path} => {local_repo_path}")
-        repo: Repo = Repo(path=local_repo_path)
+        repo = Repo(path=local_repo_path)
         repo.remotes.origin.pull()
         if conf.VERBOSE:
             print(f"FINISHED PULL: {gitrec.repo}")
@@ -443,7 +404,7 @@ def _git_clone_or_pull(gitrec: GitRec) -> None:
         # no local repo, so clone
         if conf.VERBOSE:
             print(f"GIT CLONE: {git_path} => {local_repo_path}")
-        repo: Repo = Repo.clone_from(
+        repo = Repo.clone_from(
             url=git_path,
             to_path=local_repo_path,
             multi_options=["--single-branch", "--branch", gitrec.branch],
@@ -460,9 +421,7 @@ def git_clone_or_pull_all() -> None:
 
 def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
     """Checkouts a cloned repo at the given date or main if not given"""
-    local_repo_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, gitrec.repo
-    )
+    local_repo_path: str = os.path.join(conf.TBOX_CLONES_DIR, gitrec.repo)
     if os.path.isdir(local_repo_path):
         # repo exists, so we can checkout
         if conf.VERBOSE:
@@ -474,7 +433,7 @@ def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
             commit_hash = repo.git.execute(
                 command=f"git rev-list -n 1 --before='{checkout_to}' origin/{gitrec.branch}"
             )
-            repo.git.execute(command=f"git checkout {commit_hash}")
+            repo.git.execute(command=f"git checkout {commit_hash}")  # type: ignore
     else:
         print(f"WARNING: Could not find {gitrec.repo}")
 
@@ -548,8 +507,7 @@ def get_from_cv_dataset_clone(p: str) -> Any:
 def get_locales_from_cv_dataset_clone(ver: str) -> list[str]:
     """Get data from ds-datasets json file"""
     p: str = os.path.join(
-        conf.CV_TBOX_CACHE,
-        c.CLONES_DIRNAME,
+        conf.TBOX_CLONES_DIR,
         c.CV_DATASET_GITREC.repo,
         "datasets",
         f"{calc_dataset_prefix(ver)}.json",

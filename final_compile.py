@@ -124,7 +124,7 @@ def main() -> None:
 
         if os.path.isfile(combined_tsv_fpath):
             df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
-            combined_ver_lc: list[str] = [
+            combined_ver_lc = [
                 "|".join(row)
                 for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
@@ -274,7 +274,7 @@ def main() -> None:
         df_combined: pd.DataFrame = pd.DataFrame()
         if os.path.isfile(combined_tsv_fpath):
             df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
-            combined_ver_lc: list[str] = [
+            combined_ver_lc = [
                 "|".join(row)
                 for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
@@ -396,10 +396,12 @@ def main() -> None:
         json_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME)
         ds_paths: list[str] = []
         # handle debug
+        lc: str
+        ver: str
         if conf.DEBUG:
             for p in pp:
-                lc: str = os.path.split(p)[1]
-                ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
+                lc = os.path.split(p)[1]
+                ver = os.path.split(os.path.split(p)[0])[1].split("-")[2]
                 if lc in conf.DEBUG_CV_LC and ver in conf.DEBUG_CV_VER:
                     ds_paths.append(p)
         else:
@@ -408,8 +410,8 @@ def main() -> None:
                 ds_paths = pp
             else:
                 for p in pp:
-                    lc: str = os.path.split(p)[1]
-                    ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
+                    lc = os.path.split(p)[1]
+                    ver = os.path.split(os.path.split(p)[0])[1].split("-")[2]
                     tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
                     json_fn: str = os.path.join(
                         json_path, lc, f"{lc}_{ver}_splits.json"
@@ -671,5 +673,5 @@ def mp_test():
 if __name__ == "__main__":
     # mp_test()
     print("=== cv-tbox-dataset-analyzer - Final Statistics Compilation ===")
-    init_directories(HERE)
+    init_directories()
     main()

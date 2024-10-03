@@ -160,5 +160,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("=== cv-tbox-dataset-analyzer - Split Compressiom ===")
-    init_directories(HERE)
+    init_directories()
     main()

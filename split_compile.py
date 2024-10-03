@@ -177,5 +177,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("=== cv-tbox-dataset-compiler: Data Algorithms/Splits Collection Process ===")
-    init_directories(HERE)
+    init_directories()
     main()

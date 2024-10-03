@@ -418,7 +418,6 @@ REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
 
-CLONES_DIRNAME: str = "clones"
 API_DIRNAME: str = "api"
 
 #

@@ -27,9 +27,7 @@ DATA_BASE_DIR: str = os.path.join(
 )
 
 # This is where cache of API calls and clones are kept, common to cv-tbox repos
-CV_TBOX_CACHE: str = os.path.join(
-    "T:", os.sep, "GITREPO", "_HK_GITHUB", "_cv-tbox-python", "cv-tbox-cache"
-)
+TBOX_CLONES_DIR: str = os.path.join("T:", os.sep, "TBOX", ".clones")
 
 # This is where cache of API calls and clones are kept, common to cv-tbox repos
 TBOX_TSV_CACHE_DIR: str = os.path.join("T:", os.sep, "TBOX", "cache", "tsv")
