@@ -383,6 +383,35 @@ REPORTING_ALL: list[str] = REPORTING_BASE.copy()
 REPORTING_ALL.append("other")
 
 #
+# AUDIO ANALYSIS - INCOMING FROM TBOX MONOREPO
+#
+FIELDS_AUDIO_SPECS: dict[str, pd.ArrowDtype] = {
+    "clip_id": dtype_pa_uint64,
+    "orig_path": dtype_pa_str,
+    "orig_encoding": dtype_pa_str,
+    "orig_sample_rate": dtype_pa_float32,
+    "orig_num_frames": dtype_pa_uint64,
+    "orig_num_channels": dtype_pa_uint8,
+    "orig_bitrate_kbps": dtype_pa_uint8,
+    "orig_bits_per_sample": dtype_pa_uint8,
+    "tc_path": dtype_pa_str,
+    "tc_encoding": dtype_pa_str,
+    "tc_sample_rate": dtype_pa_float32,
+    "tc_num_frames": dtype_pa_uint64,
+    "tc_num_channels": dtype_pa_uint8,
+    "tc_bitrate_kbps": dtype_pa_uint8,
+    "tc_bits_per_sample": dtype_pa_uint8,
+    "duration": dtype_pa_uint32,
+    "speech_duration": dtype_pa_uint32,
+    "speech_power": dtype_pa_float32,
+    "silence_power": dtype_pa_float32,
+    "est_snr": dtype_pa_float32,
+    "ver": dtype_pa_str,
+    "ds": dtype_pa_str,
+    "lc": dtype_pa_str,
+}
+
+#
 # cv-tbox related
 #
 
@@ -417,6 +446,8 @@ TEXT_CORPUS_STATS_FN: str = "tc_stats"
 REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
+
+AUDIO_SPECS_FN: str = "audio_specs"
 
 API_DIRNAME: str = "api"
 
@@ -714,47 +745,16 @@ BINS_CS_HIGH: list[int] = [
 # AUDIO ANALYSIS RELATED BINS
 #
 
-BINS_VAD_DURATION: list[int] = [
+BINS_POWER: list[int] = [
     0,
     1,
-    2,
     3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
     10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    20,
     30,
-    999999,
-]
-
-BINS_POWER: list[float] = [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    20,
-    30,
+    100,
+    300,
+    1_000,
+    3_000,
     999999,
 ]
 
@@ -776,6 +776,19 @@ BINS_SNR: list[int] = [
     100,
     999999,
 ]
+
+# BINS_CHANNELS: list[int] = [
+#     1,
+#     2,
+#     3,
+#     4,
+#     5,
+#     6,
+#     999999,
+# ]
+
+# BINS_SAMPLE_RATES: list[int] = [8000, 16000, 32000, 44100, 48000]
+# BINS_BIT_RATES: list[int] = [8, 16, 32, 48, 64, 128]
 
 
 #
