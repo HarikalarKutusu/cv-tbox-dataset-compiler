@@ -231,7 +231,7 @@ def handle_last_version() -> None:
 
     if num_items > 0:
         print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_last_version_locale, ver_lc_list, chunksize=chunk_size
@@ -406,7 +406,7 @@ def handle_older_version(ver: str) -> None:
     if num_items > 0:
         # print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
         git_checkout(c.CV_GITREC, cutoff_date)
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_old_version_locale, ver_lc_list, chunksize=chunk_size

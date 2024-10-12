@@ -99,13 +99,13 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
-        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX)
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX, max_size)
     )
 
     chunk_size: int = max(
         conf.CHUNKS_HARD_MIN,
         min(
-            conf.CHUNKS_HARD_MAX,
+            conf.HARD_MAX_TASK_PER_CHILD,
             num_items // 100 + 1,
             num_items // procs_calculated
             + (0 if num_items % procs_calculated == 0 else 1),
