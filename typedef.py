@@ -301,6 +301,9 @@ class AudioAnalysisStatsRec:  # pylint: disable=too-many-instance-attributes
     srate_freq: str = ""  # sampling rate
     brate_r: str = ""  # row values
     brate_freq: str = ""  # bit rate
+    # Errors
+    err_r: str = ""  # row values = error sources
+    err_freq: str = ""  # counts
     # Real Voice Durations
     vad_sum: int = 0  # total VAD duration
     vad_avg: float = 0.0  # average (mean)
