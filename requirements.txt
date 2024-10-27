@@ -1,8 +1,8 @@
 pandas>=2.2.3
-pandas-stubs>=2.2.2
+pandas-stubs
 pyarrow>=17.0.0
 pyarrow-stubs
-psutil>=6.0.0
+psutil>=6.1.0
 types-psutil
 tqdm>=6.55.5
 tqdm-stubs
