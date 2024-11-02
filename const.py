@@ -219,6 +219,18 @@ FIELDS_CLIP_DURATIONS: dict[str, pd.ArrowDtype] = {
 }
 
 #
+# clip-errors from TBOX
+#
+FIELDS_CLIP_ERRORS: dict[str, pd.ArrowDtype] = {
+    "path": dtype_pa_str,
+    "source": dtype_pa_str,
+    "ds": dtype_pa_str,
+    "lc": dtype_pa_str,
+    "ver": dtype_pa_str,
+}
+
+
+#
 # SPLIT STATS
 #
 FIELDS_SPLIT_STATS: dict[str, pd.ArrowDtype] = {
@@ -385,28 +397,30 @@ REPORTING_ALL.append("other")
 #
 # AUDIO ANALYSIS - INCOMING FROM TBOX MONOREPO
 #
+
+# Define only what we use here
 FIELDS_AUDIO_SPECS: dict[str, pd.ArrowDtype] = {
     "clip_id": dtype_pa_uint64,
     "orig_path": dtype_pa_str,
     "orig_encoding": dtype_pa_str,
     "orig_sample_rate": dtype_pa_float32,
-    "orig_num_frames": dtype_pa_uint64,
+    # "orig_num_frames": dtype_pa_uint64,
     "orig_num_channels": dtype_pa_uint8,
     "orig_bitrate_kbps": dtype_pa_uint8,
-    "orig_bits_per_sample": dtype_pa_uint8,
-    "tc_path": dtype_pa_str,
-    "tc_encoding": dtype_pa_str,
-    "tc_sample_rate": dtype_pa_float32,
-    "tc_num_frames": dtype_pa_uint64,
-    "tc_num_channels": dtype_pa_uint8,
-    "tc_bitrate_kbps": dtype_pa_uint8,
-    "tc_bits_per_sample": dtype_pa_uint8,
+    # "orig_bits_per_sample": dtype_pa_uint8,
+    # "tc_path": dtype_pa_str,
+    # "tc_encoding": dtype_pa_str,
+    # "tc_sample_rate": dtype_pa_float32,
+    # "tc_num_frames": dtype_pa_uint64,
+    # "tc_num_channels": dtype_pa_uint8,
+    # "tc_bitrate_kbps": dtype_pa_uint8,
+    # "tc_bits_per_sample": dtype_pa_uint8,
     "duration": dtype_pa_uint32,
     "speech_duration": dtype_pa_uint32,
     "speech_power": dtype_pa_float32,
     "silence_power": dtype_pa_float32,
     "est_snr": dtype_pa_float32,
-    "ver": dtype_pa_str,
+    "ver": dtype_pa_float32,  # dtype_pa_str,
     "ds": dtype_pa_str,
     "lc": dtype_pa_str,
 }
@@ -745,6 +759,7 @@ BINS_CS_HIGH: list[int] = [
 # AUDIO ANALYSIS RELATED BINS
 #
 
+# power values are 10^6
 BINS_POWER: list[int] = [
     0,
     1,
@@ -755,11 +770,15 @@ BINS_POWER: list[int] = [
     300,
     1_000,
     3_000,
+    10_000,
+    30_000,
+    100_000,
     999999,
 ]
 
 BINS_SNR: list[int] = [
     -9999999,
+    -100,
     -30,
     -20,
     -10,
@@ -776,20 +795,6 @@ BINS_SNR: list[int] = [
     100,
     999999,
 ]
-
-# BINS_CHANNELS: list[int] = [
-#     1,
-#     2,
-#     3,
-#     4,
-#     5,
-#     6,
-#     999999,
-# ]
-
-# BINS_SAMPLE_RATES: list[int] = [8000, 16000, 32000, 44100, 48000]
-# BINS_BIT_RATES: list[int] = [8, 16, 32, 48, 64, 128]
-
 
 #
 # CLONING
