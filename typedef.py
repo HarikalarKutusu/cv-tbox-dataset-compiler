@@ -107,12 +107,15 @@ class GitRec:
 
 @dataclass
 class MultiProcessingParams:
-    """Record definition for audio analysis MP parameters"""
+    """Record definition for split/audio analysis MP parameters"""
 
     ds_path: str = ""  # source dataset path
     ver: str = ""  # cv version code
     lc: str = ""  # cv language code
-    df_aspecs: Optional[pd.DataFrame] = None  # audio specs dataframe (only for splits)
+    # audio specs dataframe coming from TBOX (only for splits)
+    df_aspecs: Optional[pd.DataFrame] = None
+    # clip-errors dataframe coming from TBOX (only for splits)
+    df_clip_errors: Optional[pd.DataFrame] = None
 
 
 #
@@ -289,9 +292,9 @@ class AudioAnalysisStatsRec:  # pylint: disable=too-many-instance-attributes
     clips: int = 0  # number of recordings
     errors: int = 0  # total errors (all kind)
     dur: int = 0  # measured duration
-    no_speech: int = 0  # Clip count where no speech is detected
-    low_speech: int = 0  # Clip count where speech power is low
-    high_snr: int = 0  # Clip count where SNR is negative
+    no_vad: int = 0  # Clip count where no speech is detected
+    low_power: int = 0  # Clip count where speech power is low
+    low_snr: int = 0  # Clip count where SNR is negative
     # basic audio property distributions
     enc_r: str = ""  # row values
     enc_freq: str = ""  # encodings
