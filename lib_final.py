@@ -603,7 +603,7 @@ def handle_dataset_splits(
             # Calc word count distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_SNR)
-            res.snr_freq = _hist[0].tolist()
+            res.snr_freq = _hist[0].tolist()[1:]  # drop lower than -100 SNR
 
         # direct distributions (value counts)
         # encoding
