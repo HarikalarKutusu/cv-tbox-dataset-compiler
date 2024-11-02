@@ -536,6 +536,10 @@ def handle_dataset_splits(
             res.err_r = list2str(_df2["source"].to_list())
             res.err_freq = list2str(_df2["count"].to_list())
 
+        # Add aa field for VAD %
+        df_aspecs_sub = df_aspecs_sub.assign(
+            vad_percentage=lambda row: 100 * row.speech_duration / row.duration
+        )
         # general
         res.clips = df_aspecs_sub.shape[0]
         res.dur = round(df_aspecs_sub["duration"].dropna().sum() / 1000)  # seconds
@@ -547,10 +551,21 @@ def handle_dataset_splits(
             res.vad_avg = dec3(_ser.mean())
             res.vad_med = dec3(_ser.median())
             res.vad_std = dec3(_ser.std(ddof=0))
-            # Calc word count distribution
+            # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_DURATION)
             res.vad_freq = _hist[0].tolist()
+
+        # vad percentage stats (data already betweek 0-100)
+        _ser = df_aspecs_sub["vad_percentage"].dropna()
+        if _ser.shape[0] > 0:
+            res.vadp_avg = dec3(_ser.mean())
+            res.vadp_med = dec3(_ser.median())
+            res.vadp_std = dec3(_ser.std(ddof=0))
+            # Calc distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_PERCENT)
+            res.vadp_freq = _hist[0].tolist()
 
         # speech power stats (10^-6) we scale it
         _ser = df_aspecs_sub["speech_power"].dropna().apply(lambda x: x * 1_000_000)
@@ -558,7 +573,7 @@ def handle_dataset_splits(
             res.sp_pwr_avg = dec3(_ser.mean())
             res.sp_pwr_med = dec3(_ser.median())
             res.sp_pwr_std = dec3(_ser.std(ddof=0))
-            # Calc word count distribution
+            # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_POWER)
             res.sp_pwr_freq = _hist[0].tolist()
@@ -571,7 +586,7 @@ def handle_dataset_splits(
             res.sil_pwr_avg = dec3(_ser.mean())
             res.sil_pwr_med = dec3(_ser.median())
             res.sil_pwr_std = dec3(_ser.std(ddof=0))
-            # Calc word count distribution
+            # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_POWER)
             res.sil_pwr_freq = _hist[0].tolist()
