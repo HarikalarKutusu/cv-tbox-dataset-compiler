@@ -585,7 +585,7 @@ def handle_dataset_splits(
         res.low_snr = _df3.shape[0]
         # low power
         _df4 = df_aspecs_sub[df_aspecs_sub["speech_power"] < conf.LOW_POWER_THRESHOLD]
-        res.low_snr = _df4.shape[0]
+        res.low_power = _df4.shape[0]
         # combine and save for main buckets
         if algo == "" and split in c.MAIN_BUCKETS:
             _df2 = pd.concat([_df2, _df3, _df4]).drop_duplicates()
