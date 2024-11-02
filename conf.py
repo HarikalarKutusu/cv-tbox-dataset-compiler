@@ -26,6 +26,9 @@ DATA_BASE_DIR: str = os.path.join(
     "data",
 )
 
+# This is where extra metadata files exist in tbox monorepo
+TBOX_META_DIR: str = os.path.join("T:", os.sep, "TBOX", "ds_meta")
+
 # This is where cache of API calls and clones are kept, common to cv-tbox repos
 TBOX_CLONES_DIR: str = os.path.join("T:", os.sep, "TBOX", ".clones")
 
@@ -34,6 +37,15 @@ TBOX_TSV_CACHE_DIR: str = os.path.join("T:", os.sep, "TBOX", "cache", "tsv")
 
 # This is where your compressed splits will go (under "upload" and "uploaded") - so that we can upload it to Google Drive
 COMPRESSED_RESULTS_BASE_DIR: str = os.path.join("T:", os.sep, "TBOX", "ds_split_share")
+
+# AUDIO ANALYSIS THRESHOLDS
+LOW_SNR_THRESHOLD: float = 0.0
+LOW_POWER_THRESHOLD: float = 1e-06
+
+#
+# The following settings help development of new modules
+# If not skipped - might take hours to re-calculate
+#
 
 # Regenerate the data or skip existing?
 SKIP_TEXT_CORPORA: bool = False
@@ -56,8 +68,8 @@ SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: list[str] = ["17.0", "18.0"]
-DEBUG_CV_LC: list[str] = ["tr", "yue"]
+DEBUG_CV_VER: list[str] = ["19.0"]
+DEBUG_CV_LC: list[str] = ["tr"]
 
 # This is independent of debug value
 # Create "not_found" files for text corpora?
@@ -66,6 +78,7 @@ CREATE_TS_NOT_FOUND: bool = False
 CREATE_REPORTED_PROBLEMS: bool = False
 
 # Multi-processing limiters
-PROCS_HARD_MAX: int = 1000
-CHUNKS_HARD_MIN: int = 5
-CHUNKS_HARD_MAX: int = 60
+PROCS_HARD_MAX: int = 60
+HARD_MAX_TASK_PER_CHILD: int = 100
+CHUNKS_HARD_MIN: int = 1
+CHUNKS_HARD_MAX: int = 10
