@@ -313,6 +313,11 @@ class AudioAnalysisStatsRec:  # pylint: disable=too-many-instance-attributes
     vad_med: float = 0.0  # median
     vad_std: float = 0.0  # standard deviation
     vad_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+    # Speech Percentage
+    vadp_avg: float = 0.0  # average (mean)
+    vadp_med: float = 0.0  # median
+    vadp_std: float = 0.0  # standard deviation
+    vadp_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
     # Speech Power Statistics
     sp_pwr_avg: float = 0.0  # average (mean)
     sp_pwr_med: float = 0.0  # median
@@ -346,6 +351,7 @@ class ConfigRec:  # pylint: disable=too-many-instance-attributes
     cv_locales: list[str] = field(default_factory=lambda: [])
     algorithms: list[str] = field(default_factory=lambda: [])
     # basic bins
+    bins_percent: list[int] = field(default_factory=lambda: [])  # percents, 10 steps
     bins_duration: list[int] = field(default_factory=lambda: [])
     bins_voices: list[int] = field(default_factory=lambda: [])
     bins_votes_up: list[int] = field(default_factory=lambda: [])

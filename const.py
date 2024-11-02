@@ -521,6 +521,7 @@ BINS_VOICES: list[int] = [
     131072,
     999999,
 ]
+
 BINS_SENTENCES: list[int] = [
     0,
     1,
@@ -540,6 +541,7 @@ BINS_SENTENCES: list[int] = [
     100,
     999999,
 ]
+
 BINS_WORDS: list[int] = [
     0,
     1,
@@ -571,6 +573,7 @@ BINS_WORDS: list[int] = [
     40,
     999999,
 ]
+
 BINS_TOKENS: list[int] = [
     0,
     1,
@@ -794,6 +797,20 @@ BINS_SNR: list[int] = [
     90,
     100,
     999999,
+]
+
+BINS_PERCENT: list[int] = [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
 ]
 
 #

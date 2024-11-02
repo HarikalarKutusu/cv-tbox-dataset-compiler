@@ -647,7 +647,9 @@ def main() -> None:
             cv_dates=c.CV_DATES,
             cv_locales=ALL_LOCALES,
             algorithms=c.ALGORITHMS,
-            # Drop the last huge values from bins
+            # Drop the last huge values or inital min values from bins if necessaru
+            # basic bins
+            bins_percent=c.BINS_PERCENT,
             bins_duration=c.BINS_DURATION[:-1],
             bins_voices=c.BINS_VOICES[1:-1],
             bins_votes_up=c.BINS_VOTES_UP[:-1],
