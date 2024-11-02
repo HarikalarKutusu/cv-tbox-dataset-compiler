@@ -43,7 +43,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 # Program parameters
-PROC_COUNT: int = min(60, int(2 * psutil.cpu_count(logical=True)))  # OVER usage
+PROC_COUNT: int = min(60, int(2 * (psutil.cpu_count(logical=True) or 1)))  # OVER usage
 BATCH_SIZE: int = 5
 
 g: Globals = Globals()
