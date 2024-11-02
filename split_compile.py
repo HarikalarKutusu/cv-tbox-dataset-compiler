@@ -75,7 +75,6 @@ def main() -> None:
         # copy splitting algorithm independent files
         src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, lc)
         dst_dir = os.path.join(vc_dir_base, ver_dir, lc)
-        src_tsv_fpath: str
 
         files_to_copy: list[str] = c.EXTENDED_BUCKET_FILES.copy()
         files_to_copy.extend(c.TC_BUCKET_FILES)
@@ -89,7 +88,7 @@ def main() -> None:
         # copy all splitting algorithms' split files - check existance thou
         for algo in c.ALGORITHMS:
             # check if exists to copy to "algo dir"
-            src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, lc)
+            src_dir = os.path.join(conf.SRC_BASE_DIR, algo, ver_dir, lc)
             if not os.path.isfile(os.path.join(src_dir, "train.tsv")):
                 # no such split at source
                 g.skipped_nodata += 1
@@ -105,6 +104,7 @@ def main() -> None:
             # now we can copy
             os.makedirs(dst_dir, exist_ok=True)
             copy_file_list(src_dir, dst_dir, c.SPLIT_FILES)
+            g.total_splits += 1
 
         # clip durations table, the one from the latest version (v15.0+) is valid
         # for all CV versions (not taking deletions into account)
