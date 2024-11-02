@@ -16,11 +16,12 @@
 ###########################################################################
 
 # Standard Lib
-from datetime import datetime
 import os
 import sys
 import glob
 import multiprocessing as mp
+from datetime import datetime
+from typing import Optional
 
 # External dependencies
 from tqdm import tqdm
@@ -30,12 +31,11 @@ import pandas as pd
 import const as c
 import conf
 from typedef import (
+    MultiProcessingParams,
     Globals,
     ConfigRec,
     TextCorpusStatsRec,
     ReportedStatsRec,
-    SplitStatsRec,
-    CharSpeedRec,
     dtype_pa_str,
 )
 from lib import (
@@ -47,6 +47,7 @@ from lib import (
     dec3,
     calc_dataset_prefix,
     get_locales,
+    mp_optimize_params,
     report_results,
     sort_by_largest_file,
     mp_schedular,
@@ -81,10 +82,10 @@ def main() -> None:
     """Compile all data by calculating stats"""
 
     res_json_base_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME
     )
     res_tsv_base_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME
     )
 
     def ver2vercol(ver: str) -> str:
@@ -114,7 +115,7 @@ def main() -> None:
 
         print("\n=== Start Text Corpora Analysis ===")
 
-        tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+        tc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
         combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"${c.TEXT_CORPUS_STATS_FN}.tsv"
         )
@@ -124,7 +125,7 @@ def main() -> None:
 
         if os.path.isfile(combined_tsv_fpath):
             df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
-            combined_ver_lc: list[str] = [
+            combined_ver_lc = [
                 "|".join(row)
                 for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
@@ -162,7 +163,7 @@ def main() -> None:
             # so that multiprocessing is maximized
             pp: list[str] = glob.glob(
                 os.path.join(
-                    HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
+                    conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
                 )
             )
             avg_size: int
@@ -216,7 +217,7 @@ def main() -> None:
             + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
 
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_text_corpus, ver_lc_list, chunksize=chunk_size
@@ -265,7 +266,7 @@ def main() -> None:
         """Handle all reported sentences"""
         print("\n=== Start Reported Analysis ===")
 
-        vc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+        vc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
         combined_tsv_fpath: str = os.path.join(
             res_tsv_base_dir, f"{c.REPORTED_STATS_FN}.tsv"
         )
@@ -274,7 +275,7 @@ def main() -> None:
         df_combined: pd.DataFrame = pd.DataFrame()
         if os.path.isfile(combined_tsv_fpath):
             df_combined = df_read(combined_tsv_fpath).reset_index(drop=True)
-            combined_ver_lc: list[str] = [
+            combined_ver_lc = [
                 "|".join(row)
                 for row in df_combined[["ver", "lc"]].astype(str).values.tolist()
             ]
@@ -328,7 +329,7 @@ def main() -> None:
             + f"Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
         results: list[ReportedStatsRec] = []
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="") as pbar:
                 for res in pool.imap_unordered(
                     handle_reported, ver_lc_list, chunksize=chunk_size
@@ -337,7 +338,7 @@ def main() -> None:
                     results.append(res)
                     pbar.update()
                     if res.rep_sum == 0:
-                        g.skipped_nodata += 1
+                        g_rep.skipped_nodata += 1
 
         # Sort and write-out
         print(">>> Finished... Now saving...")
@@ -376,57 +377,124 @@ def main() -> None:
     #
     def main_splits() -> None:
         """Handle all splits"""
-        print("\n=== Start Dataset/Split Analysis ===")
+        print("\n=== Start Dataset/Split Analysis (inc. Audio Specs Stats) ===")
 
         # First get all source splits - a validated.tsv must exist if there is a dataset, even if it is empty
-        vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
-        # get path part
-        pp: list[str] = [
-            os.path.split(p)[0]
-            for p in sorted(
-                glob.glob(os.path.join(vc_dir, "**", "validated.tsv"), recursive=True)
-            )
-        ]
+        vc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
+        # get paths, use validated.tsv to guess large datasets
+        pp: list[str] = glob.glob(
+            os.path.join(vc_dir, "**", "validated.tsv"), recursive=True
+        )
+        if len(pp) == 0:
+            print(f"=== No dataset can be located in {vc_dir}")
+            return
+
         # sort by largest first
         avg_size: int
         max_size: int
         pp, avg_size, max_size = sort_by_largest_file(pp)
+        # get rid of "validated"
+        pp = [os.path.split(p)[0] for p in pp]
 
-        tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME)
-        json_path: str = os.path.join(
-            HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME
-        )
-        ds_paths: list[str] = []
-        # handle debug
-        if conf.DEBUG:
-            for p in pp:
-                lc: str = os.path.split(p)[1]
-                ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
-                if lc in conf.DEBUG_CV_LC and ver in conf.DEBUG_CV_VER:
-                    ds_paths.append(p)
+        tsv_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME)
+        json_path: str = os.path.join(conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME)
+
+        # Any clip-error files from TBOX?
+        df_clip_errors: Optional[pd.DataFrame] = None
+        clip_errors_fpath: str = os.path.join(conf.TBOX_META_DIR, "clip_errors.tsv")
+        print(f"... Reading Clip Errors file from: [{clip_errors_fpath}]")
+        if not os.path.isfile(clip_errors_fpath):
+            print(f"!!! WARN: Clip Errors file not found: [{clip_errors_fpath}]")
         else:
-            # skip existing?
-            if conf.FORCE_CREATE_VC_STATS:
-                ds_paths = pp
-            else:
-                for p in pp:
-                    lc: str = os.path.split(p)[1]
-                    ver: str = os.path.split(os.path.split(p)[0])[1].split("-")[2]
-                    tsv_fn: str = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
-                    json_fn: str = os.path.join(
-                        json_path, lc, f"{lc}_{ver}_splits.json"
-                    )
-                    if not (os.path.isfile(tsv_fn) and os.path.isfile(json_fn)):
-                        ds_paths.append(p)
-        # finish filter out existing
+            df_clip_errors = df_read(clip_errors_fpath, dtypes=c.FIELDS_CLIP_ERRORS)
+            print(f"... Found Clip Errors: [{df_clip_errors.shape[0]}]")
 
-        ret_ss: list[SplitStatsRec]
-        ret_cs: list[CharSpeedRec]
-        results_ss: list[SplitStatsRec] = []
-        results_cs: list[CharSpeedRec] = []
-        num_items: int = len(ds_paths)
+        # Audio Specs
+        as_fpath: str = os.path.join(
+            conf.TBOX_META_DIR, "cv", f"{c.AUDIO_SPECS_FN}.tsv"
+        )
+        df_aspecs: Optional[pd.DataFrame] = None
+        print(f"... Reading Audio Specs file from: [{as_fpath}]")
+        if not os.path.isfile(as_fpath):
+            print(f"!!! WARN: Audio Specs file not found: [{as_fpath}]")
+        else:
+            df_aspecs = df_read(
+                fpath=as_fpath,
+                use_cols=list(c.FIELDS_AUDIO_SPECS.keys()),
+                dtypes=c.FIELDS_AUDIO_SPECS,
+            ).reset_index(drop=True)
+            _num_recs_orig: int = df_aspecs.shape[0]
+            print(f"... Found Audio Spec Records: [{_num_recs_orig}]")
+            # print("... DEDUP STARTS...")
+            # df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
+            # _num_recs_dedup: int = df_aspecs.shape[0]
+            # print(
+            #     f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
+            # )
+            # df_write(df_aspecs, as_fpath)
+            # 23_855_462 TO 23_854_798
+
+        # build params while eliminating unneeded (debug, already existing, forced)
+        params_list: list[MultiProcessingParams] = []
+        lc: str
+        ver: str
+        src_dir: str
+        tsv_fn: str
+        json_fn: str
+        ver_list: list[str] = []
+        lc_list: list[str] = []
+        ver_list_p: list[str] = []
+        lc_list_p: list[str] = []
+        # Loop
+        for p in pp:
+            src_dir = os.path.split(p)[0]
+            lc = os.path.split(p)[1]
+            ver = os.path.split(src_dir)[1].split("-")[2]
+            ver_list.append(ver)
+            lc_list.append(lc)
+            if conf.DEBUG or conf.FORCE_CREATE_VC_STATS:
+                if conf.FORCE_CREATE_VC_STATS or (
+                    lc in conf.DEBUG_CV_LC and ver in conf.DEBUG_CV_VER
+                ):
+                    params_list.append(
+                        MultiProcessingParams(
+                            ds_path=src_dir,
+                            ver=ver,
+                            lc=lc,
+                            df_aspecs=df_aspecs,
+                            df_clip_errors=df_clip_errors,
+                        )
+                    )
+                    ver_list_p.append(ver)
+                    lc_list_p.append(lc)
+            else:
+                tsv_fn = os.path.join(tsv_path, lc, f"{lc}_{ver}_splits.tsv")
+                json_fn = os.path.join(json_path, lc, f"{lc}_{ver}_splits.json")
+                if not (os.path.isfile(tsv_fn) and os.path.isfile(json_fn)):
+                    params_list.append(
+                        MultiProcessingParams(
+                            ds_path=src_dir,
+                            ver=ver,
+                            lc=lc,
+                            df_aspecs=df_aspecs,
+                            df_clip_errors=df_clip_errors,
+                        )
+                    )
+                    ver_list_p.append(ver)
+                    lc_list_p.append(lc)
+                else:
+                    g_vc.skipped_exists += 1
+        # finish building parameter list
+        g_vc.total_ver = len(set(ver_list))
+        g_vc.total_lc = len(set(lc_list))
+        g_vc.total_algo = len(c.ALGORITHMS)
+        g_vc.processed_ver = len(set(ver_list_p))
+        g_vc.processed_lc = len(set(lc_list_p))
+
+        num_items: int = len(params_list)
 
         if num_items == 0:
+            report_results(g_vc)
             print("Nothing to process")
             return
 
@@ -434,20 +502,23 @@ def main() -> None:
         chunk_size: int
         proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
         print(
-            f"Processing {num_items} locales in {proc_count} processes with chunk_size {chunk_size}..."
+            f"Total: {g_vc.total_lc} Existing: {g_vc.skipped_exists} NoData: {g_vc.skipped_nodata} "
+            + f"Remaining: {g_vc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
+        params_list = mp_optimize_params(params_list, proc_count)
 
         # now process each dataset
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        _ret_cnt: int
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="") as pbar:
-                for ret_ss, ret_cs in pool.imap_unordered(
-                    handle_dataset_splits, ds_paths, chunksize=chunk_size
+                for _ret_cnt in pool.imap_unordered(
+                    handle_dataset_splits, params_list, chunksize=chunk_size
                 ):
-                    results_ss.extend(ret_ss)
-                    results_cs.extend(ret_cs)
+                    g_vc.total_splits += _ret_cnt
                     pbar.update()
 
-        print(f">>> Processed {len(results_ss)} splits...")
+        # report
+        report_results(g_vc)
 
     #
     # SUPPORT MATRIX
@@ -466,8 +537,7 @@ def main() -> None:
         all_tsv_paths: list[str] = sorted(
             glob.glob(
                 os.path.join(
-                    HERE,
-                    c.DATA_DIRNAME,
+                    conf.DATA_BASE_DIR,
                     c.RES_DIRNAME,
                     c.TSV_DIRNAME,
                     "**",
@@ -486,8 +556,7 @@ def main() -> None:
         # save to root
         print(">>> Saving combined split stats...")
         dst: str = os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.RES_DIRNAME,
             c.TSV_DIRNAME,
             "$vc_stats.tsv",
@@ -553,8 +622,7 @@ def main() -> None:
         # Write out
         print(">>> Saving Support Matrix...")
         dst = os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.RES_DIRNAME,
             c.TSV_DIRNAME,
             f"{c.SUPPORT_MATRIX_FN}.tsv",
@@ -579,12 +647,15 @@ def main() -> None:
             cv_dates=c.CV_DATES,
             cv_locales=ALL_LOCALES,
             algorithms=c.ALGORITHMS,
-            # Drop the last huge values from bins
+            # Drop the last huge values or inital min values from bins if necessaru
+            # basic bins
+            bins_percent=c.BINS_PERCENT,
             bins_duration=c.BINS_DURATION[:-1],
             bins_voices=c.BINS_VOICES[1:-1],
             bins_votes_up=c.BINS_VOTES_UP[:-1],
             bins_votes_down=c.BINS_VOTES_DOWN[:-1],
             bins_sentences=c.BINS_SENTENCES[1:-1],
+            # char speed
             cs_threshold=c.CS_BIN_THRESHOLD,
             bins_cs_low=c.BINS_CS_LOW[:-1],
             bins_cs_high=c.BINS_CS_HIGH[:-1],
@@ -593,8 +664,12 @@ def main() -> None:
             bins_chars_long=c.BINS_CHARS_LONG[:-1],
             bins_words=c.BINS_WORDS[1:-1],
             bins_tokens=c.BINS_TOKENS[1:-1],
+            # reported
             bins_reported=c.BINS_REPORTED[1:-1],
             bins_reasons=c.REPORTING_ALL,
+            # audio analysis
+            bins_aa_pwr=c.BINS_POWER[:-1],
+            bins_aa_snr=c.BINS_SNR[1:-1],
         )
         df: pd.DataFrame = pd.DataFrame([config_data]).reset_index(drop=True)
         # Write out
@@ -602,12 +677,12 @@ def main() -> None:
         df_write(
             df,
             os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"
+                conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME, "$config.tsv"
             ),
         )
         df.to_json(
             os.path.join(
-                HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"
+                conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME, "$config.json"
             ),
             orient="table",
             index=False,
@@ -634,6 +709,7 @@ def main() -> None:
 
     # [TODO] Fix DEM correction problem !!!
     # [TODO] Get CV-Wide Datasets => Measures / Totals
+    # [TODO] Get LC-Wide Datasets => Measures / Totals
     # [TODO] Get global min/max/mean/median values for health measures
     # [TODO] Get some statistical plots as images (e.g. corrolation: age-char speed graph)
 
@@ -644,11 +720,12 @@ def main() -> None:
     process_seconds: float = (datetime.now() - start_time).total_seconds()
     print("Finished compiling statistics!")
     print(
-        f"Duration {dec3(process_seconds)} sec, avg={dec3(process_seconds/g.total_lc)} secs/dataset."
+        f"Duration {dec3(process_seconds)} sec, avg={dec3(process_seconds/g.total_lc) if g.total_lc > 0 else "?"} secs/dataset."
     )
 
 
-def mp_test():
+def mp_test() -> None:
+    """To test something"""
 
     def test(patt: str):
         pp: list[str] = glob.glob(patt, recursive=True)
@@ -664,13 +741,12 @@ def mp_test():
             num_items, max_size // 1000000, avg_size // 1000000, proc_count, chunk_size
         )
 
-    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "validated.tsv")
+    patt: str
+    patt = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", "validated.tsv")
     test(patt)
-    patt: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", "reported.tsv")
+    patt = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", "reported.tsv")
     test(patt)
-    patt: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", "$text_corpus.tsv"
-    )
+    patt = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", "$text_corpus.tsv")
     test(patt)
     sys.exit()
 
@@ -678,5 +754,5 @@ def mp_test():
 if __name__ == "__main__":
     # mp_test()
     print("=== cv-tbox-dataset-analyzer - Final Statistics Compilation ===")
-    init_directories(HERE)
+    init_directories()
     main()

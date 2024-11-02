@@ -25,7 +25,7 @@ import multiprocessing as mp
 # External dependencies
 from tqdm import tqdm
 import pandas as pd
-import cvutils as cvu
+import cvutils as cvu # type: ignore
 
 # Module
 import const as c
@@ -131,7 +131,7 @@ def handle_last_version_locale(ver_lc: str) -> str:
 
     # get existing base (already preprocessed) and new validated dataframes
     # df_base: pd.DataFrame = pd.DataFrame(columns=c.COLS_TEXT_CORPUS, dtype=c.DTYPES_TEXT_CORPUS)
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, lc)
     os.makedirs(base_tc_dir, exist_ok=True)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
@@ -142,19 +142,27 @@ def handle_last_version_locale(ver_lc: str) -> str:
 
     # df_tc_val: pd.DataFrame = df_read(src_tc_val_file)
     src_tc_val_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
+        conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc, c.TC_VALIDATED_FILE
     )
+    #
+    # For CV versions prior to v19.0, output was not cleaned, thus we need to read them safely
+    # For versions >= 19.0 we can directly read into a dataframe
+    #
     df_tc_val: pd.DataFrame
     problem_lines: list[str]
-    df_tc_val, problem_lines = df_read_safe_tc_validated(src_tc_val_file)
-    df_tc_val = df_tc_val.reindex(columns=c.FIELDS_TEXT_CORPUS)  # add new columns
+    if float(ver) < 19.0:
+        df_tc_val, problem_lines = df_read_safe_tc_validated(src_tc_val_file)
 
-    # write-out problem lines
-    if problem_lines:
-        problem_fname: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_problem_lines.txt")
-        with open(problem_fname, mode="w", encoding="utf8") as fd:
-            fd.write("\n".join(problem_lines) + "\n")
+        # write-out problem lines
+        if problem_lines:
+            problem_fname: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_problem_lines.txt")
+            with open(problem_fname, mode="w", encoding="utf8") as fd:
+                fd.write("\n".join(problem_lines) + "\n")
+    else:
+        df_tc_val = df_read(src_tc_val_file)
 
+    # add new columns
+    df_tc_val = df_tc_val.reindex(columns=c.FIELDS_TEXT_CORPUS)
     # write-out result
     df_new_tc: pd.DataFrame = handle_preprocess(df_base, df_tc_val)
     if df_base.shape[0] != df_new_tc.shape[0]:
@@ -185,8 +193,7 @@ def handle_last_version() -> None:
     # This executes larger data first, so that multiprocessing is maximized
     pp: list[str] = glob.glob(
         os.path.join(
-            HERE,
-            c.DATA_DIRNAME,
+            conf.DATA_BASE_DIR,
             c.VC_DIRNAME,
             ds_prefix,
             "**",
@@ -202,7 +209,7 @@ def handle_last_version() -> None:
         else conf.DEBUG_CV_LC
     )
     # Filter out already processed
-    tc_base_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+    tc_base_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
     ver_lc_list: list[str] = [
         f"{ver}|{lc}"
         for lc in lc_list
@@ -224,7 +231,7 @@ def handle_last_version() -> None:
 
     if num_items > 0:
         print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_last_version_locale, ver_lc_list, chunksize=chunk_size
@@ -253,13 +260,13 @@ def handle_old_version_locale(ver_lc: str) -> str:
     # ver_dir: str = calc_dataset_prefix(ver)
 
     # precalc dir and file paths
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME, lc)
     base_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}.tsv")
     ver_tc_file: str = os.path.join(base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}.tsv")
     disabled_file: str = os.path.join(
         base_tc_dir, f"{c.TEXT_CORPUS_FN}_{ver}_disabled.tsv"
     )
-    # ver_vc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc)
+    # ver_vc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc)
 
     # get existing base (already preprocessed) and new validated dataframes
     df_base: pd.DataFrame = pd.DataFrame(columns=c.FIELDS_TEXT_CORPUS).astype(
@@ -300,7 +307,7 @@ def handle_old_version_locale(ver_lc: str) -> str:
     # get sentences from git clone server/data/<lc>/*.txt
     file_list: list[str] = glob.glob(
         os.path.join(
-            conf.CV_TBOX_CACHE, "clones", "common-voice", "server", "data", lc, "*.txt"
+            conf.TBOX_CLONES_DIR, c.CV_GITREC.repo, "server", "data", lc, "*.txt"
         ),
         recursive=False,
     )
@@ -360,7 +367,7 @@ def handle_older_version(ver: str) -> None:
     # so that multiprocessing is maximized
     pp: list[str] = glob.glob(
         os.path.join(
-            HERE, c.DATA_DIRNAME, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
+            conf.DATA_BASE_DIR, c.TC_DIRNAME, "**", f"{c.TEXT_CORPUS_FN}.tsv"
         )
     )
     avg_size: int
@@ -376,7 +383,7 @@ def handle_older_version(ver: str) -> None:
     )
 
     # Get lc list and filter out already processed
-    base_tc_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.TC_DIRNAME)
+    base_tc_dir: str = os.path.join(conf.DATA_BASE_DIR, c.TC_DIRNAME)
     ver_lc_list: list[str] = [
         f"{ver}|{lc}"
         for lc in lc_list
@@ -399,7 +406,7 @@ def handle_older_version(ver: str) -> None:
     if num_items > 0:
         # print(f"Processing: {[x.split("|")[1] for x in ver_lc_list]}")
         git_checkout(c.CV_GITREC, cutoff_date)
-        with mp.Pool(proc_count, maxtasksperchild=conf.CHUNKS_HARD_MAX) as pool:
+        with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="Locales") as pbar:
                 for _res in pool.imap_unordered(
                     handle_old_version_locale, ver_lc_list, chunksize=chunk_size
@@ -440,5 +447,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("=== cv-tbox-dataset-compiler: Text-Corpora Compilation Process ===")
-    init_directories(HERE)
+    init_directories()
     main()

@@ -71,7 +71,7 @@ CV_VERSIONS: list[str] = [
     "16.1",
     "17.0",
     "18.0",
-    # "19.0",
+    "19.0",
     # "20.0",
 ]
 
@@ -93,7 +93,7 @@ CV_DATES: list[str] = [
     "2023-12-06",
     "2024-03-15",
     "2024-06-14",
-    # "2024-09-00",
+    "2024-09-13",
     # "2024-12-00",
 ]
 
@@ -217,6 +217,18 @@ FIELDS_CLIP_DURATIONS: dict[str, pd.ArrowDtype] = {
     "clip": dtype_pa_str,
     "duration[ms]": dtype_pa_uint32,
 }
+
+#
+# clip-errors from TBOX
+#
+FIELDS_CLIP_ERRORS: dict[str, pd.ArrowDtype] = {
+    "path": dtype_pa_str,
+    "source": dtype_pa_str,
+    "ds": dtype_pa_str,
+    "lc": dtype_pa_str,
+    "ver": dtype_pa_str,
+}
+
 
 #
 # SPLIT STATS
@@ -383,6 +395,37 @@ REPORTING_ALL: list[str] = REPORTING_BASE.copy()
 REPORTING_ALL.append("other")
 
 #
+# AUDIO ANALYSIS - INCOMING FROM TBOX MONOREPO
+#
+
+# Define only what we use here
+FIELDS_AUDIO_SPECS: dict[str, pd.ArrowDtype] = {
+    "clip_id": dtype_pa_uint64,
+    "orig_path": dtype_pa_str,
+    "orig_encoding": dtype_pa_str,
+    "orig_sample_rate": dtype_pa_float32,
+    # "orig_num_frames": dtype_pa_uint64,
+    "orig_num_channels": dtype_pa_uint8,
+    "orig_bitrate_kbps": dtype_pa_uint8,
+    # "orig_bits_per_sample": dtype_pa_uint8,
+    # "tc_path": dtype_pa_str,
+    # "tc_encoding": dtype_pa_str,
+    # "tc_sample_rate": dtype_pa_float32,
+    # "tc_num_frames": dtype_pa_uint64,
+    # "tc_num_channels": dtype_pa_uint8,
+    # "tc_bitrate_kbps": dtype_pa_uint8,
+    # "tc_bits_per_sample": dtype_pa_uint8,
+    "duration": dtype_pa_uint32,
+    "speech_duration": dtype_pa_uint32,
+    "speech_power": dtype_pa_float32,
+    "silence_power": dtype_pa_float32,
+    "est_snr": dtype_pa_float32,
+    "ver": dtype_pa_float32,  # dtype_pa_str,
+    "ds": dtype_pa_str,
+    "lc": dtype_pa_str,
+}
+
+#
 # cv-tbox related
 #
 
@@ -396,7 +439,6 @@ SEP_ALGO: str = "|"
 #
 # DIRECTORIES / FILENAMES
 #
-DATA_DIRNAME: str = "data"
 RES_DIRNAME: str = "results"
 
 TC_DIRNAME: str = "text-corpus"
@@ -419,7 +461,8 @@ REPORTED_STATS_FN: str = "$reported"
 SUPPORT_MATRIX_FN: str = "$support_matrix"
 CONFIG_FN: str = "$config"
 
-CLONES_DIRNAME: str = "clones"
+AUDIO_SPECS_FN: str = "audio_specs"
+
 API_DIRNAME: str = "api"
 
 #
@@ -455,6 +498,7 @@ BINS_DURATION: list[int] = [
     30,
     999999,
 ]
+
 BINS_VOICES: list[int] = [
     0,
     1,
@@ -477,6 +521,7 @@ BINS_VOICES: list[int] = [
     131072,
     999999,
 ]
+
 BINS_SENTENCES: list[int] = [
     0,
     1,
@@ -496,6 +541,7 @@ BINS_SENTENCES: list[int] = [
     100,
     999999,
 ]
+
 BINS_WORDS: list[int] = [
     0,
     1,
@@ -527,6 +573,7 @@ BINS_WORDS: list[int] = [
     40,
     999999,
 ]
+
 BINS_TOKENS: list[int] = [
     0,
     1,
@@ -688,7 +735,7 @@ BINS_CS_LOW: list[int] = [
     999999,
 ]
 
-# This one usually is for logograğhic languages (one char = a word)
+# This one usually is for logographic languages (one char = a word)
 BINS_CS_HIGH: list[int] = [
     0,
     100,
@@ -711,6 +758,60 @@ BINS_CS_HIGH: list[int] = [
     999999,
 ]
 
+#
+# AUDIO ANALYSIS RELATED BINS
+#
+
+# power values are 10^6
+BINS_POWER: list[int] = [
+    0,
+    1,
+    3,
+    10,
+    30,
+    100,
+    300,
+    1_000,
+    3_000,
+    10_000,
+    30_000,
+    100_000,
+    999999,
+]
+
+BINS_SNR: list[int] = [
+    -9999999,
+    -100,
+    -30,
+    -20,
+    -10,
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+    999999,
+]
+
+BINS_PERCENT: list[int] = [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100,
+]
 
 #
 # CLONING

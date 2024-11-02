@@ -45,9 +45,9 @@ g: Globals = Globals(
 def main() -> None:
     """Data Algorithms/Splits Preparation Process for cv-tbox-dataset-compiler"""
     # Destination voice corpus
-    vc_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME)
+    vc_dir_base: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME)
     # Destination clip durations
-    cd_dir_base: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME)
+    cd_dir_base: str = os.path.join(conf.DATA_BASE_DIR, c.CD_DIRNAME)
     # CV Release directory name
     ver_dir: str = ""
 
@@ -57,6 +57,12 @@ def main() -> None:
     #
     # Subs
     #
+    def copy_file_list(src_dir: str, dst_dir: str, files: list[str]) -> None:
+        """Copy a list of files from source to destination"""
+        for fn in files:
+            src_fpath: str = os.path.join(src_dir, fn)
+            if os.path.isfile(src_fpath):
+                shutil.copy2(src_fpath, dst_dir)
 
     def handle_locale(lc: str) -> None:
         """Handles one locale's data"""
@@ -69,7 +75,6 @@ def main() -> None:
         # copy splitting algorithm independent files
         src_dir = os.path.join(conf.SRC_BASE_DIR, c.ALGORITHMS[0], ver_dir, lc)
         dst_dir = os.path.join(vc_dir_base, ver_dir, lc)
-        tsv_fpath: str = ""
 
         files_to_copy: list[str] = c.EXTENDED_BUCKET_FILES.copy()
         files_to_copy.extend(c.TC_BUCKET_FILES)
@@ -77,45 +82,29 @@ def main() -> None:
         if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
             os.path.join(dst_dir, "validated.tsv")
         ):
-            for fn in files_to_copy:
-                tsv_fpath = os.path.join(src_dir, fn)
-                if os.path.isfile(tsv_fpath):
-                    shutil.copy2(tsv_fpath, dst_dir)
-        # else:
-        #     g.skipped_exists += 1
+            copy_file_list(src_dir, dst_dir, c.EXTENDED_BUCKET_FILES)
+            copy_file_list(src_dir, dst_dir, c.TC_BUCKET_FILES)
 
-        # copy default splits (s1)
-
-        # copy to s1
-        dst_dir = os.path.join(vc_dir_base, ver_dir, lc, c.ALGORITHMS[0])
-        if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
-            os.path.join(dst_dir, "train.tsv")
-        ):
-            os.makedirs(dst_dir, exist_ok=True)
-            for fn in c.SPLIT_FILES:
-                tsv_fpath = os.path.join(src_dir, fn)
-                if os.path.isfile(tsv_fpath):
-                    shutil.copy2(tsv_fpath, dst_dir)
-        else:
-            g.skipped_exists += 1
-
-        # copy other splitting algorithms' split files
-
-        for algo in c.ALGORITHMS[1:]:
+        # copy all splitting algorithms' split files - check existance thou
+        for algo in c.ALGORITHMS:
             # check if exists to copy to "algo dir"
             src_dir = os.path.join(conf.SRC_BASE_DIR, algo, ver_dir, lc)
-            if os.path.isdir(src_dir):
-                dst_dir = os.path.join(vc_dir_base, ver_dir, lc, algo)
-                if conf.FORCE_CREATE_VC_STATS or not os.path.isfile(
-                    os.path.join(dst_dir, "train.tsv")
-                ):
-                    os.makedirs(dst_dir, exist_ok=True)
-                    for fn in c.SPLIT_FILES:
-                        tsv_fpath = os.path.join(src_dir, fn)
-                        if os.path.isfile(tsv_fpath):
-                            shutil.copy2(tsv_fpath, dst_dir)
-                else:
-                    g.skipped_exists += 1
+            if not os.path.isfile(os.path.join(src_dir, "train.tsv")):
+                # no such split at source
+                g.skipped_nodata += 1
+                continue
+            dst_dir = os.path.join(vc_dir_base, ver_dir, lc, algo)
+            if (
+                os.path.isfile(os.path.join(dst_dir, "train.tsv"))
+                and not conf.FORCE_CREATE_VC_STATS
+            ):
+                # destination already exists
+                g.skipped_exists += 1
+                continue
+            # now we can copy
+            os.makedirs(dst_dir, exist_ok=True)
+            copy_file_list(src_dir, dst_dir, c.SPLIT_FILES)
+            g.total_splits += 1
 
         # clip durations table, the one from the latest version (v15.0+) is valid
         # for all CV versions (not taking deletions into account)
@@ -177,5 +166,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("=== cv-tbox-dataset-compiler: Data Algorithms/Splits Collection Process ===")
-    init_directories(HERE)
+    init_directories()
     main()

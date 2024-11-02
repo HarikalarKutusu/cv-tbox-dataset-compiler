@@ -13,24 +13,29 @@
 
 # Standard Lib
 from collections import Counter
+from typing import Optional
 from ast import literal_eval
 import os
 import sys
+import gc
 
 # External dependencies
 import numpy as np
 import pandas as pd
-import cvutils as cvu
+import cvutils as cvu  # type: ignore
 
 # Module
 import const as c
 import conf
 from typedef import (
+    MultiProcessingParams,
+    AudioAnalysisStatsRec,
     TextCorpusStatsRec,
     ReportedStatsRec,
     SplitStatsRec,
     CharSpeedRec,
     dtype_pa_str,
+    dtype_pa_uint32,
 )
 from lib import (
     df_read,
@@ -105,6 +110,8 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         # see: https://github.com/pylint-dev/pylint/issues/3956
         _ser: pd.Series[int] = pd.Series()  # pylint: disable=unsubscriptable-object
         _df2: pd.DataFrame = pd.DataFrame()
+        _arr: np.ndarray
+        fn: str
 
         # validator dependent
         if has_validator:
@@ -122,7 +129,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 res.w_med = _ser.median()
                 res.w_std = dec3(_ser.std(ddof=0))
                 # Calc word count distribution
-                _arr: np.ndarray = np.fromiter(
+                _arr = np.fromiter(
                     _ser.apply(int).reset_index(drop=True).to_list(), int
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_WORDS)
@@ -139,14 +146,14 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 res.t_med = _ser.median()
                 res.t_std = dec3(_ser.std(ddof=0))
                 # Token/word repeat distribution
-                _arr: np.ndarray = np.fromiter(
+                _arr = np.fromiter(
                     _df2["count"].dropna().apply(int).reset_index(drop=True).to_list(),
                     int,
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_TOKENS)
                 res.t_freq = _hist[0].tolist()[1:]
             if do_save:
-                fn: str = os.path.join(
+                fn = os.path.join(
                     tc_anal_dir,
                     f"{c.TOKENS_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
                         "_.", "."
@@ -168,7 +175,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             res.p_items = list2str([x[0] for x in _values])
             res.p_freq = [x[1] for x in _values]
             if do_save:
-                fn: str = os.path.join(
+                fn = os.path.join(
                     tc_anal_dir,
                     f"{c.PHONEMES_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
                         "_.", "."
@@ -190,9 +197,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             res.c_med = _ser.median()
             res.c_std = dec3(_ser.std(ddof=0))
             # Calc character length distribution
-            _arr: np.ndarray = np.fromiter(
-                _ser.apply(int).reset_index(drop=True).to_list(), int
-            )
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _sl_bins: list[int] = (
                 c.BINS_CHARS_SHORT
                 if res.c_avg < c.CHARS_BIN_THRESHOLD
@@ -210,7 +215,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         res.g_items = list2str([x[0] for x in _values])
         res.g_freq = [x[1] for x in _values]
         if do_save:
-            fn: str = os.path.join(
+            fn = os.path.join(
                 tc_anal_dir,
                 f"{c.GRAPHEMES_FN}_{algo}_{sp}.tsv".replace("__", "_").replace(
                     "_.", "."
@@ -250,7 +255,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         res.dom_freq = [tup[1] for tup in counters.items() if tup[1] > 0]
 
         if do_save:
-            fn: str = os.path.join(
+            fn = os.path.join(
                 tc_anal_dir,
                 f"{c.DOMAINS_FN}_{algo}_{sp}.tsv".replace("__", "_").replace("_.", "."),
             )
@@ -276,6 +281,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 print(f"WARN: No such split file for: {ver} - {lc} - {algo} - {sp}")
             return
         _res: TextCorpusStatsRec | None = None
+        df: pd.DataFrame
         if float(ver) >= 17.0:
             # For newer versions, just use the sentence_id
             sentence_id_list: list[str] = (
@@ -285,10 +291,8 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 .drop_duplicates()
                 .to_list()
             )
-            df: pd.DataFrame = df_base_ver_tc[
-                df_base_ver_tc["sentence_id"].isin(sentence_id_list)
-            ]
-            _res: TextCorpusStatsRec | None = handle_df(df, algo=algo, sp=sp)
+            df = df_base_ver_tc[df_base_ver_tc["sentence_id"].isin(sentence_id_list)]
+            _res = handle_df(df, algo=algo, sp=sp)
         else:
             # For older versions, use the sentence
             sentence_list: list[str] = (
@@ -298,10 +302,8 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 .drop_duplicates()
                 .to_list()
             )
-            df: pd.DataFrame = df_base_ver_tc[
-                df_base_ver_tc["sentence"].isin(sentence_list)
-            ]
-            _res: TextCorpusStatsRec | None = handle_df(df, algo=algo, sp=sp)
+            df = df_base_ver_tc[df_base_ver_tc["sentence"].isin(sentence_list)]
+            _res = handle_df(df, algo=algo, sp=sp)
         if _res is not None:
             results.append(_res)
 
@@ -315,10 +317,10 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
     results: list[TextCorpusStatsRec] = []
 
     base_tc_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}.tsv"
+        conf.DATA_BASE_DIR, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}.tsv"
     )
     ver_tc_inx_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}_{ver}.tsv"
+        conf.DATA_BASE_DIR, c.TC_DIRNAME, lc, f"{c.TEXT_CORPUS_FN}_{ver}.tsv"
     )
     if not os.path.isfile(base_tc_file):
         if conf.VERBOSE:
@@ -330,7 +332,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         return results
 
     tc_anal_dir: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.TC_ANALYSIS_DIRNAME, ver_dir, lc
+        conf.DATA_BASE_DIR, c.TC_ANALYSIS_DIRNAME, ver_dir, lc
     )
     os.makedirs(tc_anal_dir, exist_ok=True)
 
@@ -383,7 +385,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 
     # Calc reported file
     rep_file: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
+        conf.DATA_BASE_DIR, c.VC_DIRNAME, ver_dir, lc, "reported.tsv"
     )
 
     # skip process if no such file or there can be empty files :/
@@ -404,14 +406,12 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         if ver == "17.0":
             df_write(
                 df,
-                os.path.join(
-                    HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_reported.tsv"
-                ),
+                os.path.join(conf.DATA_BASE_DIR, ".debug", f"{lc}_{ver}_reported.tsv"),
             )
             if len(problem_list) > 0:
                 with open(
                     os.path.join(
-                        HERE, c.DATA_DIRNAME, ".debug", f"{lc}_{ver}_problems.txt"
+                        conf.DATA_BASE_DIR, ".debug", f"{lc}_{ver}_problems.txt"
                     ),
                     mode="w",
                     encoding="utf8",
@@ -474,13 +474,13 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
 
 
 ########################################################
-# Dataset Split Stats (MP Handler)
+# Dataset Split Stats (inc. Audio Specs Stats) (MP Handler)
 ########################################################
 
 
 def handle_dataset_splits(
-    ds_path: str,
-) -> tuple[list[SplitStatsRec], list[CharSpeedRec]]:
+    params: MultiProcessingParams,
+) -> int:
     """Handle a single dataset (ver/lc)"""
     # Handle one split, this is where calculations happen
     # The default column structure of CV dataset splits is as follows [FIXME] variants?
@@ -488,13 +488,201 @@ def handle_dataset_splits(
     # we have as input:
     # 'version', 'locale', 'algo', 'split'
 
+    path_list: list[str] = []
+
+    def handle_split_audio_stats(
+        ver: str,
+        lc: str,
+        algo: str,
+        split: str,
+        df_aspecs_sub: pd.DataFrame,
+    ) -> AudioAnalysisStatsRec:
+        """Processes a single split's audio specs statistics and return calculated values"""
+        # columns:
+        # clip_id
+        # orig_path, orig_encoding, orig_sample_rate, orig_num_frames, orig_num_channels, orig_bitrate_kbps, orig_bits_per_sample
+        # tc_path, tc_encoding, tc_sample_rate, tc_num_frames, tc_num_channels, tc_bitrate_kbps, tc_bits_per_sample
+        # duration, speech_duration, speech_power, silence_power, est_snr
+        # ver, ds, lc
+
+        nonlocal path_list
+
+        res: AudioAnalysisStatsRec = AudioAnalysisStatsRec(
+            ver=ver, lc=lc, alg=algo, sp=split
+        )
+        if df_aspecs_sub is None or df_aspecs_sub.shape[0] == 0:
+            # if no data, return an empty placeholder
+            return res
+
+        # Now get some statistics
+        _ser: pd.Series[float]  # pylint: disable=unsubscriptable-object
+        _df2: pd.DataFrame
+        _df3: pd.DataFrame
+        _df4: pd.DataFrame
+
+        # Start with errors
+        _df2 = df_clip_errors[df_clip_errors["path"].isin(path_list)]
+        res.errors = _df2.shape[0]
+        # [TODO] Detailed error stats - type vs count
+        if _df2.shape[0] > 0:
+            _df2 = (
+                _df2["source"]
+                .value_counts()
+                .to_frame()
+                .reset_index(drop=False)
+                .astype({"source": dtype_pa_str, "count": dtype_pa_uint32})
+                .sort_values(["source"])
+            )
+            res.err_r = list2str(_df2["source"].to_list())
+            res.err_freq = list2str(_df2["count"].to_list())
+
+        # Add aa field for VAD %
+        df_aspecs_sub = df_aspecs_sub.assign(
+            vad_percentage=lambda row: 100 * row.speech_duration / row.duration
+        )
+        # general
+        res.clips = df_aspecs_sub.shape[0]
+        res.dur = round(df_aspecs_sub["duration"].dropna().sum() / 1000)  # seconds
+
+        # vad stats (convert to secs)
+        _ser = df_aspecs_sub["speech_duration"].dropna().apply(lambda x: x / 1000)
+        if _ser.shape[0] > 0:
+            res.vad_sum = int(_ser.sum())
+            res.vad_avg = dec3(_ser.mean())
+            res.vad_med = dec3(_ser.median())
+            res.vad_std = dec3(_ser.std(ddof=0))
+            # Calc distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_DURATION)
+            res.vad_freq = _hist[0].tolist()
+
+        # vad percentage stats (data already betweek 0-100)
+        _ser = df_aspecs_sub["vad_percentage"].dropna()
+        if _ser.shape[0] > 0:
+            res.vadp_avg = dec3(_ser.mean())
+            res.vadp_med = dec3(_ser.median())
+            res.vadp_std = dec3(_ser.std(ddof=0))
+            # Calc distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_PERCENT)
+            res.vadp_freq = _hist[0].tolist()
+
+        # speech power stats (10^-6) we scale it
+        _ser = df_aspecs_sub["speech_power"].dropna().apply(lambda x: x * 1_000_000)
+        if _ser.shape[0] > 0:
+            res.sp_pwr_avg = dec3(_ser.mean())
+            res.sp_pwr_med = dec3(_ser.median())
+            res.sp_pwr_std = dec3(_ser.std(ddof=0))
+            # Calc distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_POWER)
+            res.sp_pwr_freq = _hist[0].tolist()
+
+        # silence power stats (10^-9) we scale it
+        _ser = (
+            df_aspecs_sub["silence_power"].dropna().apply(lambda x: x * 1_000_000_000)
+        )
+        if _ser.shape[0] > 0:
+            res.sil_pwr_avg = dec3(_ser.mean())
+            res.sil_pwr_med = dec3(_ser.median())
+            res.sil_pwr_std = dec3(_ser.std(ddof=0))
+            # Calc distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_POWER)
+            res.sil_pwr_freq = _hist[0].tolist()
+
+        # snr stats
+        # no speech
+        _df2 = df_aspecs_sub[df_aspecs_sub["est_snr"].isna()]
+        res.no_vad = _df2.shape[0]
+        # low snr
+        _df3 = df_aspecs_sub[df_aspecs_sub["est_snr"] < conf.LOW_SNR_THRESHOLD]
+        res.low_snr = _df3.shape[0]
+        # low power
+        _df4 = df_aspecs_sub[df_aspecs_sub["speech_power"] < conf.LOW_POWER_THRESHOLD]
+        res.low_power = _df4.shape[0]
+        # combine and save for main buckets
+        if algo == "" and split in c.MAIN_BUCKETS:
+            _df2 = pd.concat([_df2, _df3, _df4]).drop_duplicates()
+            if _df2.shape[0] > 0:
+                df_write(
+                    df=_df3, fpath=os.path.join(ds_meta_dir, f"audio_bad_{split}.tsv")
+                )
+
+        # valid snr (where we detected speech)
+        _ser = df_aspecs_sub[~df_aspecs_sub["est_snr"].isna()]["est_snr"]
+        if _ser.shape[0] > 0:
+            res.snr_avg = dec3(_ser.mean())
+            res.snr_med = dec3(_ser.median())
+            res.snr_std = dec3(_ser.std(ddof=0))
+            # Calc word count distribution
+            _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
+            _hist = np.histogram(_arr, bins=c.BINS_SNR)
+            res.snr_freq = _hist[0].tolist()[1:]  # drop lower than -100 SNR
+
+        # direct distributions (value counts)
+        # encoding
+        _df2 = (
+            df_aspecs_sub["orig_encoding"]
+            .astype(dtype_pa_str)
+            .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index(drop=False)
+            .astype({"orig_encoding": dtype_pa_str, "count": dtype_pa_uint32})
+            .sort_values(["orig_encoding"])
+        )
+        res.enc_r = list2str(_df2["orig_encoding"].to_list())
+        res.enc_freq = list2str(_df2["count"].to_list())
+        # channels
+        _df2 = (
+            df_aspecs_sub["orig_num_channels"]
+            .astype(dtype_pa_str)
+            .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index(drop=False)
+            .astype({"orig_num_channels": dtype_pa_str, "count": dtype_pa_uint32})
+            .sort_values(["orig_num_channels"])
+        )
+        res.chan_r = list2str(_df2["orig_num_channels"].to_list())
+        res.chan_freq = list2str(_df2["count"].to_list())
+        # sample rate
+        _df2 = (
+            df_aspecs_sub["orig_sample_rate"]
+            .astype(dtype_pa_str)
+            .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index(drop=False)
+            .astype({"orig_sample_rate": dtype_pa_str, "count": dtype_pa_uint32})
+            .sort_values(["orig_sample_rate"])
+        )
+        res.srate_r = list2str(_df2["orig_sample_rate"].to_list())
+        res.srate_freq = list2str(_df2["count"].to_list())
+        # bit rate
+        _df2 = (
+            df_aspecs_sub["orig_bitrate_kbps"]
+            .astype(dtype_pa_str)
+            .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index(drop=False)
+            .astype({"orig_bitrate_kbps": dtype_pa_str, "count": dtype_pa_uint32})
+            .sort_values(["orig_bitrate_kbps"])
+        )
+        res.brate_r = list2str(_df2["orig_bitrate_kbps"].to_list())
+        res.brate_freq = list2str(_df2["count"].to_list())
+
+        return res
+
     # now, do calculate some statistics...
     def handle_split(
-        ver: str, lc: str, algo: str, split: str, fpath: str
-    ) -> tuple[SplitStatsRec, CharSpeedRec]:
+        ver: str, lc: str, algo: str, split: str, src_ds_dir: str
+    ) -> tuple[SplitStatsRec, CharSpeedRec, AudioAnalysisStatsRec]:
         """Processes a single split and return calculated values"""
 
-        nonlocal df_clip_durations
+        nonlocal path_list
 
         # find_fixes
         # def find_fixes(df_split: pd.DataFrame) -> list[list[int]]:
@@ -614,24 +802,30 @@ def handle_dataset_splits(
         #
 
         # Read in DataFrames
-        df_orig: pd.DataFrame = df_read(fpath)
-        # .astype(c.FIELDS_BUCKETS_SPLITS) # WE CANNAOT USE THIS AS COLUMNS CHANGE WITH VERSIONS
+        sp_fpath: str
+        df_orig: pd.DataFrame = pd.DataFrame()
         if split == "clips":  # build "clips" from val+inval+other
-            # we already have validated (passed as param for clips)
+            sp_fpath = os.path.join(src_ds_dir, "validated.tsv")
+            df_orig = df_read(sp_fpath)
             # add invalidated
-            _df: pd.DataFrame = df_read(fpath.replace("validated", "invalidated"))
+            _df: pd.DataFrame = df_read(sp_fpath.replace("validated", "invalidated"))
             if _df.shape[0] > 0:
                 df_orig = pd.concat([df_orig, _df]) if df_orig.shape[0] > 0 else _df
             # add other
-            _df = df_read(fpath.replace("validated", "other"))
+            _df = df_read(sp_fpath.replace("validated", "other"))
             if _df.shape[0] > 0:
                 df_orig = pd.concat([df_orig, _df]) if df_orig.shape[0] > 0 else _df
+        else:
+            sp_fpath = os.path.join(src_ds_dir, f"{split}.tsv")
+            if os.path.isfile(sp_fpath):
+                df_orig = df_read(sp_fpath)
 
-        # Do nothing, if there is no data
+        # Do nothing, if there is no data or no such split
         if df_orig.shape[0] == 0:
             return (
                 SplitStatsRec(ver=ver, lc=lc, alg=algo, sp=split),
                 CharSpeedRec(ver=ver, lc=lc, alg=algo, sp=split),
+                AudioAnalysisStatsRec(ver=ver, lc=lc, alg=algo, sp=split),
             )
 
         # [TODO] Move these to split_compile: Make all confirm to current style?
@@ -690,28 +884,30 @@ def handle_dataset_splits(
 
         # === DURATIONS: Calc duration agregate values
         # there must be records + v1 cannot be mapped
+        ser: pd.Series
+        arr: np.ndarray
+        duration_freq = []
+        # Assume no Duration data, set illegal defaults
+        duration_total: float = -1
+        duration_mean: float = -1
+        duration_median: float = -1
+        duration_std: float = -1
         if df_clip_durations.shape[0] > 0 and ver != "1":
             # Connect with duration table and convert to seconds
             df["duration"] = df["path"].map(
                 df_clip_durations["duration[ms]"] / 1000, na_action="ignore"
             )
-            ser: pd.Series = df["duration"].dropna()
-            duration_total: float = ser.sum()
-            duration_mean: float = ser.mean()
-            duration_median: float = ser.median()
-            duration_std: float = ser.std(ddof=0)
+            ser = df["duration"].dropna()
+            duration_total = ser.sum()
+            duration_mean = ser.mean()
+            duration_median = ser.median()
+            duration_std = ser.std(ddof=0)
             # Calc duration distribution
-            arr: np.ndarray = np.fromiter(
+            arr = np.fromiter(
                 df["duration"].dropna().apply(int).reset_index(drop=True).to_list(), int
             )
             hist = np.histogram(arr, bins=c.BINS_DURATION)
             duration_freq = hist[0].tolist()
-        else:  # No Duration data, set illegal defaults and continue
-            duration_total: float = -1
-            duration_mean: float = -1
-            duration_median: float = -1
-            duration_std: float = -1
-            duration_freq = []
 
         # === VOICES (how many recordings per voice)
         voice_counts: pd.DataFrame = (
@@ -722,7 +918,7 @@ def handle_dataset_splits(
         voice_median: float = ser.median()
         voice_std: float = ser.std(ddof=0)
         # Calc speaker recording distribution
-        arr: np.ndarray = np.fromiter(
+        arr = np.fromiter(
             voice_counts["count"].dropna().apply(int).reset_index(drop=True).to_list(),
             int,
         )
@@ -738,7 +934,7 @@ def handle_dataset_splits(
         sentence_median: float = ser.median()
         sentence_std: float = ser.std(ddof=0)
         # Calc sentence recording distribution
-        arr: np.ndarray = np.fromiter(
+        arr = np.fromiter(
             sentence_counts["count"]
             .dropna()
             .apply(int)
@@ -761,11 +957,13 @@ def handle_dataset_splits(
         up_votes_mean: float = ser.mean()
         up_votes_median: float = ser.median()
         up_votes_std: float = ser.std(ddof=0)
+        bin_val: int
+        bin_next: int
 
         up_votes_freq: list[int] = []
         for i in range(0, len(bins) - 1):
-            bin_val: int = bins[i]
-            bin_next: int = bins[i + 1]
+            bin_val = bins[i]
+            bin_next = bins[i + 1]
             up_votes_freq.append(
                 int(
                     vote_counts_df.loc[
@@ -775,9 +973,9 @@ def handle_dataset_splits(
                 )
             )
 
-        bins: list[int] = c.BINS_VOTES_DOWN
+        bins = c.BINS_VOTES_DOWN
         down_votes_sum: int = df["down_votes"].sum()
-        vote_counts_df: pd.DataFrame = (
+        vote_counts_df = (
             df["down_votes"]
             .value_counts()
             .dropna()
@@ -794,8 +992,8 @@ def handle_dataset_splits(
 
         down_votes_freq: list[int] = []
         for i in range(0, len(bins) - 1):
-            bin_val: int = bins[i]
-            bin_next: int = bins[i + 1]
+            bin_val = bins[i]
+            bin_next = bins[i + 1]
             down_votes_freq.append(
                 int(
                     vote_counts_df.loc[
@@ -867,7 +1065,7 @@ def handle_dataset_splits(
         # dem_fixes_list: list[list[int]] = find_fixes(df_orig)
         dem_fixes_list: list[list[int]] = [[], []]
 
-        res_ss: SplitStatsRec = SplitStatsRec(
+        rec_ss: SplitStatsRec = SplitStatsRec(
             ver=ver,
             lc=lc,
             alg=algo,
@@ -912,7 +1110,7 @@ def handle_dataset_splits(
 
         # === AVERAGE AND PER USER CHAR SPEED
 
-        res_cs: CharSpeedRec = CharSpeedRec(
+        rec_cs: CharSpeedRec = CharSpeedRec(
             ver=ver,
             lc=lc,
             alg=algo,
@@ -1021,7 +1219,7 @@ def handle_dataset_splits(
                 .reset_index(drop=True)
             )
 
-            res_cs = CharSpeedRec(
+            rec_cs = CharSpeedRec(
                 ver=ver,
                 lc=lc,
                 alg=algo,
@@ -1039,7 +1237,35 @@ def handle_dataset_splits(
                 cs2a=arr2str(cs_vs_age.to_numpy(int).tolist()),
             )
 
-        return (res_ss, res_cs)
+        #
+        # Audio Specs Stats
+        #
+        df_aspecs_split: pd.DataFrame = pd.DataFrame()
+        rec_as: AudioAnalysisStatsRec = AudioAnalysisStatsRec(
+            ver=ver,
+            lc=lc,
+            alg=algo,
+            sp=split,
+        )
+
+        # we cannot process v1
+        if ver != "1":
+            if df_aspecs_ds is not None:
+                # get and pass a subset of audio specs for this split
+                path_list = df_orig["path"].to_list()
+                df_aspecs_split = df_aspecs_ds[
+                    df_aspecs_ds["orig_path"].isin(path_list)
+                ]
+
+            rec_as = handle_split_audio_stats(
+                ver=ver,
+                lc=lc,
+                algo=algo,
+                split=split,
+                df_aspecs_sub=df_aspecs_split,
+            )
+
+        return (rec_ss, rec_cs, rec_as)
 
     # END handle_split
 
@@ -1049,20 +1275,29 @@ def handle_dataset_splits(
     # we have input ds_path in format: # ...\data\voice-corpus\cv-corpus-12.0-2022-12-07\tr
     # <ver> <lc> [<algo>]
 
-    lc: str = os.path.split(ds_path)[1]
-    cv_dir: str = os.path.split(ds_path)[0]
-    cv_dir_name: str = os.path.split(cv_dir)[1]
-    # extract version info
-    ver: str = cv_dir_name.split("-")[2]
-
     # Source directories
-    cd_dir: str = os.path.join(HERE, c.DATA_DIRNAME, c.CD_DIRNAME, lc)
+    cv_dir_name: str = calc_dataset_prefix(params.ver)
+    ds_ver_dir: str = os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, cv_dir_name)
+    ds_meta_dir: str = os.path.join(conf.TBOX_META_DIR, "cv", cv_dir_name, params.lc)
+    ds_ver_lc_dir: str = os.path.join(ds_ver_dir, params.lc)
+    cd_dir: str = os.path.join(conf.DATA_BASE_DIR, c.CD_DIRNAME, params.lc)
 
-    # Create destinations if thet do not exist
-    tsv_path: str = os.path.join(HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.TSV_DIRNAME, lc)
-    json_path: str = os.path.join(
-        HERE, c.DATA_DIRNAME, c.RES_DIRNAME, c.JSON_DIRNAME, lc
+    # Calc destinations if they do not exist
+    tsv_path: str = os.path.join(
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.TSV_DIRNAME, params.lc
     )
+    json_path: str = os.path.join(
+        conf.DATA_BASE_DIR, c.RES_DIRNAME, c.JSON_DIRNAME, params.lc
+    )
+
+    # Any clip-error files from TBOX?
+    df_clip_errors: pd.DataFrame = pd.DataFrame()
+    if params.df_clip_errors is not None:
+        df_clip_errors = params.df_clip_errors[
+            (params.df_clip_errors["ds"] == "cv")
+            & (params.df_clip_errors["lc"] == params.lc)
+            & (params.df_clip_errors["ver"] == params.ver)
+        ][["path", "source"]]
 
     # First Handle Splits in voice-corpus
     # Load general DF's if they exist, else initialize
@@ -1076,78 +1311,114 @@ def handle_dataset_splits(
     if os.path.isfile(cd_file):
         df_clip_durations = df_read(cd_file).set_index("clip")
     elif conf.VERBOSE:
-        print(f"WARNING: No duration data for {lc}\n")
+        print(f"WARNING: No duration data for {params.lc}\n")
+
+    # === Clips Audio Specs Subset if any
+    df_aspecs_ds: Optional[pd.DataFrame] = None
+    if params.df_aspecs is not None:
+        df_aspecs_ds = params.df_aspecs[
+            (params.df_aspecs["ds"] == "cv")
+            & (params.df_aspecs["lc"] == params.lc)
+            & (params.df_aspecs["ver"] <= float(params.ver))  # compare as float
+        ]
+        # write-out audio_specs for to TBOX meta per ver-lc
+        if df_aspecs_ds.shape[0] > 0:
+            _dst_meta_as_file: str = os.path.join(ds_meta_dir, "audio_specs.tsv")
+            if not os.path.isfile(_dst_meta_as_file):
+                os.makedirs(ds_meta_dir, exist_ok=True)
+                df_write(df_aspecs_ds, _dst_meta_as_file)
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
     ret_ss: SplitStatsRec
     ret_cs: CharSpeedRec
+    ret_as: AudioAnalysisStatsRec
     res_ss: list[SplitStatsRec] = []  # Init the result list
     res_cs: list[CharSpeedRec] = []  # Init the result list
+    res_as: list[AudioAnalysisStatsRec] = []  # Init the result list
 
     # Special case for temporary "clips.tsv"
-    ret_ss, ret_cs = handle_split(
-        ver=ver,
-        lc=lc,
+    ret_ss, ret_cs, ret_as = handle_split(
+        ver=params.ver,
+        lc=params.lc,
         algo="",
         split="clips",
-        fpath=os.path.join(ds_path, "validated.tsv"),
+        src_ds_dir=ds_ver_lc_dir,
     )
-    res_ss.append(ret_ss)
-    res_cs.append(ret_cs)
-
-    validated_result: SplitStatsRec = res_ss[-1]
-    validated_records: int = validated_result.clips
-    # Append to clips.tsv at the source, at the base of that version
-    # (it will include all recording data for all locales to be used in CC & alternatives)
-    for sp in c.MAIN_BUCKETS:
-        src: str = os.path.join(ds_path, sp + ".tsv")
-        dst: str = os.path.join(cv_dir, "clips.tsv")
-        df_write(df_read(src), fpath=dst, mode="a")
-
-    for sp in c.MAIN_BUCKETS:
-        ret_ss, ret_cs = handle_split(
-            ver=ver,
-            lc=lc,
-            algo="",
-            split=sp,
-            fpath=os.path.join(ds_path, sp + ".tsv"),
-        )
+    if ret_ss.clips > 0:
         res_ss.append(ret_ss)
         res_cs.append(ret_cs)
+        res_as.append(ret_as)
 
-    # If no record in validated, do not try further
-    if validated_records == 0:
-        return (res_ss, res_cs)
+    # Append to clips.tsv at the source, at the base of that version
+    # (it will include all recording data for all locales to be used in CC & alternatives)
+    # for sp in c.MAIN_BUCKETS:
+    #     src: str = os.path.join(ds_ver_lc_dir, sp + ".tsv")
+    #     dst: str = os.path.join(ds_ver_dir, "clips.tsv")
+    #     df_write(df_read(src), fpath=dst, mode="a")
+    validated_records: int = 0
+    for sp in c.MAIN_BUCKETS:
+        ret_ss, ret_cs, ret_as = handle_split(
+            ver=params.ver,
+            lc=params.lc,
+            algo="",
+            split=sp,
+            src_ds_dir=ds_ver_lc_dir,
+        )
+        if sp == "validated":
+            validated_records = ret_ss.clips
+        if ret_ss.clips > 0:
+            res_ss.append(ret_ss)
+            res_cs.append(ret_cs)
+            res_as.append(ret_as)
 
     # SPLITTING ALGO SPECIFIC (inc default splits)
 
-    for algo in c.ALGORITHMS:
-        for sp in c.TRAINING_SPLITS:
-            if os.path.isfile(os.path.join(ds_path, algo, sp + ".tsv")):
-                ret_ss, ret_cs = handle_split(
-                    ver=ver,
-                    lc=lc,
-                    algo=algo,
-                    split=sp,
-                    fpath=os.path.join(ds_path, algo, sp + ".tsv"),
-                )
-                res_ss.append(ret_ss)
-                res_cs.append(ret_cs)
+    # If no record in validated, do not try further
+    if validated_records > 0:
+        for algo in c.ALGORITHMS:
+            for sp in c.TRAINING_SPLITS:
+                src_algo_dir: str = os.path.join(ds_ver_lc_dir, algo)
+                if os.path.isdir(src_algo_dir):
+                    ret_ss, ret_cs, ret_as = handle_split(
+                        ver=params.ver,
+                        lc=params.lc,
+                        algo=algo,
+                        split=sp,
+                        src_ds_dir=src_algo_dir,
+                    )
+                    if ret_ss.clips > 0:
+                        res_ss.append(ret_ss)
+                        res_cs.append(ret_cs)
+                        res_as.append(ret_as)
 
     # Create DataFrames
     df: pd.DataFrame = pd.DataFrame(res_ss)
-    df_write(df, os.path.join(tsv_path, f"{lc}_{ver}_splits.tsv"))
+    df_write(df, os.path.join(tsv_path, f"{params.lc}_{params.ver}_splits.tsv"))
     df.to_json(
-        os.path.join(json_path, f"{lc}_{ver}_splits.json"), orient="table", index=False
+        os.path.join(json_path, f"{params.lc}_{params.ver}_splits.json"),
+        orient="table",
+        index=False,
     )
 
-    df: pd.DataFrame = pd.DataFrame(res_cs)
-    df_write(df, os.path.join(tsv_path, f"{lc}_{ver}_cs.tsv"))
+    df = pd.DataFrame(res_cs)
+    df_write(df, os.path.join(tsv_path, f"{params.lc}_{params.ver}_cs.tsv"))
     df.to_json(
-        os.path.join(json_path, f"{lc}_{ver}_cs.json"), orient="table", index=False
+        os.path.join(json_path, f"{params.lc}_{params.ver}_cs.json"),
+        orient="table",
+        index=False,
     )
 
-    return (res_ss, res_cs)
+    df = pd.DataFrame(res_as)
+    df_write(df, os.path.join(tsv_path, f"{params.lc}_{params.ver}_aa.tsv"))
+    df.to_json(
+        os.path.join(json_path, f"{params.lc}_{params.ver}_aa.json"),
+        orient="table",
+        index=False,
+    )
+
+    gc.collect()
+
+    return len(res_ss)
 
 
 # END - Dataset Split Stats (MP Handler)

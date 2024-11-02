@@ -27,9 +27,9 @@ import conf
 #
 
 
-def init_directories(basedir: str) -> None:
+def init_directories() -> None:
     """Creates data directory structures"""
-    data_dir: str = os.path.join(basedir, c.DATA_DIRNAME)
+    data_dir: str = conf.DATA_BASE_DIR
     # if os.path.isfile(os.path.join(data_dir, ".gitkeep")):
     #     return
 
@@ -46,7 +46,6 @@ def init_directories(basedir: str) -> None:
             os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, lc), exist_ok=True
         )
     for ver in c.CV_VERSIONS:
-        ver_lc: list[str]
         ds_prefix: str = calc_dataset_prefix(ver)
         ver_lc: list[str] = get_locales(ver)
         os.makedirs(
@@ -58,43 +57,6 @@ def init_directories(basedir: str) -> None:
                 os.path.join(data_dir, c.VC_DIRNAME, ds_prefix, lc),
                 exist_ok=True,
             )
-    # create .gitkeep
-    open(os.path.join(data_dir, ".gitkeep"), "a", encoding="utf8").close()
-    open(os.path.join(data_dir, c.CD_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, ".gitkeep"), "a", encoding="utf8"
-    ).close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, c.TSV_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(
-        os.path.join(data_dir, c.RES_DIRNAME, c.JSON_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(os.path.join(data_dir, c.TC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(data_dir, c.TC_ANALYSIS_DIRNAME, ".gitkeep"), "a", encoding="utf8"
-    ).close()
-    open(os.path.join(data_dir, c.VC_DIRNAME, ".gitkeep"), "a", encoding="utf8").close()
-
-    # outside common cache
-    os.makedirs(conf.CV_TBOX_CACHE, exist_ok=True)
-    os.makedirs(os.path.join(conf.CV_TBOX_CACHE, c.CLONES_DIRNAME), exist_ok=True)
-    os.makedirs(os.path.join(conf.CV_TBOX_CACHE, c.API_DIRNAME), exist_ok=True)
-    open(os.path.join(conf.CV_TBOX_CACHE, ".gitkeep"), "a", encoding="utf8").close()
-    open(
-        os.path.join(conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
-    open(
-        os.path.join(conf.CV_TBOX_CACHE, c.API_DIRNAME, ".gitkeep"),
-        "a",
-        encoding="utf8",
-    ).close()
 
 
 def report_results(g: Globals) -> None:
@@ -118,7 +80,7 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
     # - Add 100 MB for Python & local usage overhead
     # - Take 80% to prevent outlier max file
-    # - Mmultiply it with 2 for local copy overhead
+    # - Multiply it with 2 for local copy overhead
     # 100 MB data file =>  2 * (100 + 80)  => 360 MB
     # 1 GB data file => 2 * (100 + 800)  => 1800 MB
 
@@ -133,23 +95,34 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     # print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
 
     # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
-    procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
+    procs_logical: int = psutil.cpu_count(logical=True) or 0  # Full usage
     procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
-        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX)
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX, max_size)
     )
 
-    chunk_size: int = max(
-        conf.CHUNKS_HARD_MIN,
-        min(
-            conf.CHUNKS_HARD_MAX,
-            num_items // 100 + 1,
-            num_items // procs_calculated
-            + (0 if num_items % procs_calculated == 0 else 1),
+    chunk_size: int = min(
+        conf.CHUNKS_HARD_MAX,
+        max(
+            conf.CHUNKS_HARD_MIN,
+            min(
+                conf.HARD_MAX_TASK_PER_CHILD,
+                num_items // 100 + 1,
+                num_items // procs_calculated
+                + (0 if num_items % procs_calculated == 0 else 1),
+            ),
         ),
     )
     return (procs_calculated, chunk_size)
+
+
+def mp_optimize_params(params_list: list, num_procs: int) -> list:
+    """Re-distribute the parameter list sorted by filesize to chunks to minimize wall-time"""
+    res_list: list = []
+    for i in range(num_procs):
+        res_list.extend(params_list[i::num_procs])
+    return res_list
 
 
 #
@@ -354,7 +327,7 @@ def df_read_safe_reported(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
         next_line: str = (
             lines_read[0].replace("\r\n", "\n").replace("\n", "") if lines_read else ""
         )
-        ss2: list[str] = next_line.split("\t")
+        ss2: list[str] = str(next_line).split("\t")
 
         # No problem: We have good data in this line and next (most common)
         # Action: Get it
@@ -427,15 +400,14 @@ def df_read_safe_reported(fpath: str) -> Tuple[pd.DataFrame, list[str]]:
 
 def _git_clone_or_pull(gitrec: GitRec) -> None:
     """Local multiprocessing sub to clone a single repo or update it by pulling if it exist"""
-    local_repo_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, gitrec.repo
-    )
+    local_repo_path: str = os.path.join(conf.TBOX_CLONES_DIR, gitrec.repo)
     git_path: str = f"{c.GITHUB_BASE}{gitrec.user}/{gitrec.repo}.git"
+    repo: Repo
     if os.path.isdir(local_repo_path):
         # repo exists, so pull only
         if conf.VERBOSE:
             print(f"GIT PULL: {git_path} => {local_repo_path}")
-        repo: Repo = Repo(path=local_repo_path)
+        repo = Repo(path=local_repo_path)
         repo.remotes.origin.pull()
         if conf.VERBOSE:
             print(f"FINISHED PULL: {gitrec.repo}")
@@ -443,7 +415,7 @@ def _git_clone_or_pull(gitrec: GitRec) -> None:
         # no local repo, so clone
         if conf.VERBOSE:
             print(f"GIT CLONE: {git_path} => {local_repo_path}")
-        repo: Repo = Repo.clone_from(
+        repo = Repo.clone_from(
             url=git_path,
             to_path=local_repo_path,
             multi_options=["--single-branch", "--branch", gitrec.branch],
@@ -460,9 +432,7 @@ def git_clone_or_pull_all() -> None:
 
 def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
     """Checkouts a cloned repo at the given date or main if not given"""
-    local_repo_path: str = os.path.join(
-        conf.CV_TBOX_CACHE, c.CLONES_DIRNAME, gitrec.repo
-    )
+    local_repo_path: str = os.path.join(conf.TBOX_CLONES_DIR, gitrec.repo)
     if os.path.isdir(local_repo_path):
         # repo exists, so we can checkout
         if conf.VERBOSE:
@@ -474,7 +444,7 @@ def git_checkout(gitrec: GitRec, checkout_to: str = "main") -> None:
             commit_hash = repo.git.execute(
                 command=f"git rev-list -n 1 --before='{checkout_to}' origin/{gitrec.branch}"
             )
-            repo.git.execute(command=f"git checkout {commit_hash}")
+            repo.git.execute(command=f"git checkout {commit_hash}")  # type: ignore
     else:
         print(f"WARNING: Could not find {gitrec.repo}")
 
@@ -548,8 +518,7 @@ def get_from_cv_dataset_clone(p: str) -> Any:
 def get_locales_from_cv_dataset_clone(ver: str) -> list[str]:
     """Get data from ds-datasets json file"""
     p: str = os.path.join(
-        conf.CV_TBOX_CACHE,
-        c.CLONES_DIRNAME,
+        conf.TBOX_CLONES_DIR,
         c.CV_DATASET_GITREC.repo,
         "datasets",
         f"{calc_dataset_prefix(ver)}.json",

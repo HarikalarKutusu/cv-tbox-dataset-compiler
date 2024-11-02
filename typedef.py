@@ -15,6 +15,7 @@
 # Standard Lib
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 # External dependencies
 import pyarrow as pa
@@ -97,6 +98,24 @@ class GitRec:
     user: str = ""
     repo: str = ""
     branch: str = ""
+
+
+#
+# Parameter Passing to MultiProcessing Handlers
+#
+
+
+@dataclass
+class MultiProcessingParams:
+    """Record definition for split/audio analysis MP parameters"""
+
+    ds_path: str = ""  # source dataset path
+    ver: str = ""  # cv version code
+    lc: str = ""  # cv language code
+    # audio specs dataframe coming from TBOX (only for splits)
+    df_aspecs: Optional[pd.DataFrame] = None
+    # clip-errors dataframe coming from TBOX (only for splits)
+    df_clip_errors: Optional[pd.DataFrame] = None
 
 
 #
@@ -261,6 +280,61 @@ class CharSpeedRec:  # pylint: disable=too-many-instance-attributes
     cs2a: str = ""  # char-speed vs age (columns are known) (from arr of int)
 
 
+@dataclass
+class AudioAnalysisStatsRec:  # pylint: disable=too-many-instance-attributes
+    """Record definition for dataset audio analysis statistics"""
+
+    ver: str = ""  # cv version code (internal format nn.n, see const.py)
+    lc: str = ""  # cv language code
+    alg: str = ""  # cv-tbox splitting algorithm (see const.py)
+    sp: str = ""  # split name (blank, train, dev, test)
+    # basic counts/sums
+    clips: int = 0  # number of recordings
+    errors: int = 0  # total errors (all kind)
+    dur: int = 0  # measured duration
+    no_vad: int = 0  # Clip count where no speech is detected
+    low_power: int = 0  # Clip count where speech power is low
+    low_snr: int = 0  # Clip count where SNR is negative
+    # basic audio property distributions
+    enc_r: str = ""  # row values
+    enc_freq: str = ""  # encodings
+    chan_r: str = ""  # row values
+    chan_freq: str = ""  # channels
+    srate_r: str = ""  # row values
+    srate_freq: str = ""  # sampling rate
+    brate_r: str = ""  # row values
+    brate_freq: str = ""  # bit rate
+    # Errors
+    err_r: str = ""  # row values = error sources
+    err_freq: str = ""  # counts
+    # Real Voice Durations
+    vad_sum: int = 0  # total VAD duration
+    vad_avg: float = 0.0  # average (mean)
+    vad_med: float = 0.0  # median
+    vad_std: float = 0.0  # standard deviation
+    vad_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+    # Speech Percentage
+    vadp_avg: float = 0.0  # average (mean)
+    vadp_med: float = 0.0  # median
+    vadp_std: float = 0.0  # standard deviation
+    vadp_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+    # Speech Power Statistics
+    sp_pwr_avg: float = 0.0  # average (mean)
+    sp_pwr_med: float = 0.0  # median
+    sp_pwr_std: float = 0.0  # standard deviation
+    sp_pwr_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+    # Silence Power Statistics
+    sil_pwr_avg: float = 0.0  # average (mean)
+    sil_pwr_med: float = 0.0  # median
+    sil_pwr_std: float = 0.0  # standard deviation
+    sil_pwr_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+    # SNR Statistics
+    snr_avg: float = 0.0  # average (mean)
+    snr_med: float = 0.0  # median
+    snr_std: float = 0.0  # standard deviation
+    snr_freq: list[int] = field(default_factory=lambda: [])  # freq. distribution
+
+
 #
 # Config Record
 #
@@ -270,23 +344,32 @@ class CharSpeedRec:  # pylint: disable=too-many-instance-attributes
 class ConfigRec:  # pylint: disable=too-many-instance-attributes
     """Record definition for config"""
 
+    # general
     date: str = ""
     cv_versions: list[str] = field(default_factory=lambda: [])
     cv_dates: list[str] = field(default_factory=lambda: [])
     cv_locales: list[str] = field(default_factory=lambda: [])
     algorithms: list[str] = field(default_factory=lambda: [])
+    # basic bins
+    bins_percent: list[int] = field(default_factory=lambda: [])  # percents, 10 steps
     bins_duration: list[int] = field(default_factory=lambda: [])
     bins_voices: list[int] = field(default_factory=lambda: [])
     bins_votes_up: list[int] = field(default_factory=lambda: [])
     bins_votes_down: list[int] = field(default_factory=lambda: [])
     bins_sentences: list[int] = field(default_factory=lambda: [])
+    # char speed
     cs_threshold: int = 0
     bins_cs_low: list[int] = field(default_factory=lambda: [])
     bins_cs_high: list[int] = field(default_factory=lambda: [])
     ch_threshold: int = 0
     bins_chars_short: list[int] = field(default_factory=lambda: [])
     bins_chars_long: list[int] = field(default_factory=lambda: [])
+    # text-corpus
     bins_words: list[int] = field(default_factory=lambda: [])
     bins_tokens: list[int] = field(default_factory=lambda: [])
+    # reported
     bins_reported: list[int] = field(default_factory=lambda: [])
     bins_reasons: list[str] = field(default_factory=lambda: [])
+    # audio-analysis
+    bins_aa_pwr: list[int] = field(default_factory=lambda: [])  # VAD power
+    bins_aa_snr: list[int] = field(default_factory=lambda: [])  # SNR

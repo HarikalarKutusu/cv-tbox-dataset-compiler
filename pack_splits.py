@@ -43,7 +43,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 # Program parameters
-PROC_COUNT: int = min(60, int(2 * psutil.cpu_count(logical=True)))  # OVER usage
+PROC_COUNT: int = min(60, int(2 * (psutil.cpu_count(logical=True) or 1)))  # OVER usage
 BATCH_SIZE: int = 5
 
 g: Globals = Globals()
@@ -84,7 +84,7 @@ def main() -> None:
 
     # Get a list of available language codes in every version
     dspaths: list[str] = glob.glob(
-        os.path.join(HERE, c.DATA_DIRNAME, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
+        os.path.join(conf.DATA_BASE_DIR, c.VC_DIRNAME, "**", c.ALGORITHMS[0]),
         recursive=True,
     )
     dspaths = [os.path.split(p)[0] for p in dspaths]
@@ -160,5 +160,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("=== cv-tbox-dataset-analyzer - Split Compressiom ===")
-    init_directories(HERE)
+    init_directories()
     main()
