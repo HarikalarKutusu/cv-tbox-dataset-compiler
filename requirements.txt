@@ -1,10 +1,17 @@
-pandas>=2.2.3
-pandas-stubs
-pyarrow>=17.0.0
-pyarrow-stubs
+# tooling
 psutil>=6.1.0
 types-psutil
-tqdm>=6.55.5
+tqdm>=4.66.6
 tqdm-stubs
-gitpython>=3.1.43
+# data
+numpy>=2.1.2
+pandas>=2.2.3
+pandas-stubs
+pyarrow>=18.0.0
+# audio
+pyav>=13.1.0
+pyarrow-stubs
+# NLP
 git+https://github.com/ftyers/commonvoice-utils.git@main
+# git
+gitpython>=3.1.43
