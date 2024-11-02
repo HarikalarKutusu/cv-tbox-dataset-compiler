@@ -80,7 +80,7 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
     # - Add 100 MB for Python & local usage overhead
     # - Take 80% to prevent outlier max file
-    # - Mmultiply it with 2 for local copy overhead
+    # - Multiply it with 2 for local copy overhead
     # 100 MB data file =>  2 * (100 + 80)  => 360 MB
     # 1 GB data file => 2 * (100 + 800)  => 1800 MB
 
@@ -95,23 +95,34 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     # print(int(ram_per_proc), int(free_ram_mb), procs_ram_limited)
 
     # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1     # Limited usage
-    procs_logical: int = psutil.cpu_count(logical=True)  # Full usage
+    procs_logical: int = psutil.cpu_count(logical=True) or 0  # Full usage
     procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
         else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX, max_size)
     )
 
-    chunk_size: int = max(
-        conf.CHUNKS_HARD_MIN,
-        min(
-            conf.HARD_MAX_TASK_PER_CHILD,
-            num_items // 100 + 1,
-            num_items // procs_calculated
-            + (0 if num_items % procs_calculated == 0 else 1),
+    chunk_size: int = min(
+        conf.CHUNKS_HARD_MAX,
+        max(
+            conf.CHUNKS_HARD_MIN,
+            min(
+                conf.HARD_MAX_TASK_PER_CHILD,
+                num_items // 100 + 1,
+                num_items // procs_calculated
+                + (0 if num_items % procs_calculated == 0 else 1),
+            ),
         ),
     )
     return (procs_calculated, chunk_size)
+
+
+def mp_optimize_params(params_list: list, num_procs: int) -> list:
+    """Re-distribute the parameter list sorted by filesize to chunks to minimize wall-time"""
+    res_list: list = []
+    for i in range(num_procs):
+        res_list.extend(params_list[i::num_procs])
+    return res_list
 
 
 #
