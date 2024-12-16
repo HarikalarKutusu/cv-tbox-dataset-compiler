@@ -209,6 +209,7 @@ def main() -> None:
             print("Nothing to process...")
             return
 
+        # MP optimization
         proc_count: int
         chunk_size: int
         proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
@@ -216,6 +217,8 @@ def main() -> None:
             f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} NoData: {g_tc.skipped_nodata} "
             + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
+        # final_list = sort_by_largest_file(final_list)
+        # final_list = mp_optimize_params(final_list, PROC_COUNT)
 
         with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="") as pbar:
@@ -600,7 +603,7 @@ def main() -> None:
         for lc in ALL_LOCALES:
             for ver in c.CV_VERSIONS:
                 algo_list: list[str] = (
-                    df_algo[(df_algo["lc"] == lc) & (df_algo["ver"] == ver)]["alg"]
+                    df_algo[(df_algo["lc"] == lc) & (df_algo["ver"] == ver)]["alg"]  # type: ignore
                     .unique()
                     .tolist()
                 )
