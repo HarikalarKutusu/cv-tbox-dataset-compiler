@@ -75,6 +75,34 @@ def report_results(g: Globals) -> None:
     )
 
 
+#
+# Multiprocessing Optimization
+#
+
+
+def sort_by_largest_file(fpaths: list[str]) -> tuple[list[str], int, int]:
+    """Given a list of file paths, this gets the files sizes, sorts on them decending and returns the sorted file paths with average file size"""
+    recs: list[list[str | int]] = []
+    sum_sizes: int = 0
+    max_size: int = 0
+    for p in fpaths:
+        size: int = os.path.getsize(p)
+        max_size = max(max_size, size)
+        sum_sizes += size
+        recs.append([p, size])
+    recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
+    # return as tuple [sorted_list, average_file_size, average_file_size]
+    return ([str(row[0]) for row in recs], sum_sizes // len(fpaths), max_size)
+
+
+def mp_optimize_params(params_list: list, num_procs: int) -> list:
+    """Re-distribute the parameter list sorted by filesize to chunks to minimize wall-time"""
+    res_list: list = []
+    for i in range(num_procs):
+        res_list.extend(params_list[i::num_procs])
+    return res_list
+
+
 def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int]:
     """Given number of items and estimated ram usage per proc in MB, estimate process count and chunk size"""
     # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
@@ -115,14 +143,6 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
         ),
     )
     return (procs_calculated, chunk_size)
-
-
-def mp_optimize_params(params_list: list, num_procs: int) -> list:
-    """Re-distribute the parameter list sorted by filesize to chunks to minimize wall-time"""
-    res_list: list = []
-    for i in range(num_procs):
-        res_list.extend(params_list[i::num_procs])
-    return res_list
 
 
 #
@@ -602,23 +622,6 @@ def dec2(x: float) -> float:
 def dec1(x: float) -> float:
     """Make to 3 decimals"""
     return round(10 * x) / 10
-
-
-#
-# FS
-#
-def sort_by_largest_file(fpaths: list[str]) -> tuple[list[str], int, int]:
-    """Given a list of file paths, this gets the files sizes, sorts on them decending and returns the sorted file paths with average file size"""
-    recs: list[list[str | int]] = []
-    sum_sizes: int = 0
-    max_size: int = 0
-    for p in fpaths:
-        size: int = os.path.getsize(p)
-        max_size = max(max_size, size)
-        sum_sizes += size
-        recs.append([p, size])
-    recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
-    return ([str(row[0]) for row in recs], sum_sizes // len(fpaths), max_size)
 
 
 #
