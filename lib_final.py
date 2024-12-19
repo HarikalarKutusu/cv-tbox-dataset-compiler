@@ -58,6 +58,8 @@ PHONEMISERS: list[str] = cv.phonemisers()
 # ALPHABETS: list[str] = [str(p).split(os.sep)[-2] for p in cv.alphabets()]
 # SEGMENTERS: list[str] = [str(p).split(os.sep)[-2] for p in cv.segmenters()]
 
+DF_VARIANTS: pd.DataFrame = pd.DataFrame()
+DF_ACCENTS: pd.DataFrame = pd.DataFrame()
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
@@ -133,7 +135,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     _ser.apply(int).reset_index(drop=True).to_list(), int
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_WORDS)
-                res.w_freq = _hist[0].tolist()[1:]
+                res.w_freq = _hist[0].tolist()[1:]  # type: ignore
 
             # token_cnt stats
             _df2 = pd.DataFrame(token_counter.most_common(), columns=c.FIELDS_TOKENS)
@@ -151,7 +153,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                     int,
                 )
                 _hist = np.histogram(_arr, bins=c.BINS_TOKENS)
-                res.t_freq = _hist[0].tolist()[1:]
+                res.t_freq = _hist[0].tolist()[1:]  # type: ignore
             if do_save:
                 fn = os.path.join(
                     tc_anal_dir,
@@ -173,7 +175,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
             res.p_cnt = len(_values)
             _values = _values[:100]
             res.p_items = list2str([x[0] for x in _values])
-            res.p_freq = [x[1] for x in _values]
+            res.p_freq = [x[1] for x in _values]  # type: ignore
             if do_save:
                 fn = os.path.join(
                     tc_anal_dir,
@@ -204,7 +206,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
                 else c.BINS_CHARS_LONG
             )
             _hist = np.histogram(_arr, bins=_sl_bins)
-            res.c_freq = _hist[0].tolist()
+            res.c_freq = _hist[0].tolist()  # type: ignore
 
         # GRAPHEMES
         _ = [grapheme_counter.update(s) for s in df["sentence"].dropna().tolist()]
@@ -213,7 +215,7 @@ def handle_text_corpus(ver_lc: str) -> list[TextCorpusStatsRec]:
         res.g_cnt = len(_values)
         _values = _values[:100]
         res.g_items = list2str([x[0] for x in _values])
-        res.g_freq = [x[1] for x in _values]
+        res.g_freq = [x[1] for x in _values]  # type: ignore
         if do_save:
             fn = os.path.join(
                 tc_anal_dir,
@@ -446,7 +448,7 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         int,
     )
     hist = np.histogram(arr, bins=c.BINS_REPORTED)
-    rep_freq = hist[0].tolist()[1:]
+    rep_freq = hist[0].tolist()[1:]  # type: ignore
 
     # Get reason counts
     reason_counts: pd.DataFrame = (
@@ -464,8 +466,8 @@ def handle_reported(ver_lc: str) -> ReportedStatsRec:
         rep_avg=dec3(rep_mean),
         rep_med=dec3(rep_median),
         rep_std=dec3(rep_std),
-        rep_freq=rep_freq,
-        rea_freq=reason_freq,
+        rep_freq=rep_freq,  # type: ignore
+        rea_freq=reason_freq,  # type: ignore
     )
     return res
 
@@ -554,7 +556,7 @@ def handle_dataset_splits(
             # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_DURATION)
-            res.vad_freq = _hist[0].tolist()
+            res.vad_freq = _hist[0].tolist()  # type: ignore
 
         # vad percentage stats (data already betweek 0-100)
         _ser = df_aspecs_sub["vad_percentage"].dropna()
@@ -565,7 +567,7 @@ def handle_dataset_splits(
             # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_PERCENT)
-            res.vadp_freq = _hist[0].tolist()
+            res.vadp_freq = _hist[0].tolist()  # type: ignore
 
         # speech power stats (10^-6) we scale it
         _ser = df_aspecs_sub["speech_power"].dropna().apply(lambda x: x * 1_000_000)
@@ -576,7 +578,7 @@ def handle_dataset_splits(
             # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_POWER)
-            res.sp_pwr_freq = _hist[0].tolist()
+            res.sp_pwr_freq = _hist[0].tolist()  # type: ignore
 
         # silence power stats (10^-9) we scale it
         _ser = (
@@ -589,7 +591,7 @@ def handle_dataset_splits(
             # Calc distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_POWER)
-            res.sil_pwr_freq = _hist[0].tolist()
+            res.sil_pwr_freq = _hist[0].tolist()  # type: ignore
 
         # snr stats
         # no speech
@@ -618,7 +620,7 @@ def handle_dataset_splits(
             # Calc word count distribution
             _arr = np.fromiter(_ser.apply(int).reset_index(drop=True).to_list(), int)
             _hist = np.histogram(_arr, bins=c.BINS_SNR)
-            res.snr_freq = _hist[0].tolist()[1:]  # drop lower than -100 SNR
+            res.snr_freq = _hist[0].tolist()[1:]  # type: ignore # drop lower than -100 SNR
 
         # direct distributions (value counts)
         # encoding
@@ -886,7 +888,7 @@ def handle_dataset_splits(
         # there must be records + v1 cannot be mapped
         ser: pd.Series
         arr: np.ndarray
-        duration_freq = []
+        duration_freq: list[int] = []
         # Assume no Duration data, set illegal defaults
         duration_total: float = -1
         duration_mean: float = -1
@@ -907,7 +909,7 @@ def handle_dataset_splits(
                 df["duration"].dropna().apply(int).reset_index(drop=True).to_list(), int
             )
             hist = np.histogram(arr, bins=c.BINS_DURATION)
-            duration_freq = hist[0].tolist()
+            duration_freq = hist[0].tolist()  # type: ignore
 
         # === VOICES (how many recordings per voice)
         voice_counts: pd.DataFrame = (
@@ -923,7 +925,7 @@ def handle_dataset_splits(
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_VOICES)
-        voice_freq = hist[0].tolist()[1:]
+        voice_freq = hist[0].tolist()[1:]  # type: ignore
 
         # === SENTENCES (how many recordings per sentence)
         sentence_counts: pd.DataFrame = (
@@ -943,7 +945,7 @@ def handle_dataset_splits(
             int,
         )
         hist = np.histogram(arr, bins=c.BINS_SENTENCES)
-        sentence_freq = hist[0].tolist()[1:]
+        sentence_freq = hist[0].tolist()[1:]  # type: ignore
 
         # === VOTES
         bins: list[int] = c.BINS_VOTES_UP
@@ -1084,12 +1086,12 @@ def handle_dataset_splits(
             v_avg=dec3(voice_mean),
             v_med=dec3(voice_median),
             v_std=dec3(voice_std),
-            v_freq=voice_freq,
+            v_freq=voice_freq,  # type: ignore
             # Recordings per Sentence
             s_avg=dec3(sentence_mean),
             s_med=dec3(sentence_median),
             s_std=dec3(sentence_std),
-            s_freq=sentence_freq,
+            s_freq=sentence_freq,  # type: ignore
             # Votes
             uv_sum=up_votes_sum,
             uv_avg=dec3(up_votes_mean),
@@ -1102,8 +1104,8 @@ def handle_dataset_splits(
             dv_std=dec3(down_votes_std),
             dv_freq=down_votes_freq,
             # Demographics distribution for recordings
-            dem_table=_pt_dem.to_numpy(int).tolist(),
-            dem_uq=_pt_uqdem.to_numpy(int).tolist(),
+            dem_table=_pt_dem.to_numpy(int).tolist(),  # type: ignore
+            dem_uq=_pt_uqdem.to_numpy(int).tolist(),  # type: ignore
             dem_fix_r=dem_fixes_list[0],
             dem_fix_v=dem_fixes_list[1],
         )
@@ -1186,7 +1188,7 @@ def handle_dataset_splits(
                 index=df["bin_cs"],
                 columns=df["bin_slen"],
             )
-            cs_row_labels: list[str] = cs_vs_slen.index.values.astype(str).tolist()
+            cs_row_labels: list[str] = cs_vs_slen.index.values.astype(str).tolist()  # type: ignore
             cs_vs_slen_col_labels: list[str] = cs_vs_slen.columns.tolist()
             cs_vs_slen.reset_index(drop=True, inplace=True)
             cs_clips: int = cs_vs_slen.sum(skipna=True).sum()
@@ -1232,9 +1234,9 @@ def handle_dataset_splits(
                 cs_freq=cs_freq,
                 cs_r=list2str(cs_row_labels),
                 cs2s_c=list2str(cs_vs_slen_col_labels),
-                cs2s=arr2str(cs_vs_slen.to_numpy(int).tolist()),
-                cs2g=arr2str(cs_vs_gender.to_numpy(int).tolist()),
-                cs2a=arr2str(cs_vs_age.to_numpy(int).tolist()),
+                cs2s=arr2str(cs_vs_slen.to_numpy(int).tolist()),  # type: ignore
+                cs2g=arr2str(cs_vs_gender.to_numpy(int).tolist()),  # type: ignore
+                cs2a=arr2str(cs_vs_age.to_numpy(int).tolist()),  # type: ignore
             )
 
         #

@@ -68,7 +68,7 @@ SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 # Debug & Limiters
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
-DEBUG_CV_VER: list[str] = ["19.0"]
+DEBUG_CV_VER: list[str] = ["20.0"]
 DEBUG_CV_LC: list[str] = ["tr"]
 
 # This is independent of debug value

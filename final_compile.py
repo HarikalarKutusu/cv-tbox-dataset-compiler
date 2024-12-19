@@ -209,6 +209,7 @@ def main() -> None:
             print("Nothing to process...")
             return
 
+        # MP optimization
         proc_count: int
         chunk_size: int
         proc_count, chunk_size = mp_schedular(num_items, max_size, avg_size)
@@ -216,6 +217,8 @@ def main() -> None:
             f"Total: {g_tc.total_lc} Existing: {g_tc.skipped_exists} NoData: {g_tc.skipped_nodata} "
             + f"Remaining: {g_tc.processed_lc} Procs: {proc_count}  chunk_size: {chunk_size}..."
         )
+        # final_list = sort_by_largest_file(final_list)
+        # final_list = mp_optimize_params(final_list, PROC_COUNT)
 
         with mp.Pool(proc_count, maxtasksperchild=conf.HARD_MAX_TASK_PER_CHILD) as pool:
             with tqdm(total=num_items, desc="") as pbar:
@@ -422,16 +425,18 @@ def main() -> None:
                 fpath=as_fpath,
                 use_cols=list(c.FIELDS_AUDIO_SPECS.keys()),
                 dtypes=c.FIELDS_AUDIO_SPECS,
+                # has_header=False,
+                # col_names=list(c.FIELDS_AUDIO_SPECS.keys()),
             ).reset_index(drop=True)
             _num_recs_orig: int = df_aspecs.shape[0]
             print(f"... Found Audio Spec Records: [{_num_recs_orig}]")
-            # print("... DEDUP STARTS...")
-            # df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
-            # _num_recs_dedup: int = df_aspecs.shape[0]
-            # print(
-            #     f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
-            # )
-            # df_write(df_aspecs, as_fpath)
+            print("... DEDUP STARTS...")
+            df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
+            _num_recs_dedup: int = df_aspecs.shape[0]
+            print(
+                f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
+            )
+            df_write(df_aspecs, as_fpath)
             # 23_855_462 TO 23_854_798
 
         # build params while eliminating unneeded (debug, already existing, forced)
@@ -600,7 +605,7 @@ def main() -> None:
         for lc in ALL_LOCALES:
             for ver in c.CV_VERSIONS:
                 algo_list: list[str] = (
-                    df_algo[(df_algo["lc"] == lc) & (df_algo["ver"] == ver)]["alg"]
+                    df_algo[(df_algo["lc"] == lc) & (df_algo["ver"] == ver)]["alg"]  # type: ignore
                     .unique()
                     .tolist()
                 )

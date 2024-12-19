@@ -72,7 +72,8 @@ CV_VERSIONS: list[str] = [
     "17.0",
     "18.0",
     "19.0",
-    # "20.0",
+    "20.0",
+    # "21.0",
 ]
 
 CV_DATES: list[str] = [
@@ -94,7 +95,8 @@ CV_DATES: list[str] = [
     "2024-03-15",
     "2024-06-14",
     "2024-09-13",
-    # "2024-12-00",
+    "2024-12-06",
+    # "2025-03-xx",
 ]
 
 MAIN_BUCKETS: list[str] = ["validated", "invalidated", "other"]
@@ -403,7 +405,7 @@ FIELDS_AUDIO_SPECS: dict[str, pd.ArrowDtype] = {
     "clip_id": dtype_pa_uint64,
     "orig_path": dtype_pa_str,
     "orig_encoding": dtype_pa_str,
-    "orig_sample_rate": dtype_pa_float32,
+    "orig_sample_rate": dtype_pa_uint32,
     # "orig_num_frames": dtype_pa_uint64,
     "orig_num_channels": dtype_pa_uint8,
     "orig_bitrate_kbps": dtype_pa_uint8,
