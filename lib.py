@@ -105,16 +105,14 @@ def mp_optimize_params(params_list: list, num_procs: int) -> list:
 
 def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int]:
     """Given number of items and estimated ram usage per proc in MB, estimate process count and chunk size"""
-    # Given max/avg file size to be processed, estimate RAM usage of a process in MB"""
-    # - Add 100 MB for Python & local usage overhead
-    # - Take 80% to prevent outlier max file
-    # - Multiply it with 2 for local copy overhead
-    # 100 MB data file =>  2 * (100 + 80)  => 360 MB
-    # 1 GB data file => 2 * (100 + 800)  => 1800 MB
+    # Given avg file size to be processed, estimate RAM usage of a process in MB"""
+    # - Multiply it with 2 for overhead
+    # 100 MB data file =>  2 * 100  => 200 MB
+    # 1 GB data file => 2 * 1000  => 1800 MB
 
     # [TODO] Add avg into calculation of 0.8 as variable
     # mult: float = 1.0 - (max_size / avg_size) / 100
-    ram_per_proc: float = 2 * (50.0 + avg_size / 1000000)
+    ram_per_proc: float = 2 * avg_size / 1000000
 
     # AVAILABLE RAM IN MBs (we try to not swap)
     gc.collect()
@@ -127,7 +125,7 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
     procs_calculated: int = (
         conf.DEBUG_PROC_COUNT
         if conf.DEBUG
-        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX, max_size)
+        else min(procs_logical, procs_ram_limited, conf.PROCS_HARD_MAX)
     )
 
     chunk_size: int = min(
@@ -151,7 +149,11 @@ def mp_schedular(num_items: int, max_size: int, avg_size: int) -> tuple[int, int
 
 
 def df_read(
-    fpath: str, dtypes: dict | None = None, use_cols: list[str] | None = None
+    fpath: str,
+    dtypes: Any | None = None,
+    use_cols: list[str] | None = None,
+    has_header: bool = True,
+    col_names: list[str] | None = None,
 ) -> pd.DataFrame:
     """Read a tsv file into a dataframe"""
     _df: pd.DataFrame = pd.DataFrame()
@@ -175,6 +177,8 @@ def df_read(
         usecols=use_cols,
         dtype_backend="pyarrow",
         dtype=dtypes,
+        header=0 if col_names is not None else "infer" if has_header else None,
+        names=None if col_names is None else col_names,
     )
     return _df
 
