@@ -134,7 +134,7 @@ def main() -> None:
     #
     if total_cnt > 0:
         print(
-            f"Compressing for {len(final_list)} algorithmns in {len(dspaths)} datasets...\n"
+            f"Compressing {len(final_list)} missing algorithms from {len(dspaths)} datasets...\n"
         )
         with mp.Pool(processes=PROC_COUNT, maxtasksperchild=BATCH_SIZE) as pool:
             # pool.map(handle_ds, dspaths)
