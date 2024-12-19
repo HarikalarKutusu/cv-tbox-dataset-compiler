@@ -425,16 +425,18 @@ def main() -> None:
                 fpath=as_fpath,
                 use_cols=list(c.FIELDS_AUDIO_SPECS.keys()),
                 dtypes=c.FIELDS_AUDIO_SPECS,
+                # has_header=False,
+                # col_names=list(c.FIELDS_AUDIO_SPECS.keys()),
             ).reset_index(drop=True)
             _num_recs_orig: int = df_aspecs.shape[0]
             print(f"... Found Audio Spec Records: [{_num_recs_orig}]")
-            # print("... DEDUP STARTS...")
-            # df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
-            # _num_recs_dedup: int = df_aspecs.shape[0]
-            # print(
-            #     f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
-            # )
-            # df_write(df_aspecs, as_fpath)
+            print("... DEDUP STARTS...")
+            df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
+            _num_recs_dedup: int = df_aspecs.shape[0]
+            print(
+                f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
+            )
+            df_write(df_aspecs, as_fpath)
             # 23_855_462 TO 23_854_798
 
         # build params while eliminating unneeded (debug, already existing, forced)
