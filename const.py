@@ -405,7 +405,7 @@ FIELDS_AUDIO_SPECS: dict[str, pd.ArrowDtype] = {
     "clip_id": dtype_pa_uint64,
     "orig_path": dtype_pa_str,
     "orig_encoding": dtype_pa_str,
-    "orig_sample_rate": dtype_pa_float32,
+    "orig_sample_rate": dtype_pa_uint32,
     # "orig_num_frames": dtype_pa_uint64,
     "orig_num_channels": dtype_pa_uint8,
     "orig_bitrate_kbps": dtype_pa_uint8,
