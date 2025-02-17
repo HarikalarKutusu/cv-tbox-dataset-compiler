@@ -52,6 +52,7 @@ SKIP_TEXT_CORPORA: bool = False
 SKIP_REPORTED: bool = False
 SKIP_VOICE_CORPORA: bool = False
 SKIP_SUPPORT_MATRIX: bool = False
+SKIP_AA_DEDUP: bool = True
 
 # Should we re-create old version even if they exist?
 FORCE_CREATE_TC_STATS: bool = False
@@ -69,7 +70,7 @@ SAVE_LEVEL: int = c.SAVE_LEVEL_DEFAULT
 DEBUG: bool = False
 DEBUG_PROC_COUNT: int = 1
 DEBUG_CV_VER: list[str] = ["20.0"]
-DEBUG_CV_LC: list[str] = ["tr"]
+DEBUG_CV_LC: list[str] = ["ca", "cy", "tr"]
 
 # This is independent of debug value
 # Create "not_found" files for text corpora?
