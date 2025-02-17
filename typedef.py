@@ -116,6 +116,9 @@ class MultiProcessingParams:
     df_aspecs: Optional[pd.DataFrame] = None
     # clip-errors dataframe coming from TBOX (only for splits)
     df_clip_errors: Optional[pd.DataFrame] = None
+    # Global vraiant/accent presets coming from TBOX cached API values (only for splits)
+    df_all_variants: Optional[pd.DataFrame] = None
+    df_all_accents: Optional[pd.DataFrame] = None
 
 
 #
@@ -255,6 +258,11 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     dem_uq: list[list[int]] = field(default_factory=lambda: [])
     dem_fix_r: list[int] = field(default_factory=lambda: [])
     dem_fix_v: list[int] = field(default_factory=lambda: [])
+    # Variant & Accent general distribution for recordings ["nodata", ...presets, "other"]
+    var_rows: list[str] = field(default_factory=lambda: [])
+    var_freq: list[int] = field(default_factory=lambda: [])
+    acc_rows: list[str] = field(default_factory=lambda: [])
+    acc_freq: list[int] = field(default_factory=lambda: [])
 
 
 @dataclass

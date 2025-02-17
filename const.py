@@ -111,6 +111,7 @@ TRAINING_SPLITS: list[str] = ["train", "dev", "test"]
 SPLIT_FILES: list[str] = ["train.tsv", "dev.tsv", "test.tsv"]
 
 NODATA: str = "nodata"  # .isna cases replaced with this
+OTHER: str = "other"  # non-standart/not predefined values are replaced by this
 
 FIELDS_BUCKETS_SPLITS: dict[str, pd.ArrowDtype] = {
     "client_id": dtype_pa_str,
@@ -354,6 +355,7 @@ FIELDS_TC_STATS: dict[str, pd.ArrowDtype] = {
     "dom_freq": dtype_pa_list_uint64,
 }
 
+# VALUE COUNT RESULTS
 FIELDS_TOKENS: dict[str, pd.ArrowDtype] = {
     "token": dtype_pa_str,
     "count": dtype_pa_uint64,
@@ -370,6 +372,15 @@ FIELDS_SENTENCE_DOMAINS: dict[str, pd.ArrowDtype] = {
     "sentence_domain": dtype_pa_str,
     "count": dtype_pa_uint64,
 }
+FIELDS_VARIANT_COUNTS: dict[str, pd.ArrowDtype] = {
+    "variant": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
+FIELDS_ACCENT_COUNTS: dict[str, pd.ArrowDtype] = {
+    "accents": dtype_pa_str,
+    "count": dtype_pa_uint64,
+}
+
 
 #
 # REPORTED SENTENCES

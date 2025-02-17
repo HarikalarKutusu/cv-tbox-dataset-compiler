@@ -1067,6 +1067,72 @@ def handle_dataset_splits(
         # dem_fixes_list: list[list[int]] = find_fixes(df_orig)
         dem_fixes_list: list[list[int]] = [[], []]
 
+        # === variants / accents
+        # we need statistics for predefined (in any), nodata, and (for accents only) hand-written/user-specified
+        # Some divisions are in accents, some in variants
+        # Accent field was there for single, then came comma delimited multiple selections
+        # Variants are new, as of v20 there is a single one, they can become comma delimited multiple in the future!!!
+        # NA values are already "nodata", user specified free-form accents are summarized in "other"
+
+        # var_counters: dict[str, int] = {}
+        acc_counters: dict[str, int] = {}
+        _df2: pd.DataFrame
+
+        # variants
+        _df2 = (
+            df["variant"]
+            .astype(dtype_pa_str)
+            # .fillna(c.NODATA)
+            # .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index()
+            .reindex(columns=c.FIELDS_VARIANT_COUNTS)
+            # .sort_values("count", ascending=False)
+        ).astype(c.FIELDS_VARIANT_COUNTS)
+        # get back to coded row values
+        for _, row in df_variants.iterrows():
+            _df2["variant"] = _df2["variant"].replace(
+                row.iloc[3], row.iloc[2], regex=True
+            )
+
+        var_items: list[str] = _df2["variant"].to_list()
+        var_freq: list[int] = _df2["count"].to_list()
+
+        # accents
+        _df2 = (
+            df["accents"]
+            .astype(dtype_pa_str)
+            # .fillna(c.NODATA)
+            .dropna()
+            .value_counts()
+            .to_frame()
+            .reset_index()
+            .reindex(columns=c.FIELDS_ACCENT_COUNTS)
+            # .sort_values("count", ascending=False)
+        ).astype(c.FIELDS_ACCENT_COUNTS)
+        # get back to coded row values
+        for _, row in df_accents.iterrows():
+            _df2["accents"] = _df2["accents"].replace(
+                row.iloc[3], row.iloc[2], regex=True
+            )
+
+        # prep counters & loop for comma delimited multi-domains
+        for a in predefined_accents:
+            acc_counters[a] = 0
+        acc_counters["nodata"] = 0
+        acc_counters["other"] = 0
+        for _, row in _df2.iterrows():
+            acc_list: list[str] = row.iloc[0].split(",")
+            for a in acc_list:
+                if a in (predefined_accents + ["nodata"]):
+                    acc_counters[a] += row.iloc[1]
+                else:
+                    acc_counters["other"] += row.iloc[1]
+        acc_items: list[str] = [tup[0] for tup in acc_counters.items()]
+        acc_freq: list[int] = [tup[1] for tup in acc_counters.items()]
+
+        # build result record and return
         rec_ss: SplitStatsRec = SplitStatsRec(
             ver=ver,
             lc=lc,
@@ -1108,6 +1174,13 @@ def handle_dataset_splits(
             dem_uq=_pt_uqdem.to_numpy(int).tolist(),  # type: ignore
             dem_fix_r=dem_fixes_list[0],
             dem_fix_v=dem_fixes_list[1],
+            # variants & accents
+            # var_rows=variant_rows,
+            var_rows=var_items,
+            var_freq=var_freq,
+            # acc_rows=accent_rows,
+            acc_rows=acc_items,
+            acc_freq=acc_freq,
         )
 
         # === AVERAGE AND PER USER CHAR SPEED
@@ -1329,6 +1402,33 @@ def handle_dataset_splits(
             if not os.path.isfile(_dst_meta_as_file):
                 os.makedirs(ds_meta_dir, exist_ok=True)
                 df_write(df_aspecs_ds, _dst_meta_as_file)
+
+    # Variants / Accents - get list of predefined for this language
+    df_variants: pd.DataFrame = pd.DataFrame()
+    df_accents: pd.DataFrame = pd.DataFrame()
+    predefined_variants: list[str] = []
+    predefined_accents: list[str] = []
+    variant_rows: list[str] = []
+    accent_rows: list[str] = []
+    if params.df_all_variants is not None:
+        df_variants = params.df_all_variants[params.df_all_variants["lc"] == params.lc]
+        if df_variants.shape[0] == 0:
+            variant_rows = [c.NODATA, c.OTHER]
+        else:
+            predefined_variants = df_variants["name"].to_list()
+            # df_variants["row_names"] = f'{df_variants["name"]} ({df_variants["tag"]})'
+            # variant_rows = df_variants["row_names"].to_list() + [c.NODATA, c.OTHER]
+            variant_rows = predefined_variants + [c.NODATA, c.OTHER]
+
+    if params.df_all_accents is not None:
+        df_accents = params.df_all_accents[params.df_all_accents["lc"] == params.lc]
+        if df_accents.shape[0] == 0:
+            accent_rows = [c.NODATA, c.OTHER]
+        else:
+            predefined_accents = df_accents["token"].to_list()
+            # df_accents["row_names"] = f'{df_accents["token"]} ({df_accents["name"]})'
+            # accent_rows = df_accents["row_names"].to_list() + [c.NODATA, c.OTHER]
+            accent_rows = predefined_accents + [c.NODATA, c.OTHER]
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
     ret_ss: SplitStatsRec
