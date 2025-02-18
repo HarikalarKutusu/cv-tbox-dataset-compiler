@@ -605,10 +605,14 @@ def handle_dataset_splits(
         res.low_power = _df4.shape[0]
         # combine and save for main buckets
         if algo == "" and split in c.MAIN_BUCKETS:
-            _df2 = pd.concat([_df2, _df3, _df4]).drop_duplicates()
-            if _df2.shape[0] > 0:
+            _df_bad: pd.DataFrame = (
+                pd.concat([_df2, _df3, _df4]).drop_duplicates().sort_values("clip_id")
+            )
+            if _df_bad.shape[0] > 0:
+                _df_bad["ver"] = _df_bad["ver"].apply(lambda x: str(round(x, 1)))
                 df_write(
-                    df=_df3, fpath=os.path.join(ds_meta_dir, f"audio_bad_{split}.tsv")
+                    df=_df_bad,
+                    fpath=os.path.join(ds_meta_dir, f"audio_bad_{split}.tsv"),
                 )
 
         # valid snr (where we detected speech)
