@@ -58,8 +58,8 @@ PHONEMISERS: list[str] = cv.phonemisers()
 # ALPHABETS: list[str] = [str(p).split(os.sep)[-2] for p in cv.alphabets()]
 # SEGMENTERS: list[str] = [str(p).split(os.sep)[-2] for p in cv.segmenters()]
 
-DF_VARIANTS: pd.DataFrame = pd.DataFrame()
-DF_ACCENTS: pd.DataFrame = pd.DataFrame()
+# DF_VARIANTS: pd.DataFrame = pd.DataFrame()
+# DF_ACCENTS: pd.DataFrame = pd.DataFrame()
 
 ########################################################
 # Text-Corpus Stats (Multi Processing Handler)
@@ -1410,29 +1410,17 @@ def handle_dataset_splits(
     # Variants / Accents - get list of predefined for this language
     df_variants: pd.DataFrame = pd.DataFrame()
     df_accents: pd.DataFrame = pd.DataFrame()
-    predefined_variants: list[str] = []
+    # predefined_variants: list[str] = []
     predefined_accents: list[str] = []
-    variant_rows: list[str] = []
-    accent_rows: list[str] = []
     if params.df_all_variants is not None:
         df_variants = params.df_all_variants[params.df_all_variants["lc"] == params.lc]
-        if df_variants.shape[0] == 0:
-            variant_rows = [c.NODATA, c.OTHER]
-        else:
-            predefined_variants = df_variants["name"].to_list()
-            # df_variants["row_names"] = f'{df_variants["name"]} ({df_variants["tag"]})'
-            # variant_rows = df_variants["row_names"].to_list() + [c.NODATA, c.OTHER]
-            variant_rows = predefined_variants + [c.NODATA, c.OTHER]
+        # if df_variants.shape[0] != 0:
+        #     predefined_variants = df_variants["name"].to_list()
 
     if params.df_all_accents is not None:
         df_accents = params.df_all_accents[params.df_all_accents["lc"] == params.lc]
-        if df_accents.shape[0] == 0:
-            accent_rows = [c.NODATA, c.OTHER]
-        else:
+        if df_accents.shape[0] != 0:
             predefined_accents = df_accents["token"].to_list()
-            # df_accents["row_names"] = f'{df_accents["token"]} ({df_accents["name"]})'
-            # accent_rows = df_accents["row_names"].to_list() + [c.NODATA, c.OTHER]
-            accent_rows = predefined_accents + [c.NODATA, c.OTHER]
 
     # === MAIN BUCKETS (clips, validated, invalidated, other)
     ret_ss: SplitStatsRec
