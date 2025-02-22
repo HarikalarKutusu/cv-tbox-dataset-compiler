@@ -43,6 +43,8 @@ from lib import (
     df_concat,
     df_read,
     df_write,
+    get_accent_presets_from_cv_api,
+    get_variant_presets_from_cv_api,
     init_directories,
     dec3,
     calc_dataset_prefix,
@@ -430,14 +432,44 @@ def main() -> None:
             ).reset_index(drop=True)
             _num_recs_orig: int = df_aspecs.shape[0]
             print(f"... Found Audio Spec Records: [{_num_recs_orig}]")
-            print("... DEDUP STARTS...")
-            df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
-            _num_recs_dedup: int = df_aspecs.shape[0]
-            print(
-                f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
-            )
-            df_write(df_aspecs, as_fpath)
-            # 23_855_462 TO 23_854_798
+            # [FIXME] This should not be needed anyway. Should be handled in source tbox_monorepo tbox_ds while adding to parquet files
+            if not conf.SKIP_AA_DEDUP:
+                print("... DEDUP STARTS...")
+                df_aspecs.drop_duplicates(ignore_index=True, inplace=True)
+                _num_recs_dedup: int = df_aspecs.shape[0]
+                print(
+                    f"=== DEDUP AUDIO SPECS FROM {_num_recs_orig} TO {_num_recs_dedup} RECORDS."
+                )
+                # [FIXME] This should be handled in source tbox_monorepo tbox_ds export
+                # fix for version numbers
+                version_map: dict[str, str] = {
+                    "5.099999904632568": "5.1",
+                    "6.099999904632568": "6.1",
+                    "7": "7.0",
+                    "8": "8.0",
+                    "9": "9.0",
+                    "10": "10.0",
+                    "11": "11.0",
+                    "12": "12.0",
+                    "13": "13.0",
+                    "14": "14.0",
+                    "15": "15.0",
+                    "16.100000381469727": "16.1",
+                    "17": "17.0",
+                    "18": "18.0",
+                    "19": "19.0",
+                    "20": "20.0",
+                }
+                df_aspecs["ver"] = (
+                    df_aspecs["ver"].astype(dtype_pa_str).replace(version_map)
+                )
+                # write-out updated
+                df_write(df_aspecs, as_fpath)
+                # 23_855_462 TO 23_854_798
+
+        # Predefined Variant and Accent tables read-once and pass
+        df_all_variants: pd.DataFrame = get_variant_presets_from_cv_api()
+        df_all_accents: pd.DataFrame = get_accent_presets_from_cv_api()
 
         # build params while eliminating unneeded (debug, already existing, forced)
         params_list: list[MultiProcessingParams] = []
@@ -468,6 +500,8 @@ def main() -> None:
                             lc=lc,
                             df_aspecs=df_aspecs,
                             df_clip_errors=df_clip_errors,
+                            df_all_variants=df_all_variants,
+                            df_all_accents=df_all_accents,
                         )
                     )
                     ver_list_p.append(ver)
@@ -483,6 +517,8 @@ def main() -> None:
                             lc=lc,
                             df_aspecs=df_aspecs,
                             df_clip_errors=df_clip_errors,
+                            df_all_variants=df_all_variants,
+                            df_all_accents=df_all_accents,
                         )
                     )
                     ver_list_p.append(ver)

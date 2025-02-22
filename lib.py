@@ -584,6 +584,20 @@ def get_locales(ver: str) -> list[str]:
     return all_locales
 
 
+def get_variant_presets_from_cv_api() -> pd.DataFrame:
+    """Get data from cached API 'variants'"""
+    return df_read(os.path.join(conf.TBOX_TSV_CACHE_DIR, "$cv_language_variants.tsv"))
+
+
+def get_accent_presets_from_cv_api() -> pd.DataFrame:
+    """Get data from cached API 'accents', return only presets"""
+    df_accents: pd.DataFrame = df_read(
+        os.path.join(conf.TBOX_TSV_CACHE_DIR, "$cv_language_accents.tsv")
+    )
+    df_accents = df_accents[df_accents["group"] == "preset"]
+    return df_accents
+
+
 #
 # Conversion
 #
