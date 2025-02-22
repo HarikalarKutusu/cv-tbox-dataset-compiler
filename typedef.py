@@ -261,8 +261,10 @@ class SplitStatsRec:  # pylint: disable=too-many-instance-attributes
     # Variant & Accent general distribution for recordings ["nodata", ...presets, "other"]
     var_rows: list[str] = field(default_factory=lambda: [])
     var_freq: list[int] = field(default_factory=lambda: [])
+    var_ufreq: list[int] = field(default_factory=lambda: [])
     acc_rows: list[str] = field(default_factory=lambda: [])
     acc_freq: list[int] = field(default_factory=lambda: [])
+    acc_ufreq: list[int] = field(default_factory=lambda: [])
 
 
 @dataclass
