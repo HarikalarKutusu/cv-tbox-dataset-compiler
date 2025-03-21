@@ -7,10 +7,10 @@ tqdm-stubs
 numpy>=2.2.3
 pandas>=2.2.3
 pandas-stubs
-pyarrow>=19.0.0
+pyarrow>=19.0.1
 pyarrow-stubs
 # audio
-pyav>=14.1.0
+pyav>=14.2.1
 # NLP
 git+https://github.com/ftyers/commonvoice-utils.git@main
 # git

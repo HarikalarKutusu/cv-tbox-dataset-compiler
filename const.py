@@ -73,7 +73,8 @@ CV_VERSIONS: list[str] = [
     "18.0",
     "19.0",
     "20.0",
-    # "21.0",
+    "21.0",
+    # "22.0",
 ]
 
 CV_DATES: list[str] = [
@@ -96,7 +97,8 @@ CV_DATES: list[str] = [
     "2024-06-14",
     "2024-09-13",
     "2024-12-06",
-    # "2025-03-xx",
+    "2025-03-14",
+    # "2025-06-xx",
 ]
 
 MAIN_BUCKETS: list[str] = ["validated", "invalidated", "other"]
